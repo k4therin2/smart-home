@@ -135,7 +135,7 @@ def run_agent(user_input: str, verbose: bool = True) -> str:
     for iteration in range(max_iterations):
         # Call Claude
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-4-20250514",
             max_tokens=1024,
             system=system_prompt,
             tools=tools,
