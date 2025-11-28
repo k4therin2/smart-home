@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from anthropic import Anthropic
 
 # Import our custom tools
-from tools.lights import set_room_ambiance, get_available_rooms
+from tools.lights import set_room_ambiance, get_available_rooms, apply_fire_flicker
 
 
 # Load environment variables
@@ -55,6 +55,11 @@ def process_tool_call(tool_name: str, tool_input: dict) -> dict:
         )
     elif tool_name == "get_available_rooms":
         return get_available_rooms()
+    elif tool_name == "apply_fire_flicker":
+        return apply_fire_flicker(
+            room=tool_input["room"],
+            duration_seconds=tool_input.get("duration_seconds", 15)
+        )
     else:
         return {
             "success": False,
@@ -118,6 +123,24 @@ def run_agent(user_input: str, verbose: bool = True) -> str:
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        },
+        {
+            "name": "apply_fire_flicker",
+            "description": "Apply a realistic fire flickering effect to a room. Use this when the user wants dynamic fire-like lighting that flickers and varies naturally. This tool consults a specialist Hue agent that plans a sequence of lighting changes to simulate realistic fire movement.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "room": {
+                        "type": "string",
+                        "description": "Room name (e.g., 'living_room', 'bedroom')"
+                    },
+                    "duration_seconds": {
+                        "type": "integer",
+                        "description": "How long the flickering effect should run in seconds (default 15)"
+                    }
+                },
+                "required": ["room"]
             }
         }
     ]

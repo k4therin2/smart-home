@@ -155,3 +155,67 @@ def get_available_rooms() -> dict:
             "success": False,
             "error": f"Failed to query Home Assistant: {str(e)}"
         }
+
+
+def apply_fire_flicker(room: str, duration_seconds: int = 15) -> dict:
+    """
+    Apply a realistic fire flickering effect to a room.
+
+    This function consults a specialist Hue agent to plan the flicker sequence,
+    then executes it asynchronously.
+
+    Args:
+        room: Room name (e.g., 'living_room')
+        duration_seconds: How long the flicker effect should run (default 15s)
+
+    Returns:
+        Dictionary with status and flicker plan details
+    """
+    import time
+    import threading
+    from .hue_specialist import get_hue_specialist
+
+    # Get the specialist agent to plan the effect
+    specialist = get_hue_specialist()
+
+    try:
+        flicker_plan = specialist.plan_fire_flicker(room, duration_seconds)
+
+        if not flicker_plan:
+            return {
+                "success": False,
+                "error": "Specialist agent failed to create flicker plan"
+            }
+
+        # Execute flicker plan in background thread
+        def execute_flicker():
+            """Execute the flicker sequence."""
+            for step in flicker_plan:
+                time.sleep(step.get("delay_seconds", 0))
+
+                # Call set_room_ambiance with this step's parameters
+                set_room_ambiance(
+                    room=room,
+                    color_temp_kelvin=step["color_temp_kelvin"],
+                    brightness_pct=step["brightness_pct"],
+                    description=f"fire_flicker_step"
+                )
+
+        # Start flicker in background
+        flicker_thread = threading.Thread(target=execute_flicker, daemon=True)
+        flicker_thread.start()
+
+        return {
+            "success": True,
+            "room": room,
+            "duration_seconds": duration_seconds,
+            "num_steps": len(flicker_plan),
+            "message": f"Started fire flicker effect in {room} ({len(flicker_plan)} steps over {duration_seconds}s)",
+            "flicker_plan": flicker_plan
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to apply fire flicker: {str(e)}"
+        }
