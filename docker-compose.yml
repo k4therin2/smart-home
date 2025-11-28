@@ -4,7 +4,8 @@ services:
     image: ghcr.io/home-assistant/home-assistant:stable
     restart: unless-stopped
     privileged: true
-    network_mode: host
+    ports:
+      - "8123:8123"
     volumes:
       - ./home-assistant-config:/config
       - /etc/localtime:/etc/localtime:ro
