@@ -306,6 +306,68 @@ You have a tendency to over-engineer. Fight this urge:
 - ✅ **Do** trust internal code and framework guarantees
 - ✅ **Do** only validate at system boundaries (user input, external APIs)
 
+### Performance, Cost, and Network Efficiency (CRITICAL)
+
+**Always optimize for minimal resource usage when implementing features:**
+
+**API/Network Calls:**
+- ❌ **Never** send continuous API requests when a single command suffices
+- ❌ **Never** implement polling loops when event-driven alternatives exist
+- ✅ **Always** check if hardware/firmware can handle effects locally
+- ✅ **Always** prefer native device capabilities over software emulation
+
+**Examples:**
+```python
+# BAD: 15 seconds of fire flickering = 11 HTTP requests
+for step in range(11):
+    send_api_request(brightness=random(), color=random())
+    sleep(1.5)
+
+# GOOD: 1 HTTP request, device handles animation locally
+activate_dynamic_scene(scene="Fire", dynamic=True)  # Loops indefinitely!
+```
+
+**Cost Optimization:**
+- ❌ **Never** use expensive models for simple tasks
+- ❌ **Never** make redundant LLM calls when results can be cached
+- ✅ **Always** use Haiku for simple/repetitive tasks (10x cheaper than Sonnet)
+- ✅ **Always** batch operations when possible
+- ✅ **Always** check if built-in solutions exist before building custom ones
+
+**Throughput & Scalability:**
+- Consider: Will this work if called 100 times? 1000 times?
+- Consider: What happens if network latency increases?
+- Consider: Can this run offline or with intermittent connectivity?
+- Prefer: Asynchronous operations over blocking calls
+- Prefer: Local computation over cloud API calls when feasible
+
+**When Designing Any Feature, Ask:**
+1. "Can the device/system handle this natively?" (Check docs first!)
+2. "How many API calls does this require?" (Minimize!)
+3. "Does this loop need to run, or can it be event-driven?" (Events > Loops!)
+4. "Am I using the right model for this task?" (Haiku vs Sonnet vs Opus)
+5. "Will this scale if usage increases 10x?" (Design for growth!)
+
+**Smart Home Example:**
+```python
+# BAD: Continuous polling (wasteful)
+while True:
+    if motion_detected():
+        turn_on_lights()
+    sleep(1)  # 86,400 checks per day!
+
+# GOOD: Event-driven (efficient)
+def on_motion_event(event):  # Triggered by sensor
+    turn_on_lights()
+```
+
+**This philosophy applies to ALL systems:**
+- Smart home devices (check Hue/HA capabilities)
+- AI agents (use cheapest model that works)
+- Database queries (index, cache, batch)
+- File operations (stream, don't load everything)
+- External APIs (check rate limits, use webhooks)
+
 ### Write for Humans First
 
 Code is read more than it's written:

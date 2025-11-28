@@ -166,6 +166,86 @@ Return ONLY the JSON array, no other text."""
 
         return commands
 
+    def suggest_effect_for_description(self, description: str, available_scenes: List[str]) -> Dict:
+        """
+        Map an abstract description to the best Hue scene and parameters.
+
+        Args:
+            description: User's description (e.g., "under the sea", "swamp", "strobing green")
+            available_scenes: List of available Hue scenes
+
+        Returns:
+            Dictionary with recommended scene and parameters
+        """
+        prompt = f"""You are a Philips Hue lighting specialist. The user wants: "{description}"
+
+Available Hue scenes: {', '.join(available_scenes)}
+
+Your task: Recommend the BEST scene and parameters for this description.
+
+Guidelines:
+- Prefer dynamic/looping scenes over static colors when possible
+- Consider the mood and atmosphere the user wants
+- Match colors and energy level to the description
+- Use speed parameter for intensity (0=slow, 100=fast)
+
+Available scenes explained:
+- "Arctic aurora": Cool blues/greens, flowing like northern lights
+- "Nebula": Deep space colors, purples/blues, cosmic
+- "Fire": Warm oranges/reds, flickering
+- "Nighttime": Calm, dim, relaxing blues
+- "Sleepy": Very dim, warm, bedtime
+- "City of love": Romantic pinks/reds
+- "Tokyo": Vibrant, energetic, bright colors
+- "Motown": Warm, groovy, retro vibes
+- "Scarlet dream": Deep reds, dramatic
+- "Ruby glow": Red tones, warm
+
+Return ONLY JSON:
+{{
+  "scene": "<exact scene name from list>",
+  "speed": <0-100, how fast animation should be>,
+  "brightness_pct": <0-100, optional brightness override>,
+  "reasoning": "<why this scene fits>"
+}}
+
+Examples:
+"under the sea" → {{"scene": "Arctic aurora", "speed": 30, "reasoning": "Cool blues/greens simulate underwater light"}}
+"swamp" → {{"scene": "Nebula", "speed": 20, "brightness_pct": 40, "reasoning": "Dark, mysterious purples/greens"}}
+"strobing green" → {{"scene": "Arctic aurora", "speed": 95, "reasoning": "Fast aurora for strobe effect"}}
+"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=512,
+            system=self.hue_knowledge,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        # Parse JSON response
+        import json
+        response_text = response.content[0].text.strip()
+
+        # Remove markdown code blocks
+        if response_text.startswith("```"):
+            lines = response_text.split("\n")
+            response_text = "\n".join(lines[1:-1])
+
+        try:
+            recommendation = json.loads(response_text)
+            return {
+                "success": True,
+                **recommendation
+            }
+        except json.JSONDecodeError:
+            # Fallback: pick first scene
+            return {
+                "success": True,
+                "scene": available_scenes[0] if available_scenes else "Fire",
+                "speed": 50,
+                "reasoning": "Fallback recommendation (specialist agent returned invalid JSON)"
+            }
+
 
 # Singleton instance
 _specialist = None

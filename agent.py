@@ -18,6 +18,7 @@ from anthropic import Anthropic
 
 # Import our custom tools
 from tools.lights import set_room_ambiance, get_available_rooms, apply_fire_flicker
+from tools.effects import apply_abstract_effect
 
 
 # Load environment variables
@@ -59,6 +60,11 @@ def process_tool_call(tool_name: str, tool_input: dict) -> dict:
         return apply_fire_flicker(
             room=tool_input["room"],
             duration_seconds=tool_input.get("duration_seconds", 15)
+        )
+    elif tool_name == "apply_abstract_effect":
+        return apply_abstract_effect(
+            description=tool_input["description"],
+            room=tool_input["room"]
         )
     else:
         return {
@@ -141,6 +147,24 @@ def run_agent(user_input: str, verbose: bool = True) -> str:
                     }
                 },
                 "required": ["room"]
+            }
+        },
+        {
+            "name": "apply_abstract_effect",
+            "description": "Apply a looping effect based on abstract description like 'under the sea', 'swamp', 'strobing green', etc. This uses Hue's built-in dynamic scenes which loop indefinitely without continuous API calls. A specialist agent maps the description to the best available Hue scene with appropriate speed and brightness. PREFER THIS over fire_flicker for abstract/creative descriptions.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Abstract description of desired atmosphere (e.g., 'under the sea', 'swamp', 'strobing green', 'northern lights', 'cosmic nebula')"
+                    },
+                    "room": {
+                        "type": "string",
+                        "description": "Room name (e.g., 'living_room', 'bedroom')"
+                    }
+                },
+                "required": ["description", "room"]
             }
         }
     ]
