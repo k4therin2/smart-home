@@ -1,0 +1,32 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files
+data/*.json
+data/*.yaml
+!data/.gitkeep
+
+# Home Assistant config (contains tokens and device info)
+home-assistant-config/
+
+# OS
+.DS_Store

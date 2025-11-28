@@ -1,0 +1,16 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./home-assistant-config:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=America/Los_Angeles  # Change to your timezone
+    # Uncomment the following lines if you have devices that need USB access
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/ttyACM0:/dev/ttyACM0

@@ -99,12 +99,12 @@ Current issue: "Alexa, turn living room to fire" results in aggressive red light
 - System prompt engineering
 
 **Tasks:**
-- [ ] Set up basic agent with Claude API
-- [ ] Define system prompt for lighting interpretation
-- [ ] Implement `set_room_ambiance()` tool
-  - [ ] Query HA for lights in specified room
-  - [ ] Convert color temperature (Kelvin) to Hue settings
-  - [ ] Call HA `light.turn_on` service with parameters
+- [x] Set up basic agent with Claude API
+- [x] Define system prompt for lighting interpretation
+- [x] Implement `set_room_ambiance()` tool
+  - [x] Query HA for lights in specified room
+  - [x] Convert color temperature (Kelvin) to Hue settings
+  - [x] Call HA `light.turn_on` service with parameters
 - [ ] Test with various descriptions:
   - [ ] "fire" → warm (2000-2500K), medium brightness (40-60%)
   - [ ] "ocean" → cool blue (5000-6500K), medium-bright (50-70%)
