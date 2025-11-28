@@ -1,6 +1,83 @@
 # Session Log
 
-## Session 2025-11-28 - Initial Setup & Docker Configuration
+## Session 2025-11-28 - Part 2: Multi-Agent Effects System
+
+### Goals
+- Improve fire flickering to actually flicker
+- Make system understand abstract descriptions ("under the sea", "swamp")
+- Optimize for performance (minimize API calls)
+
+### Completed
+- [x] Created multi-agent architecture with Hue specialist
+- [x] Implemented apply_fire_flicker() with API-based flickering (11 requests/15s)
+- [x] Built tools/effects.py for native Hue scene activation
+- [x] Added suggest_effect_for_description() to specialist agent
+- [x] Implemented apply_abstract_effect() for looping effects
+- [x] Updated .claude/README.md with Performance & Efficiency guidelines
+- [x] Tested "under the sea" → Arctic aurora (works, loops indefinitely)
+
+### Decisions & Learnings
+- **Decision:** Two effect systems - API flickering vs native scenes
+  - Reasoning: API flickering gives control but wastes bandwidth (11 requests)
+  - Native scenes are efficient (1 request, loops forever) but limited customization
+  - Kept both approaches for comparison
+- **Learning:** Hue has dynamic scenes (Arctic aurora, Nebula, Fire, etc.)
+  - These loop indefinitely when dynamic=true
+  - Much more efficient than software-emulated effects
+  - BUT: Limited to pre-built scenes, can't customize parameters much
+- **Issue Found:** Current implementation biases towards existing scenes
+  - Specialist maps descriptions → closest existing scene
+  - Doesn't create custom scene configurations
+  - Fire "flickering" activates Fire scene but doesn't actually flicker noticeably
+
+### Issues Encountered
+- Flickering doesn't actually flicker well
+  - Problem: API-based flicker (11 requests) creates slight changes but not dramatic
+  - Problem: Native "Fire" scene doesn't flicker much either
+  - TODO: Need better approach - maybe individual light control or faster updates
+- System biases towards existing Hue scenes
+  - Problem: Specialist always picks from available scenes
+  - Limitation: Can't create custom dynamic patterns
+  - TODO: Consider allowing specialist to define custom sequences or scene configs
+
+### Next Steps (Future Sessions)
+- [ ] **Phase 2: Alexa Lambda Skill** (NEXT SESSION)
+  - Integrate voice control via Alexa
+  - Set up Lambda function to forward commands to agent
+  - Test end-to-end voice → lighting
+- [ ] Improve flickering realism (Phase 1 refinement)
+  - Option A: Individual light control (offset timing per bulb)
+  - Option B: Faster API updates (50-100ms intervals vs 1.5s)
+  - Option C: Allow specialist to create custom Hue scenes programmatically
+- [ ] Allow specialist to cache/create custom scene configs
+  - Specialist could define new scenes and save to Hue bridge
+  - Would combine efficiency of scenes with flexibility of custom effects
+- [ ] Consider scene preference learning
+  - Track which scenes user likes for which descriptions
+  - Build custom mapping over time
+
+### Critical for Next Session
+- **Multi-agent system is working** but needs refinement
+- **Performance guidelines** now in .claude/README.md - apply to all future work
+- **Two effect approaches available:**
+  - `apply_fire_flicker()`: API-based, finite duration, customizable
+  - `apply_abstract_effect()`: Scene-based, infinite loop, limited customization
+- **Moving to Phase 2** (Alexa integration) next session
+
+### Code Patterns Established
+- Specialist agents for domain expertise (Hue API knowledge)
+- Performance-first: Check native capabilities before building custom
+- Multi-tool approach: Keep both efficient and flexible options
+- Tool descriptions guide main agent to choose right approach
+
+### Performance Metrics
+- API flickering: 11 requests / 15 seconds
+- Scene activation: 1 request / ∞ duration
+- Cost: ~$0.01-0.02 per complex command (Sonnet 4)
+
+---
+
+## Session 2025-11-28 - Part 1: Initial Setup & Docker Configuration
 
 ### Goals
 - Get Home Assistant running in Docker locally
