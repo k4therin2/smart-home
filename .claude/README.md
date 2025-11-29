@@ -565,6 +565,75 @@ When something doesn't work:
 4. **Add temporary debug logging** - But remove it before committing
 5. **Document in docs/session-log.md** - "Hit this issue, here's how I fixed it"
 
+## Dependency Management (CRITICAL)
+
+**ALL Python dependencies MUST be tracked in `requirements.txt`.**
+
+### When Adding Dependencies
+
+1. **Add to requirements.txt FIRST**:
+   ```
+   # Add the dependency
+   echo "flask>=3.0.0" >> requirements.txt
+   ```
+
+2. **Then install**:
+   ```bash
+   source venv/bin/activate
+   pip install flask
+   ```
+
+3. **Never install without adding to requirements.txt** - This breaks reproducibility
+
+### Installing Dependencies
+
+**ALWAYS install in the virtual environment:**
+```bash
+# Activate venv first
+source venv/bin/activate
+
+# Install from requirements.txt
+pip install -r requirements.txt
+
+# Or install specific package (after adding to requirements.txt)
+pip install flask
+```
+
+**NEVER use global pip** - Use the project's venv
+
+### Version Pinning
+
+Use minimum version constraints (`>=`) for flexibility:
+```
+anthropic>=0.18.0
+flask>=3.0.0
+```
+
+Only pin exact versions if compatibility issues arise:
+```
+broken-package==2.1.3  # Pin only when needed
+```
+
+### Pattern
+
+```bash
+# 1. Add dependency to requirements.txt
+echo "new-package>=1.0.0" >> requirements.txt
+
+# 2. Activate venv
+source venv/bin/activate
+
+# 3. Install
+pip install new-package
+
+# 4. Test it works
+python -c "import new_package; print('OK')"
+
+# 5. Commit requirements.txt
+git add requirements.txt
+git commit -m "build: add new-package dependency"
+```
+
 ## Permission Management
 
 The user will likely run you with `--dangerously-skip-permissions` to avoid constant permission prompts. This is fine for:
@@ -576,7 +645,7 @@ The user will likely run you with `--dangerously-skip-permissions` to avoid cons
 But be **extra careful** about:
 - Deleting files (confirm first)
 - Running system commands that modify global state
-- Installing global packages
+- Installing global packages (use venv instead!)
 
 ## Your Interaction Style with the User
 
@@ -649,7 +718,7 @@ Make every commit, comment, and session log entry something you'd be proud to sh
 
 **Commit Format:** `type(scope): description`
 
-**Session Log:** Update at end of every session in `SESSION_LOG.md`
+**Session Log:** Update at end of every session in `docs/session-log.md`
 
 **Avoid:** Over-engineering, hardcoding, silent failures, cryptic messages
 
