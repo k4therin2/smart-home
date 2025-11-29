@@ -74,8 +74,8 @@ def lambda_handler(event, context):
                 should_end_session=False
             )
 
-        # Handle our custom LightingIntent
-        if intent_name == 'LightingIntent':
+        # Handle our custom SmartHomeIntent
+        if intent_name == 'SmartHomeIntent':
             # Extract the command from slots
             slots = event['request']['intent'].get('slots', {})
             command_slot = slots.get('command', {})
@@ -191,7 +191,7 @@ if __name__ == '__main__':
         'request': {
             'type': 'IntentRequest',
             'intent': {
-                'name': 'LightingIntent',
+                'name': 'SmartHomeIntent',
                 'slots': {
                     'command': {
                         'value': 'turn living room to fire'
