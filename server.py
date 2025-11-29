@@ -57,6 +57,32 @@ def health_check():
     })
 
 
+@app.route('/debug/raw', methods=['POST'])
+def debug_raw():
+    """
+    Debug endpoint - logs and echoes back whatever JSON is sent.
+    Useful for debugging Lambda/Alexa integration.
+    """
+    try:
+        data = request.get_json()
+        logger.info("="*60)
+        logger.info("🔍 DEBUG RAW REQUEST:")
+        logger.info(json.dumps(data, indent=2))
+        logger.info("="*60)
+
+        return jsonify({
+            "success": True,
+            "message": "Debug data received and logged",
+            "received": data
+        })
+    except Exception as e:
+        logger.error(f"Error in debug endpoint: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/command', methods=['POST'])
 def process_command():
     """

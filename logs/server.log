@@ -1,0 +1,26 @@
+2025-11-29 12:03:16,329 [INFO] Server starting up...
+2025-11-29 12:03:16,469 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-11-29 12:03:16,469 [INFO] [33mPress CTRL+C to quit[0m
+2025-11-29 12:03:22,586 [INFO] 📥 INCOMING REQUEST: 'test logging' (user: anonymous)
+2025-11-29 12:03:27,444 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:03:27,461 [INFO] 📤 RESPONSE: 'I'm a home lighting assistant for controlling Philips Hue smart lights. I don't have any logging or ...'
+2025-11-29 12:03:27,462 [INFO] 127.0.0.1 - - [29/Nov/2025 12:03:27] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 12:04:44,890 [INFO] 📥 INCOMING REQUEST: 'turn living room to green' (user: anonymous)
+2025-11-29 12:04:48,084 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:04:51,168 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:04:51,169 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to green lighting with a cool color temperature (5500K) and 65% b...'
+2025-11-29 12:04:51,171 [INFO] 127.0.0.1 - - [29/Nov/2025 12:04:51] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 12:05:53,093 [INFO] 📥 INCOMING REQUEST: 'turn living room to blue' (user: anonymous)
+2025-11-29 12:05:55,886 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:05:59,096 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:05:59,100 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to a cool blue ambiance with 6000K color temperature at 65% brigh...'
+2025-11-29 12:05:59,102 [INFO] 127.0.0.1 - - [29/Nov/2025 12:05:59] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 12:08:47,201 [INFO] Server starting up...
+2025-11-29 12:08:47,356 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-11-29 12:08:47,356 [INFO] [33mPress CTRL+C to quit[0m
