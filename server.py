@@ -15,6 +15,8 @@ Architecture:
 
 import os
 import json
+import logging
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -29,6 +31,17 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for web UI
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler('logs/server.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Simple in-memory request log (last 10 requests)
 request_log = []
@@ -66,6 +79,7 @@ def process_command():
         data = request.get_json()
 
         if not data or 'command' not in data:
+            logger.warning("Received request without 'command' field")
             return jsonify({
                 "success": False,
                 "error": "Missing 'command' in request body"
@@ -73,6 +87,9 @@ def process_command():
 
         command = data['command']
         user_id = data.get('user_id', 'anonymous')
+
+        # Log incoming request
+        logger.info(f"📥 INCOMING REQUEST: '{command}' (user: {user_id})")
 
         # Log request
         request_entry = {
@@ -87,6 +104,9 @@ def process_command():
         # Run the agent (verbose=False for API mode)
         response = run_agent(command, verbose=False)
 
+        # Log response
+        logger.info(f"📤 RESPONSE: '{response[:100]}{'...' if len(response) > 100 else ''}'")
+
         return jsonify({
             "success": True,
             "response": response,
@@ -94,6 +114,7 @@ def process_command():
         })
 
     except Exception as e:
+        logger.error(f"❌ ERROR processing command: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -387,6 +408,9 @@ def web_ui():
 
 
 if __name__ == '__main__':
+    # Ensure logs directory exists
+    os.makedirs('logs', exist_ok=True)
+
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV') == 'development'
 
@@ -396,6 +420,9 @@ if __name__ == '__main__':
     print(f"Server running on: http://localhost:{port}")
     print(f"Web UI: http://localhost:{port}/")
     print(f"API: http://localhost:{port}/api/command")
+    print(f"Logging to: logs/server.log")
     print(f"{'='*60}\n")
+
+    logger.info("Server starting up...")
 
     app.run(host='0.0.0.0', port=port, debug=debug)
