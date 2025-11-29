@@ -120,19 +120,24 @@ This is what users say: "Alexa, ask **home brain** to..."
 
 ### Create Intent
 
-**Intent name:** `LightingIntent`
+**Intent name:** `SmartHomeIntent`
 
 **Sample utterances:**
 ```
-turn {command}
-make {command}
-set {command}
 {command}
+to {command}
 ```
 
 **Slot:**
 - Name: `command`
 - Type: `AMAZON.SearchQuery` (captures everything user says)
+
+**Why so simple?** The `AMAZON.SearchQuery` type captures any free-form speech, so we just need minimal utterances. Users can say things like:
+- "turn living room to fire"
+- "make me feel like I'm under the sea"
+- "cozy bedroom lighting"
+
+All of these will be captured in the `{command}` slot and sent to your agent.
 
 ### Connect to Lambda
 
@@ -197,7 +202,7 @@ Use this to test Lambda without Alexa:
   "request": {
     "type": "IntentRequest",
     "intent": {
-      "name": "LightingIntent",
+      "name": "SmartHomeIntent",
       "slots": {
         "command": {
           "value": "turn living room to fire"
@@ -309,7 +314,7 @@ For production, use Cloudflare Named Tunnel because:
 **Symptom:** Alexa triggers wrong intent or says "I don't know that"
 
 **Fix:**
-1. Add more sample utterances to LightingIntent
+1. Add more sample utterances to SmartHomeIntent
 2. Rebuild Alexa model
 3. Test in Alexa console first
 

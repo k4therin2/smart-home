@@ -74,7 +74,7 @@ def lambda_handler(event, context):
                 should_end_session=False
             )
 
-        # Handle our custom SmartHomeIntent
+        # Handle our custom SmartHomeIntent (captures any command)
         if intent_name == 'SmartHomeIntent':
             # Extract the command from slots
             slots = event['request']['intent'].get('slots', {})
