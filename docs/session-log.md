@@ -1,5 +1,81 @@
 # Session Log
 
+## Session 2025-11-28 - Part 3: Documentation & Web Infrastructure
+
+### Goals
+- Reorganize documentation structure
+- Create HTTP webhook wrapper for agent
+- Build web UI for testing and monitoring
+- Prepare for Phase 2 (Alexa Lambda integration)
+
+### Completed
+- [x] Reorganized all documentation into `docs/` folder
+  - Created docs/README.md (navigation hub)
+  - Created docs/getting-started.md (5-minute setup guide)
+  - Created docs/architecture.md (system design and patterns)
+  - Created docs/api-reference.md (complete API documentation)
+  - Created docs/development.md (contributing and debugging)
+  - Moved SESSION_LOG.md → docs/session-log.md
+  - Removed old docs: PROJECT_STATUS.md, QUICKSTART.md, SETUP.md
+- [x] Updated .claude/README.md with documentation organization guidelines
+  - All docs must live in docs/ folder
+  - Ask before creating new documentation files
+  - Update docs immediately after significant changes
+  - Clear guidance on when to update which docs
+- [x] Updated root README.md to be concise with links to docs/
+- [x] Created server.py - HTTP webhook wrapper
+  - POST /api/command - Process natural language commands
+  - GET /api/rooms - List available rooms and lights
+  - GET /api/scenes/:room - Get Hue scenes for room
+  - GET /api/logs - View recent command logs
+  - GET /health - Health check endpoint
+  - GET / - Web UI for testing and monitoring
+- [x] Added Flask and Flask-CORS to requirements.txt
+- [x] Committed all changes to git
+
+### Decisions & Learnings
+- **Decision:** Consolidated documentation structure
+  - Reasoning: Multiple root-level docs (README, QUICKSTART, SETUP, PROJECT_STATUS, SESSION_LOG) was confusing
+  - Solution: Single `docs/` folder with clear file purposes
+  - Benefit: Easier to find docs, easier to keep fresh, matches industry best practices
+- **Decision:** Agent runs locally, Lambda only forwards requests
+  - Reasoning: Don't want complex agent logic in Lambda (serverless limitations)
+  - Architecture: Lambda → HTTP → Local Agent Server → Home Assistant
+  - For development: Use ngrok for local tunneling
+  - For production: Run on old laptop with port forwarding or VPN
+- **Learning:** Flask makes it trivial to add web UI + API
+  - Single file (server.py) provides both HTTP API and web interface
+  - CORS support for future frontend development
+  - Built-in request logging for debugging
+
+### Documentation Organization Established
+```
+docs/
+├── README.md              # Documentation hub and navigation
+├── getting-started.md     # Quick setup guide (5 minutes)
+├── architecture.md        # System design, patterns, data flow
+├── api-reference.md       # Tools, endpoints, schemas
+├── development.md         # Contributing, testing, debugging
+└── session-log.md         # Cross-session progress tracking
+```
+
+### Critical for Next Session
+- **Documentation is now organized** - all docs live in `docs/` folder
+- **Web server is ready** - run with `python server.py`
+- **API endpoints documented** - see docs/api-reference.md
+- **Ready for Phase 2** - Alexa Lambda integration can begin
+- **TODO:** Add reminder to Dockerize agent when moving to old laptop (in appropriate docs)
+
+### Next Steps (Phase 2: Alexa Lambda)
+- [ ] Set up ngrok for local development tunneling
+- [ ] Create AWS Lambda function
+- [ ] Build Alexa Custom Skill
+- [ ] Forward Alexa requests → Lambda → Local Server → Agent
+- [ ] Test end-to-end voice control
+- [ ] Document Lambda setup in docs/
+
+---
+
 ## Session 2025-11-28 - Part 2: Multi-Agent Effects System
 
 ### Goals
