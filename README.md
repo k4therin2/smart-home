@@ -12,7 +12,10 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys
 
-# 3. Test it!
+# 3. Start everything
+./start.sh
+
+# 4. Test it!
 python agent.py "turn living room to fire"
 ```
 
