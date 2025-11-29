@@ -74,12 +74,13 @@ def lambda_handler(event, context):
                 should_end_session=False
             )
 
-        # Handle our custom SmartHomeIntent (captures any command)
-        if intent_name == 'SmartHomeIntent':
-            # Extract the command from slots
+        # Handle fallback intent (when Alexa doesn't understand)
+        # This happens when utterances don't match - we'll treat it as a command too
+        if intent_name == 'AMAZON.FallbackIntent' or intent_name == 'CatchAllIntent':
+            # Extract the query from slots
             slots = event['request']['intent'].get('slots', {})
-            command_slot = slots.get('command', {})
-            command = command_slot.get('value')
+            query_slot = slots.get('query', {})
+            command = query_slot.get('value')
 
             if not command:
                 return build_alexa_response(
