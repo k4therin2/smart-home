@@ -184,204 +184,234 @@ def get_logs():
 
 @app.route('/', methods=['GET'])
 def web_ui():
-    """Simple web UI for testing and monitoring."""
+    """Mobile-optimized web UI for voice and text control."""
     html = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Home Automation Agent</title>
+    <title>🏠 Home Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
         }
         .container {
             background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            max-width: 600px;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
         h1 {
+            text-align: center;
             color: #333;
-            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 28px;
         }
-        h2 {
+        .subtitle {
+            text-align: center;
             color: #666;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 10px;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
         }
         input[type="text"] {
-            width: 100%;
-            padding: 12px;
+            flex: 1;
+            padding: 16px;
             font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            outline: none;
+            transition: border-color 0.3s;
         }
-        button {
-            background: #007bff;
-            color: white;
+        input[type="text"]:focus {
+            border-color: #667eea;
+        }
+        .btn {
+            padding: 16px 24px;
+            font-size: 18px;
             border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 4px;
+            border-radius: 12px;
             cursor: pointer;
-            margin-top: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+            touch-action: manipulation;
         }
-        button:hover {
-            background: #0056b3;
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
         }
-        button:disabled {
-            background: #ccc;
+        .btn-voice {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            min-width: 60px;
+        }
+        .btn-voice.listening {
+            background: #ff4757;
+            border-color: #ff4757;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
+        }
+        .response-area {
+            flex: 1;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .response {
             background: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            margin-top: 15px;
-            border-radius: 4px;
-        }
-        .error {
-            background: #fff3cd;
-            border-left-color: #ffc107;
-        }
-        .endpoint {
-            background: #f8f9fa;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-        }
-        .endpoint-method {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .get {
-            background: #28a745;
-            color: white;
-        }
-        .post {
-            background: #007bff;
-            color: white;
-        }
-        .status {
-            display: inline-block;
-            padding: 4px 12px;
             border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
+            padding: 20px;
+            margin-top: 10px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            width: 100%;
         }
-        .status.online {
-            background: #d4edda;
-            color: #155724;
+        .response.success {
+            border-left: 4px solid #28a745;
         }
-        ul {
-            list-style: none;
-            padding: 0;
+        .response.error {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
         }
-        li {
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        li:last-child {
-            border-bottom: none;
-        }
-        .example {
-            color: #666;
+        .response.loading {
+            text-align: center;
+            color: #667eea;
             font-style: italic;
-            font-size: 14px;
+        }
+        .placeholder {
+            text-align: center;
+            color: #ccc;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏠 Home Automation Agent</h1>
-        <p>AI-powered natural language control for smart home devices</p>
-        <p><span class="status online">● ONLINE</span></p>
-    </div>
+        <h1>🏠 Home Control</h1>
+        <p class="subtitle">Tell me what you want</p>
 
-    <div class="container">
-        <h2>Try a Command</h2>
-        <input type="text" id="commandInput" placeholder='Enter command (e.g., "turn living room to fire")' />
-        <button onclick="sendCommand()">Send Command</button>
-        <div id="response"></div>
-    </div>
-
-    <div class="container">
-        <h2>API Endpoints</h2>
-
-        <div class="endpoint">
-            <span class="endpoint-method post">POST</span>
-            <strong>/api/command</strong> - Process natural language command
-            <br><span class="example">Request: {"command": "turn living room to fire"}</span>
+        <div class="input-group">
+            <input
+                type="text"
+                id="commandInput"
+                placeholder='Try "turn living room to fire"'
+                autocomplete="off"
+            />
+            <button class="btn btn-voice" id="voiceBtn" onclick="toggleVoice()">🎤</button>
         </div>
 
-        <div class="endpoint">
-            <span class="endpoint-method get">GET</span>
-            <strong>/api/rooms</strong> - List available rooms and lights
+        <button class="btn btn-primary" onclick="sendCommand()">Send</button>
+
+        <div class="response-area">
+            <div id="response">
+                <div class="placeholder">Your response will appear here</div>
+            </div>
         </div>
-
-        <div class="endpoint">
-            <span class="endpoint-method get">GET</span>
-            <strong>/api/scenes/:room</strong> - Get available Hue scenes for a room
-            <br><span class="example">Example: /api/scenes/living_room</span>
-        </div>
-
-        <div class="endpoint">
-            <span class="endpoint-method get">GET</span>
-            <strong>/api/logs</strong> - View recent command logs
-        </div>
-
-        <div class="endpoint">
-            <span class="endpoint-method get">GET</span>
-            <strong>/health</strong> - Health check endpoint
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>Example Commands</h2>
-        <ul>
-            <li>🔥 "turn living room to fire"</li>
-            <li>🌊 "make me feel like I'm under the sea"</li>
-            <li>📚 "cozy reading light in the bedroom"</li>
-            <li>⚡ "energizing office lighting"</li>
-            <li>🌙 "romantic lighting for dinner"</li>
-        </ul>
-    </div>
-
-    <div class="container">
-        <h2>Integration Status</h2>
-        <ul>
-            <li>✅ Home Assistant - Connected</li>
-            <li>✅ Philips Hue - 25 bulbs available</li>
-            <li>✅ Claude API - Sonnet 4</li>
-            <li>⏳ Alexa Lambda - Planned (Phase 2)</li>
-        </ul>
     </div>
 
     <script>
-        async function sendCommand() {
-            const input = document.getElementById('commandInput');
-            const responseDiv = document.getElementById('response');
-            const button = event.target;
+        // Voice recognition
+        let recognition = null;
+        let isListening = false;
 
-            const command = input.value.trim();
-            if (!command) {
-                alert('Please enter a command');
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript;
+                document.getElementById('commandInput').value = command;
+                stopListening();
+                sendCommand();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                stopListening();
+            };
+
+            recognition.onend = () => {
+                stopListening();
+            };
+        }
+
+        function toggleVoice() {
+            if (!recognition) {
+                alert('Voice recognition not supported on this browser');
                 return;
             }
 
-            button.disabled = true;
-            button.textContent = 'Processing...';
-            responseDiv.innerHTML = '<div class="response">Sending command to agent...</div>';
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+
+        function startListening() {
+            isListening = true;
+            document.getElementById('voiceBtn').classList.add('listening');
+            document.getElementById('voiceBtn').textContent = '⏹️';
+            recognition.start();
+        }
+
+        function stopListening() {
+            isListening = false;
+            document.getElementById('voiceBtn').classList.remove('listening');
+            document.getElementById('voiceBtn').textContent = '🎤';
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+
+        async function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const responseDiv = document.getElementById('response');
+
+            const command = input.value.trim();
+            if (!command) {
+                return;
+            }
+
+            responseDiv.innerHTML = '<div class="response loading">Processing...</div>';
 
             try {
                 const response = await fetch('/api/command', {
@@ -396,36 +426,42 @@ def web_ui():
 
                 if (data.success) {
                     responseDiv.innerHTML = `
-                        <div class="response">
-                            <strong>Command:</strong> ${data.command}<br>
-                            <strong>Response:</strong> ${data.response}
+                        <div class="response success">
+                            ${data.response}
                         </div>
                     `;
                 } else {
                     responseDiv.innerHTML = `
                         <div class="response error">
-                            <strong>Error:</strong> ${data.error}
+                            ${data.error}
                         </div>
                     `;
                 }
             } catch (error) {
                 responseDiv.innerHTML = `
                     <div class="response error">
-                        <strong>Error:</strong> ${error.message}
+                        Failed to connect to server
                     </div>
                 `;
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Send Command';
             }
         }
 
-        // Allow Enter key to submit
+        // Enter key to submit
         document.getElementById('commandInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendCommand();
             }
         });
+
+        // Prevent zoom on double-tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
