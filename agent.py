@@ -19,6 +19,7 @@ from anthropic import Anthropic
 # Import our custom tools
 from tools.lights import set_room_ambiance, get_available_rooms, apply_fire_flicker
 from tools.effects import apply_abstract_effect
+from utils import load_prompts, track_api_usage
 
 
 # Load environment variables
@@ -26,14 +27,9 @@ load_dotenv()
 
 
 def load_system_prompt() -> str:
-    """Load the system prompt from file."""
-    prompt_path = os.path.join("prompts", "system_prompt.txt")
-    try:
-        with open(prompt_path, "r") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        print(f"Warning: System prompt not found at {prompt_path}")
-        return "You are a helpful home lighting assistant."
+    """Load the system prompt from config."""
+    prompts = load_prompts()
+    return prompts.get("main_agent", {}).get("system", "You are a helpful home lighting assistant.")
 
 
 def process_tool_call(tool_name: str, tool_input: dict) -> dict:
@@ -188,6 +184,13 @@ def run_agent(user_input: str, verbose: bool = True) -> str:
             tools=tools,
             messages=messages
         )
+
+        # Track API usage
+        if hasattr(response, 'usage'):
+            track_api_usage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens
+            )
 
         if verbose:
             print(f"[Iteration {iteration + 1}] Stop reason: {response.stop_reason}")

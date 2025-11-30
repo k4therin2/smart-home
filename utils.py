@@ -5,6 +5,9 @@ Utility scripts for managing the home automation agent.
 
 import os
 import json
+from datetime import datetime
+from typing import Dict, Any
+from functools import wraps
 from dotenv import load_dotenv
 from tools.lights import get_available_rooms
 
@@ -133,6 +136,168 @@ def check_setup():
     print("2. Update tools/lights.py with your room mappings")
     print("3. Test: python agent.py \"turn living room to fire\"")
     print("=" * 70)
+
+
+# ============================================================================
+# Prompt Management and API Tracking
+# ============================================================================
+
+# Pricing for Claude Sonnet 4 (per million tokens)
+SONNET_4_INPUT_PRICE = 3.00   # $3.00 per 1M input tokens
+SONNET_4_OUTPUT_PRICE = 15.00  # $15.00 per 1M output tokens
+
+
+def load_prompts() -> Dict[str, Any]:
+    """
+    Load prompt configuration from prompts/config.json.
+
+    Returns:
+        Dictionary with all prompt configurations
+    """
+    config_path = os.path.join("prompts", "config.json")
+    try:
+        with open(config_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Prompt config not found at {config_path}")
+        return {
+            "main_agent": {"system": "You are a helpful home lighting assistant.", "description": ""},
+            "hue_specialist": {"system": "", "fire_flicker": "", "effect_mapping": "", "description": ""}
+        }
+
+
+def save_prompts(prompts: Dict[str, Any]) -> bool:
+    """
+    Save prompt configuration to prompts/config.json.
+
+    Args:
+        prompts: Dictionary with prompt configurations
+
+    Returns:
+        True if successful, False otherwise
+    """
+    config_path = os.path.join("prompts", "config.json")
+    try:
+        with open(config_path, "w") as f:
+            json.dump(prompts, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving prompts: {e}")
+        return False
+
+
+def track_api_usage(input_tokens: int, output_tokens: int):
+    """
+    Track API usage for the current day.
+
+    Args:
+        input_tokens: Number of input tokens used
+        output_tokens: Number of output tokens used
+    """
+    usage_file = os.path.join("data", "api_usage.json")
+
+    # Ensure data directory exists
+    os.makedirs("data", exist_ok=True)
+
+    # Load existing usage
+    try:
+        with open(usage_file, "r") as f:
+            usage_data = json.load(f)
+    except FileNotFoundError:
+        usage_data = {}
+
+    # Get today's date
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # Initialize today's data if not exists
+    if today not in usage_data:
+        usage_data[today] = {
+            "requests": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost_usd": 0.0
+        }
+
+    # Update usage
+    usage_data[today]["requests"] += 1
+    usage_data[today]["input_tokens"] += input_tokens
+    usage_data[today]["output_tokens"] += output_tokens
+
+    # Calculate cost
+    input_cost = (input_tokens / 1_000_000) * SONNET_4_INPUT_PRICE
+    output_cost = (output_tokens / 1_000_000) * SONNET_4_OUTPUT_PRICE
+    usage_data[today]["cost_usd"] += input_cost + output_cost
+
+    # Round to 4 decimal places
+    usage_data[today]["cost_usd"] = round(usage_data[today]["cost_usd"], 4)
+
+    # Save updated usage
+    with open(usage_file, "w") as f:
+        json.dump(usage_data, f, indent=2)
+
+
+def get_daily_usage(date: str = None) -> Dict[str, Any]:
+    """
+    Get API usage for a specific date.
+
+    Args:
+        date: Date in YYYY-MM-DD format. Defaults to today.
+
+    Returns:
+        Dictionary with usage stats for the date
+    """
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    usage_file = os.path.join("data", "api_usage.json")
+
+    try:
+        with open(usage_file, "r") as f:
+            usage_data = json.load(f)
+
+        if date in usage_data:
+            return {
+                "date": date,
+                **usage_data[date]
+            }
+        else:
+            return {
+                "date": date,
+                "requests": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost_usd": 0.0
+            }
+    except FileNotFoundError:
+        return {
+            "date": date,
+            "requests": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost_usd": 0.0
+        }
+
+
+def anthropic_with_tracking(client_method):
+    """
+    Decorator to track Anthropic API calls.
+
+    Wraps client.messages.create() to automatically track usage.
+    """
+    @wraps(client_method)
+    def wrapper(*args, **kwargs):
+        response = client_method(*args, **kwargs)
+
+        # Track usage
+        if hasattr(response, 'usage'):
+            track_api_usage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens
+            )
+
+        return response
+
+    return wrapper
 
 
 if __name__ == "__main__":
