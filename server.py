@@ -25,7 +25,8 @@ from dotenv import load_dotenv
 from agent import run_agent
 from tools.lights import get_available_rooms
 from tools.effects import get_hue_scenes
-from utils import load_prompts, save_prompts, get_daily_usage
+from utils import load_prompts, save_prompts, get_daily_usage, commit_prompt_changes
+from tools.review_agent import get_review_agent
 
 # Load environment
 load_dotenv()
@@ -203,7 +204,7 @@ def get_prompts():
 @app.route('/api/prompts', methods=['PUT'])
 def update_prompts():
     """
-    Update agent prompts.
+    Update agent prompts with AI review and auto-commit.
 
     Request body:
     {
@@ -212,6 +213,8 @@ def update_prompts():
             "hue_specialist": {...}
         }
     }
+
+    Returns review feedback and commit status.
     """
     try:
         data = request.get_json()
@@ -222,21 +225,47 @@ def update_prompts():
                 "error": "Missing 'prompts' in request body"
             }), 400
 
-        prompts = data['prompts']
+        new_prompts = data['prompts']
 
         # Basic validation
-        if not isinstance(prompts, dict):
+        if not isinstance(new_prompts, dict):
             return jsonify({
                 "success": False,
                 "error": "Prompts must be an object"
             }), 400
 
+        # Load old prompts for comparison
+        old_prompts = load_prompts()
+
+        # Review the changes
+        logger.info("🔍 Reviewing prompt changes...")
+        review_agent = get_review_agent()
+        review_result = review_agent.review_all_changes(old_prompts, new_prompts)
+
+        if not review_result["success"]:
+            return jsonify({
+                "success": False,
+                "error": f"Review failed: {review_result.get('error', 'Unknown error')}"
+            }), 500
+
+        # Check if changes are approved or only have warnings
+        approved = review_result.get("approved", True)
+
+        if not approved:
+            logger.warning(f"⚠️  Prompt changes have critical issues but saving anyway")
+
         # Save prompts
-        if save_prompts(prompts):
-            logger.info("✏️ Prompts updated successfully")
+        if save_prompts(new_prompts):
+            logger.info("✏️ Prompts saved successfully")
+
+            # Auto-commit to git
+            commit_result = commit_prompt_changes(review_result, user="UI")
+
             return jsonify({
                 "success": True,
-                "message": "Prompts updated successfully"
+                "message": "Prompts updated successfully",
+                "review": review_result,
+                "commit": commit_result
             })
         else:
             return jsonify({
@@ -731,6 +760,46 @@ def settings_ui():
             background: #f8d7da;
             color: #721c24;
         }
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .review-results {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+        .review-results h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .issue-item {
+            padding: 8px 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .issue-item.critical {
+            background: #f8d7da;
+            border-left: 3px solid #dc3545;
+        }
+        .issue-item.warning {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+        }
+        .issue-item.suggestion {
+            background: #d1ecf1;
+            border-left: 3px solid #17a2b8;
+        }
+        .issue-severity {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 11px;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -738,13 +807,13 @@ def settings_ui():
         <button class="back-btn" onclick="window.location.href='/'">← Back to Home</button>
 
         <h1>⚙️ Settings</h1>
-        <p class="subtitle">Edit agent prompts</p>
+        <p class="subtitle">Edit agent prompts (AI-reviewed & auto-committed)</p>
 
         <div id="promptsContainer">
             <div class="message">Loading prompts...</div>
         </div>
 
-        <button class="save-btn" id="saveBtn" onclick="savePrompts()" disabled>Save Changes</button>
+        <button class="save-btn" id="saveBtn" onclick="savePrompts()" disabled>Save & Review Changes</button>
 
         <div id="message"></div>
     </div>
@@ -808,6 +877,7 @@ def settings_ui():
             const messageDiv = document.getElementById('message');
 
             saveBtn.disabled = true;
+            saveBtn.textContent = 'Reviewing...';
             messageDiv.innerHTML = '';
 
             // Collect updated prompts
@@ -836,8 +906,21 @@ def settings_ui():
                 const data = await response.json();
 
                 if (data.success) {
-                    messageDiv.innerHTML = '<div class="message success">✓ Prompts saved successfully!</div>';
                     prompts = updatedPrompts;
+
+                    // Build success message with commit info
+                    let html = '<div class="message success">✓ Prompts saved successfully!';
+                    if (data.commit && data.commit.committed) {
+                        html += ` (Committed: ${data.commit.commit_hash})`;
+                    }
+                    html += '</div>';
+
+                    // Show review results
+                    if (data.review && data.review.reviews) {
+                        html += renderReviewResults(data.review);
+                    }
+
+                    messageDiv.innerHTML = html;
                 } else {
                     messageDiv.innerHTML = `<div class="message error">Failed to save: ${data.error}</div>`;
                 }
@@ -845,7 +928,42 @@ def settings_ui():
                 messageDiv.innerHTML = '<div class="message error">Failed to connect to server</div>';
             } finally {
                 saveBtn.disabled = false;
+                saveBtn.textContent = 'Save & Review Changes';
             }
+        }
+
+        function renderReviewResults(review) {
+            if (!review.reviews || Object.keys(review.reviews).length === 0) {
+                return '<div class="review-results"><h3>✓ No changes detected</h3></div>';
+            }
+
+            let html = '<div class="review-results">';
+            html += `<h3>📋 Review Results: ${review.summary}</h3>`;
+
+            // Go through each reviewed prompt
+            for (const [key, result] of Object.entries(review.reviews)) {
+                if (result.issues && result.issues.length > 0) {
+                    html += `<p><strong>${key}:</strong></p>`;
+
+                    result.issues.forEach(issue => {
+                        const severity = issue.severity.toLowerCase();
+                        html += `<div class="issue-item ${severity}">`;
+                        html += `<span class="issue-severity">${issue.severity}</span>`;
+                        html += `<strong>${issue.category}:</strong> ${issue.message}`;
+                        if (issue.suggestion) {
+                            html += `<br><small>💡 ${issue.suggestion}</small>`;
+                        }
+                        html += '</div>';
+                    });
+                }
+            }
+
+            if (review.total_issues === 0) {
+                html += '<p>✓ All changes look good!</p>';
+            }
+
+            html += '</div>';
+            return html;
         }
 
         // Load prompts on page load

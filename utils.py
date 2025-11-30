@@ -300,6 +300,98 @@ def anthropic_with_tracking(client_method):
     return wrapper
 
 
+def commit_prompt_changes(review_result: Dict[str, Any], user: str = "UI") -> Dict[str, Any]:
+    """
+    Git commit prompt configuration changes with review metadata.
+
+    Args:
+        review_result: Review results from the review agent
+        user: Who made the change (e.g., "UI", "API", username)
+
+    Returns:
+        Dictionary with commit result
+    """
+    import subprocess
+
+    try:
+        # Check if there are changes to commit
+        result = subprocess.run(
+            ["git", "diff", "--quiet", "prompts/config.json"],
+            cwd=os.getcwd(),
+            capture_output=True
+        )
+
+        # Exit code 1 means there are changes
+        if result.returncode != 1:
+            return {
+                "success": True,
+                "message": "No changes to commit",
+                "committed": False
+            }
+
+        # Stage the config file
+        subprocess.run(
+            ["git", "add", "prompts/config.json"],
+            cwd=os.getcwd(),
+            check=True,
+            capture_output=True
+        )
+
+        # Build commit message with review summary
+        summary = review_result.get("summary", "Prompt configuration updated")
+        total_issues = review_result.get("total_issues", 0)
+        approved = review_result.get("approved", True)
+
+        commit_msg = f"""Update prompt configuration via {user}
+
+{summary}
+
+Review: {"✓ Approved" if approved else "⚠ Has critical issues"} ({total_issues} issues found)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"""
+
+        # Commit the changes
+        subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            cwd=os.getcwd(),
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Get the commit hash
+        hash_result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.getcwd(),
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        commit_hash = hash_result.stdout.strip()
+
+        return {
+            "success": True,
+            "message": f"Changes committed: {commit_hash}",
+            "committed": True,
+            "commit_hash": commit_hash
+        }
+
+    except subprocess.CalledProcessError as e:
+        return {
+            "success": False,
+            "error": f"Git commit failed: {e.stderr.decode() if e.stderr else str(e)}",
+            "committed": False
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Commit error: {str(e)}",
+            "committed": False
+        }
+
+
 if __name__ == "__main__":
     import sys
 
