@@ -6,3 +6,5 @@
 - agent for music picking albums
 - TRACK API USEAGE IN UI
 - caching/autoproccess regular asks
+- Add compaction for conversations
+- ADD TO HUE ASSISANT - designing own scenes
