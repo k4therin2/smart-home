@@ -9,6 +9,7 @@ import os
 import random
 from typing import List, Dict
 from anthropic import Anthropic
+from utils import load_prompts, track_api_usage
 
 
 class HueSpecialist:
@@ -23,8 +24,11 @@ class HueSpecialist:
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self.model = "claude-sonnet-4-20250514"
 
-        # Knowledge base: Hue capabilities via Home Assistant
-        self.hue_knowledge = """
+        # Load prompts from config
+        prompts = load_prompts()
+        specialist_prompts = prompts.get("hue_specialist", {})
+
+        self.hue_knowledge = specialist_prompts.get("system", """
 # Philips Hue Capabilities via Home Assistant
 
 ## Available Service Calls
@@ -81,7 +85,11 @@ Fire flickers naturally with:
 - Smooth transitions: 0.4-1.2s (not instant, not too slow)
 
 Recommendation: Send 8-12 commands over 15-20 seconds for convincing effect
-"""
+""")
+
+        # Store prompt templates
+        self.fire_flicker_prompt_template = specialist_prompts.get("fire_flicker", "")
+        self.effect_mapping_prompt_template = specialist_prompts.get("effect_mapping", "")
 
     def plan_fire_flicker(self, room: str, duration_seconds: int = 15) -> List[Dict]:
         """
@@ -94,33 +102,11 @@ Recommendation: Send 8-12 commands over 15-20 seconds for convincing effect
         Returns:
             List of commands to execute in sequence
         """
-        prompt = f"""You are a Philips Hue lighting specialist. Plan a realistic fire flickering effect.
-
-Room: {room}
-Duration: {duration_seconds} seconds
-
-Requirements:
-1. Create a sequence of light.turn_on commands that simulate flickering fire
-2. Vary brightness (40-65%) and color temperature (2000-2400K) naturally
-3. Use random but realistic intervals (0.5-2s between commands)
-4. Use smooth transitions (0.4-1.2s)
-5. Create 8-12 steps over the {duration_seconds} second duration
-
-Return ONLY a JSON array of commands. Each command should be:
-{{
-  "delay_seconds": <wait this long before executing>,
-  "brightness_pct": <40-65>,
-  "color_temp_kelvin": <2000-2400>,
-  "transition": <0.4-1.2>
-}}
-
-Example:
-[
-  {{"delay_seconds": 0, "brightness_pct": 55, "color_temp_kelvin": 2200, "transition": 0.8}},
-  {{"delay_seconds": 1.5, "brightness_pct": 48, "color_temp_kelvin": 2100, "transition": 0.5}}
-]
-
-Return ONLY the JSON array, no other text."""
+        # Use prompt template from config
+        prompt = self.fire_flicker_prompt_template.format(
+            room=room,
+            duration_seconds=duration_seconds
+        )
 
         response = self.client.messages.create(
             model=self.model,
@@ -128,6 +114,13 @@ Return ONLY the JSON array, no other text."""
             system=self.hue_knowledge,
             messages=[{"role": "user", "content": prompt}]
         )
+
+        # Track API usage
+        if hasattr(response, 'usage'):
+            track_api_usage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens
+            )
 
         # Extract JSON from response
         import json
@@ -177,43 +170,11 @@ Return ONLY the JSON array, no other text."""
         Returns:
             Dictionary with recommended scene and parameters
         """
-        prompt = f"""You are a Philips Hue lighting specialist. The user wants: "{description}"
-
-Available Hue scenes: {', '.join(available_scenes)}
-
-Your task: Recommend the BEST scene and parameters for this description.
-
-Guidelines:
-- Prefer dynamic/looping scenes over static colors when possible
-- Consider the mood and atmosphere the user wants
-- Match colors and energy level to the description
-- Use speed parameter for intensity (0=slow, 100=fast)
-
-Available scenes explained:
-- "Arctic aurora": Cool blues/greens, flowing like northern lights
-- "Nebula": Deep space colors, purples/blues, cosmic
-- "Fire": Warm oranges/reds, flickering
-- "Nighttime": Calm, dim, relaxing blues
-- "Sleepy": Very dim, warm, bedtime
-- "City of love": Romantic pinks/reds
-- "Tokyo": Vibrant, energetic, bright colors
-- "Motown": Warm, groovy, retro vibes
-- "Scarlet dream": Deep reds, dramatic
-- "Ruby glow": Red tones, warm
-
-Return ONLY JSON:
-{{
-  "scene": "<exact scene name from list>",
-  "speed": <0-100, how fast animation should be>,
-  "brightness_pct": <0-100, optional brightness override>,
-  "reasoning": "<why this scene fits>"
-}}
-
-Examples:
-"under the sea" → {{"scene": "Arctic aurora", "speed": 30, "reasoning": "Cool blues/greens simulate underwater light"}}
-"swamp" → {{"scene": "Nebula", "speed": 20, "brightness_pct": 40, "reasoning": "Dark, mysterious purples/greens"}}
-"strobing green" → {{"scene": "Arctic aurora", "speed": 95, "reasoning": "Fast aurora for strobe effect"}}
-"""
+        # Use prompt template from config
+        prompt = self.effect_mapping_prompt_template.format(
+            description=description,
+            available_scenes=', '.join(available_scenes)
+        )
 
         response = self.client.messages.create(
             model=self.model,
@@ -221,6 +182,13 @@ Examples:
             system=self.hue_knowledge,
             messages=[{"role": "user", "content": prompt}]
         )
+
+        # Track API usage
+        if hasattr(response, 'usage'):
+            track_api_usage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens
+            )
 
         # Parse JSON response
         import json

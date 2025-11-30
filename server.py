@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 from agent import run_agent
 from tools.lights import get_available_rooms
 from tools.effects import get_hue_scenes
+from utils import load_prompts, save_prompts, get_daily_usage
 
 # Load environment
 load_dotenv()
@@ -180,6 +181,92 @@ def get_logs():
         "success": True,
         "logs": request_log
     })
+
+
+@app.route('/api/prompts', methods=['GET'])
+def get_prompts():
+    """Get all agent prompts from configuration."""
+    try:
+        prompts = load_prompts()
+        return jsonify({
+            "success": True,
+            "prompts": prompts
+        })
+    except Exception as e:
+        logger.error(f"Error loading prompts: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/prompts', methods=['PUT'])
+def update_prompts():
+    """
+    Update agent prompts.
+
+    Request body:
+    {
+        "prompts": {
+            "main_agent": {...},
+            "hue_specialist": {...}
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'prompts' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing 'prompts' in request body"
+            }), 400
+
+        prompts = data['prompts']
+
+        # Basic validation
+        if not isinstance(prompts, dict):
+            return jsonify({
+                "success": False,
+                "error": "Prompts must be an object"
+            }), 400
+
+        # Save prompts
+        if save_prompts(prompts):
+            logger.info("✏️ Prompts updated successfully")
+            return jsonify({
+                "success": True,
+                "message": "Prompts updated successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to save prompts"
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error updating prompts: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/usage', methods=['GET'])
+def get_usage():
+    """Get today's API usage statistics."""
+    try:
+        usage = get_daily_usage()
+        return jsonify({
+            "success": True,
+            "usage": usage
+        })
+    except Exception as e:
+        logger.error(f"Error getting usage data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 @app.route('/', methods=['GET'])
@@ -343,9 +430,68 @@ def web_ui():
                 font-size: 18px;
             }
         }
+
+        /* Usage tracker in corner */
+        .usage-tracker {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 16px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            z-index: 1000;
+        }
+        @media (min-width: 768px) {
+            .usage-tracker {
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+
+        /* Settings button */
+        .settings-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border: none;
+        }
+        @media (min-width: 768px) {
+            .settings-btn {
+                top: 20px;
+                left: 20px;
+            }
+        }
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
+    <!-- Usage tracker -->
+    <div class="usage-tracker" id="usageTracker">$0.00 today</div>
+
+    <!-- Settings button -->
+    <button class="settings-btn" onclick="window.location.href='/settings'" title="Settings">⚙️</button>
+
     <div class="container">
         <h1>🏠 Home Control</h1>
         <p class="subtitle">Tell me what you want</p>
@@ -402,6 +548,9 @@ def web_ui():
                         </div>
                     `;
                 }
+
+                // Refresh usage after command
+                updateUsage();
             } catch (error) {
                 responseDiv.innerHTML = `
                     <div class="response error">
@@ -410,6 +559,24 @@ def web_ui():
                 `;
             }
         }
+
+        async function updateUsage() {
+            try {
+                const response = await fetch('/api/usage');
+                const data = await response.json();
+
+                if (data.success && data.usage) {
+                    const cost = data.usage.cost_usd || 0;
+                    document.getElementById('usageTracker').textContent = `$${cost.toFixed(4)} today`;
+                }
+            } catch (error) {
+                console.error('Failed to fetch usage:', error);
+            }
+        }
+
+        // Update usage on page load and every 10 seconds
+        updateUsage();
+        setInterval(updateUsage, 10000);
 
         // Enter key to submit
         document.getElementById('commandInput').addEventListener('keypress', (e) => {
@@ -427,6 +594,262 @@ def web_ui():
             }
             lastTouchEnd = now;
         }, false);
+    </script>
+</body>
+</html>
+    """
+    return render_template_string(html)
+
+
+@app.route('/settings', methods=['GET'])
+def settings_ui():
+    """Settings page for editing agent prompts."""
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>⚙️ Settings - Home Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        @media (min-width: 768px) {
+            body {
+                padding: 40px;
+            }
+            .container {
+                padding: 40px;
+            }
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .back-btn {
+            background: #e0e0e0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            background: #d0d0d0;
+        }
+        .prompt-section {
+            margin-bottom: 30px;
+        }
+        .prompt-section h2 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .prompt-section label {
+            display: block;
+            font-weight: 600;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 14px;
+        }
+        .prompt-section textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .prompt-section textarea:focus {
+            border-color: #667eea;
+        }
+        .save-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        .save-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-btn" onclick="window.location.href='/'">← Back to Home</button>
+
+        <h1>⚙️ Settings</h1>
+        <p class="subtitle">Edit agent prompts</p>
+
+        <div id="promptsContainer">
+            <div class="message">Loading prompts...</div>
+        </div>
+
+        <button class="save-btn" id="saveBtn" onclick="savePrompts()" disabled>Save Changes</button>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        let prompts = {};
+
+        async function loadPrompts() {
+            try {
+                const response = await fetch('/api/prompts');
+                const data = await response.json();
+
+                if (data.success) {
+                    prompts = data.prompts;
+                    renderPrompts();
+                } else {
+                    document.getElementById('promptsContainer').innerHTML =
+                        '<div class="message error">Failed to load prompts</div>';
+                }
+            } catch (error) {
+                document.getElementById('promptsContainer').innerHTML =
+                    '<div class="message error">Failed to connect to server</div>';
+            }
+        }
+
+        function renderPrompts() {
+            const container = document.getElementById('promptsContainer');
+
+            let html = '';
+
+            // Main Agent Section
+            html += '<div class="prompt-section">';
+            html += '<h2>🏠 Main Agent</h2>';
+            html += '<label>System Prompt</label>';
+            html += `<textarea id="main_agent_system">${escapeHtml(prompts.main_agent?.system || '')}</textarea>`;
+            html += '</div>';
+
+            // Hue Specialist Section
+            html += '<div class="prompt-section">';
+            html += '<h2>💡 Hue Specialist</h2>';
+            html += '<label>System Prompt</label>';
+            html += `<textarea id="hue_specialist_system">${escapeHtml(prompts.hue_specialist?.system || '')}</textarea>`;
+            html += '<label>Fire Flicker Template</label>';
+            html += `<textarea id="hue_specialist_fire_flicker">${escapeHtml(prompts.hue_specialist?.fire_flicker || '')}</textarea>`;
+            html += '<label>Effect Mapping Template</label>';
+            html += `<textarea id="hue_specialist_effect_mapping">${escapeHtml(prompts.hue_specialist?.effect_mapping || '')}</textarea>`;
+            html += '</div>';
+
+            container.innerHTML = html;
+            document.getElementById('saveBtn').disabled = false;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function savePrompts() {
+            const saveBtn = document.getElementById('saveBtn');
+            const messageDiv = document.getElementById('message');
+
+            saveBtn.disabled = true;
+            messageDiv.innerHTML = '';
+
+            // Collect updated prompts
+            const updatedPrompts = {
+                main_agent: {
+                    system: document.getElementById('main_agent_system').value,
+                    description: prompts.main_agent?.description || ''
+                },
+                hue_specialist: {
+                    system: document.getElementById('hue_specialist_system').value,
+                    fire_flicker: document.getElementById('hue_specialist_fire_flicker').value,
+                    effect_mapping: document.getElementById('hue_specialist_effect_mapping').value,
+                    description: prompts.hue_specialist?.description || ''
+                }
+            };
+
+            try {
+                const response = await fetch('/api/prompts', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompts: updatedPrompts })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    messageDiv.innerHTML = '<div class="message success">✓ Prompts saved successfully!</div>';
+                    prompts = updatedPrompts;
+                } else {
+                    messageDiv.innerHTML = `<div class="message error">Failed to save: ${data.error}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div class="message error">Failed to connect to server</div>';
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        // Load prompts on page load
+        loadPrompts();
     </script>
 </body>
 </html>
