@@ -129,3 +129,20 @@
  * Running on http://127.0.0.1:5001
  * Running on http://192.168.254.12:5001
 2025-11-29 18:32:53,879 [INFO] [33mPress CTRL+C to quit[0m
+2025-11-29 18:34:19,731 [INFO] 192.168.254.12 - - [29/Nov/2025 18:34:19] "GET / HTTP/1.1" 200 -
+2025-11-29 18:34:27,338 [INFO] 📥 INCOMING REQUEST: 'Turn kitchen to green' (user: anonymous)
+2025-11-29 18:34:30,585 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:33,270 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:33,272 [INFO] 📤 RESPONSE: 'Perfect! I've set the kitchen lights to green with a cool color temperature (5500K) at 70% brightnes...'
+2025-11-29 18:34:33,274 [INFO] 192.168.254.12 - - [29/Nov/2025 18:34:33] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:34:34,894 [INFO] 192.168.254.19 - - [29/Nov/2025 18:34:34] "GET / HTTP/1.1" 200 -
+2025-11-29 18:34:40,751 [INFO] 📥 INCOMING REQUEST: 'turn off kitchen' (user: anonymous)
+2025-11-29 18:34:43,628 [INFO] 📥 INCOMING REQUEST: 'turn off kitchen' (user: anonymous)
+2025-11-29 18:34:44,115 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:46,814 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:47,229 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:47,232 [INFO] 📤 RESPONSE: 'The kitchen lights have been turned off successfully.'
+2025-11-29 18:34:47,234 [INFO] 192.168.254.19 - - [29/Nov/2025 18:34:47] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:34:49,211 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:34:49,259 [INFO] 📤 RESPONSE: 'The kitchen lights are now turned off.'
+2025-11-29 18:34:49,260 [INFO] 192.168.254.19 - - [29/Nov/2025 18:34:49] "POST /api/command HTTP/1.1" 200 -

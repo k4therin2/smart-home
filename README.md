@@ -23,11 +23,11 @@ python agent.py "turn living room to fire"
 
 ## What This Does
 
-Replaces simple voice assistant responses with intelligent scene interpretation:
+Transforms vague lighting requests into precisely orchestrated scenes:
 
-**Before** (Standard Alexa):
+**Before** (Standard voice assistants):
 ```
-"Alexa, turn living room to fire"
+"turn living room to fire"
 → Harsh red lights at 100% brightness
 ```
 
@@ -44,6 +44,7 @@ Replaces simple voice assistant responses with intelligent scene interpretation:
 - **Multi-Agent Architecture**: Specialist agents provide domain expertise (Hue API)
 - **Performance Optimized**: Native device capabilities (1 API call) vs software emulation (11+ calls)
 - **Dynamic Effects**: Looping scenes that run indefinitely on hardware
+- **Mobile Web UI**: Control from any device on your local network
 
 ## Example Commands
 
@@ -72,10 +73,13 @@ Smart Devices (Philips Hue, 25 bulbs)
 
 ## Current Status
 
-**Phase 1**: ✅ Complete - Multi-agent effects system working
-**Phase 2**: 🔜 Next - Alexa Lambda integration for voice control
+**Phase 1**: ✅ Complete - Multi-agent effects system
+**Phase 2**: ✅ Complete - Web UI with mobile phone access
+**Phase 3**: 🔜 Future - Voice control (waiting for HA voice puck hardware, Dec 2025)
 
-**→ Detailed progress**: [docs/session-log.md](docs/session-log.md)
+Access the web UI: http://192.168.254.12:5001/ (local network)
+
+**→ Detailed progress**: [PHONE_ACCESS.md](PHONE_ACCESS.md)
 
 ## Documentation
 
@@ -97,6 +101,7 @@ Smart Devices (Philips Hue, 25 bulbs)
 ```
 Smarthome/
 ├── agent.py                 # Main coordinator agent
+├── server.py                # Flask web UI server
 ├── tools/
 │   ├── lights.py           # Lighting control
 │   ├── effects.py          # Dynamic effects
@@ -110,6 +115,7 @@ Smarthome/
 │   ├── api-reference.md
 │   ├── development.md
 │   └── session-log.md
+├── PHONE_ACCESS.md         # Mobile UI guide
 └── docker-compose.yml      # Home Assistant container
 ```
 

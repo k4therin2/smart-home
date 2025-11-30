@@ -48,5 +48,6 @@ Add http://192.168.254.12:5001/ to your phone's home screen for quick access!
 
 ---
 
-**Note:** Alexa integration is on hold until HA voice puck arrives (Dec).
-Using web UI for now - it's actually faster and more reliable!
+**Note:** Alexa integration was attempted but abandoned due to complexity.
+Voice control will be added via HA voice puck hardware (arriving Dec 2025).
+Web UI is the primary interface for now - it's simple and reliable!

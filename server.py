@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-HTTP Webhook Server for Home Automation Agent
+HTTP Server for Home Automation Agent
 
-This lightweight server wraps the agent and provides HTTP endpoints for:
-- Voice assistant integrations (Alexa Lambda)
-- Web UI control
+This server wraps the agent and provides HTTP endpoints for:
+- Web UI control (mobile and desktop)
 - Health checks and status monitoring
+- Future voice assistant integrations (HA voice puck)
 
 Architecture:
-- Agent runs locally (not in Lambda)
-- Lambda function only forwards requests to this server
-- Use ngrok for local development tunneling
+- Agent runs locally on Mac
+- Flask server provides REST API and web UI
+- Accessible on local network (http://192.168.254.12:5001)
 """
 
 import os
@@ -61,7 +61,7 @@ def health_check():
 def debug_raw():
     """
     Debug endpoint - logs and echoes back whatever JSON is sent.
-    Useful for debugging Lambda/Alexa integration.
+    Useful for debugging API integrations.
     """
     try:
         data = request.get_json()
