@@ -934,32 +934,47 @@ def settings_ui():
 
         function renderReviewResults(review) {
             if (!review.reviews || Object.keys(review.reviews).length === 0) {
-                return '<div class="review-results"><h3>✓ No changes detected</h3></div>';
+                return '<div class="review-results"><h3>✓ No changes detected</h3><p>No prompts were modified.</p></div>';
             }
 
             let html = '<div class="review-results">';
-            html += `<h3>📋 Review Results: ${review.summary}</h3>`;
+
+            // Show overall review status
+            const approved = review.approved !== false;
+            const statusIcon = approved ? '✅' : '⚠️';
+            const statusText = approved ? 'Approved' : 'Has Critical Issues';
+
+            html += `<h3>${statusIcon} AI Review: ${statusText}</h3>`;
+            html += `<p><strong>Summary:</strong> ${review.summary}</p>`;
+            html += `<p><strong>Total Issues Found:</strong> ${review.total_issues || 0}</p>`;
 
             // Go through each reviewed prompt
             for (const [key, result] of Object.entries(review.reviews)) {
-                if (result.issues && result.issues.length > 0) {
-                    html += `<p><strong>${key}:</strong></p>`;
+                html += `<p style="margin-top: 15px;"><strong>📝 ${key}:</strong></p>`;
 
+                if (result.issues && result.issues.length > 0) {
                     result.issues.forEach(issue => {
                         const severity = issue.severity.toLowerCase();
+                        const severityIcon = severity === 'critical' ? '🔴' :
+                                            severity === 'warning' ? '⚠️' : '💡';
+
                         html += `<div class="issue-item ${severity}">`;
-                        html += `<span class="issue-severity">${issue.severity}</span>`;
+                        html += `${severityIcon} <span class="issue-severity">${issue.severity}</span>`;
                         html += `<strong>${issue.category}:</strong> ${issue.message}`;
                         if (issue.suggestion) {
-                            html += `<br><small>💡 ${issue.suggestion}</small>`;
+                            html += `<br><small>💡 <strong>Suggestion:</strong> ${issue.suggestion}</small>`;
                         }
                         html += '</div>';
                     });
+                } else {
+                    html += `<div class="issue-item suggestion">`;
+                    html += `✅ No issues found with this prompt.`;
+                    html += '</div>';
                 }
             }
 
             if (review.total_issues === 0) {
-                html += '<p>✓ All changes look good!</p>';
+                html += '<p style="margin-top: 15px; color: #28a745; font-weight: 600;">✓ All changes passed AI review!</p>';
             }
 
             html += '</div>';
