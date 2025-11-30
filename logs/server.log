@@ -46,3 +46,86 @@
 2025-11-29 12:14:13,328 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2025-11-29 12:14:13,331 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to blue lighting with a cool 6500K color temperature at 70% brigh...'
 2025-11-29 12:14:13,333 [INFO] 127.0.0.1 - - [29/Nov/2025 12:14:13] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:22:44,896 [INFO] 192.168.254.12 - - [29/Nov/2025 18:22:44] "GET / HTTP/1.1" 200 -
+2025-11-29 18:22:45,413 [INFO] 192.168.254.12 - - [29/Nov/2025 18:22:45] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-11-29 18:23:03,518 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:03] "GET / HTTP/1.1" 200 -
+2025-11-29 18:23:03,619 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:03] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-11-29 18:23:14,511 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:14] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-11-29 18:23:14,513 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:14] "[33mGET /apple-touch-icon-precomposed.png HTTP/1.1[0m" 404 -
+2025-11-29 18:23:14,515 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:14] "[33mGET /apple-touch-icon.png HTTP/1.1[0m" 404 -
+2025-11-29 18:23:14,519 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:14] "GET / HTTP/1.1" 200 -
+2025-11-29 18:23:23,961 [INFO] 📥 INCOMING REQUEST: 'Turn living room to red' (user: anonymous)
+2025-11-29 18:23:27,091 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:23:30,147 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:23:30,149 [INFO] 📤 RESPONSE: 'Your living room is now set to a warm red ambiance with 60% brightness and a very warm 2000K color t...'
+2025-11-29 18:23:30,151 [INFO] 192.168.254.12 - - [29/Nov/2025 18:23:30] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:23:46,272 [INFO] 192.168.254.19 - - [29/Nov/2025 18:23:46] "GET / HTTP/1.1" 200 -
+2025-11-29 18:23:53,785 [INFO] 📥 INCOMING REQUEST: 'turn living room to fire' (user: anonymous)
+2025-11-29 18:23:57,542 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:24:04,157 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:24:09,928 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:24:09,932 [INFO] 📤 RESPONSE: 'Perfect! I've transformed your living room into a cozy fire scene:
+
+🔥 **Fire Ambiance Set**:
+- Warm ...'
+2025-11-29 18:24:09,936 [INFO] 192.168.254.19 - - [29/Nov/2025 18:24:09] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:25:06,746 [INFO] 📥 INCOMING REQUEST: 'turn off kitchen' (user: anonymous)
+2025-11-29 18:25:09,592 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:25:12,169 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:25:12,172 [INFO] 📤 RESPONSE: 'The kitchen lights have been turned off.'
+2025-11-29 18:25:12,176 [INFO] 192.168.254.19 - - [29/Nov/2025 18:25:12] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:26:18,950 [INFO] Server starting up...
+2025-11-29 18:26:19,150 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-11-29 18:26:19,151 [INFO] [33mPress CTRL+C to quit[0m
+2025-11-29 18:27:39,281 [INFO] 192.168.254.12 - - [29/Nov/2025 18:27:39] "GET / HTTP/1.1" 200 -
+2025-11-29 18:27:48,085 [INFO] 📥 INCOMING REQUEST: 'Turn living room to red' (user: anonymous)
+2025-11-29 18:27:51,281 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:27:54,385 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:27:54,406 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to a red ambiance using a very warm color temperature (2000K) at ...'
+2025-11-29 18:27:54,409 [INFO] 192.168.254.12 - - [29/Nov/2025 18:27:54] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:28:37,011 [INFO] 📥 INCOMING REQUEST: 'turn living room to green' (user: anonymous)
+2025-11-29 18:28:39,939 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:28:42,860 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:28:42,865 [INFO] 📤 RESPONSE: 'I've set your living room to a green ambiance with a cool color temperature (5500K) and 60% brightne...'
+2025-11-29 18:28:42,872 [INFO] 192.168.254.12 - - [29/Nov/2025 18:28:42] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:28:46,390 [INFO] 📥 INCOMING REQUEST: 'turn living room to red' (user: anonymous)
+2025-11-29 18:28:49,053 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:28:51,927 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:28:51,930 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to a red ambiance with warm 2000K lighting at 60% brightness. Thi...'
+2025-11-29 18:28:51,943 [INFO] 192.168.254.12 - - [29/Nov/2025 18:28:51] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:28:53,442 [INFO] Server starting up...
+2025-11-29 18:28:53,572 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-11-29 18:28:53,572 [INFO] [33mPress CTRL+C to quit[0m
+2025-11-29 18:29:03,618 [INFO] 192.168.254.19 - - [29/Nov/2025 18:29:03] "GET / HTTP/1.1" 200 -
+2025-11-29 18:29:14,820 [INFO] 📥 INCOMING REQUEST: 'Turn it off' (user: anonymous)
+2025-11-29 18:29:17,762 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:29:21,728 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:29:21,734 [INFO] 📤 RESPONSE: 'I can see you have lights in several areas including:
+- Living Room
+- Bedroom  
+- Kitchen
+- Office
+-...'
+2025-11-29 18:29:21,736 [INFO] 192.168.254.19 - - [29/Nov/2025 18:29:21] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:29:43,627 [INFO] 📥 INCOMING REQUEST: 'turn off the kitchen' (user: anonymous)
+2025-11-29 18:29:46,617 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:29:48,771 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 18:29:48,775 [INFO] 📤 RESPONSE: 'The kitchen lights are now turned off.'
+2025-11-29 18:29:48,777 [INFO] 192.168.254.19 - - [29/Nov/2025 18:29:48] "POST /api/command HTTP/1.1" 200 -
+2025-11-29 18:30:24,543 [INFO] 192.168.254.12 - - [29/Nov/2025 18:30:24] "GET / HTTP/1.1" 200 -
+2025-11-29 18:31:45,343 [INFO] 192.168.254.12 - - [29/Nov/2025 18:31:45] "GET / HTTP/1.1" 200 -
+2025-11-29 18:32:14,970 [INFO] Server starting up...
+2025-11-29 18:32:43,118 [INFO] 192.168.254.12 - - [29/Nov/2025 18:32:43] "GET / HTTP/1.1" 200 -
+2025-11-29 18:32:44,894 [INFO] 192.168.254.12 - - [29/Nov/2025 18:32:44] "GET / HTTP/1.1" 200 -
+2025-11-29 18:32:53,734 [INFO] Server starting up...
+2025-11-29 18:32:53,879 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-11-29 18:32:53,879 [INFO] [33mPress CTRL+C to quit[0m

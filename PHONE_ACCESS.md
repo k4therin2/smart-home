@@ -11,7 +11,7 @@ http://192.168.254.12:5001/
 ## How to Use
 
 **Type:** Enter your command and tap "Send"
-**Voice:** Tap the 🎤 button, speak your command, done!
+**Voice:** Tap the microphone button on your phone's keyboard to dictate
 
 Try commands like:
 - 🔥 "turn living room to fire"
@@ -19,8 +19,6 @@ Try commands like:
 - 📚 "cozy reading light in the bedroom"
 - ⚡ "energizing office lighting"
 - 🌙 "romantic lighting for dinner"
-
-**Voice automatically sends** when you finish speaking!
 
 ## How It Works
 

@@ -184,7 +184,7 @@ def get_logs():
 
 @app.route('/', methods=['GET'])
 def web_ui():
-    """Mobile-optimized web UI for voice and text control."""
+    """Mobile-optimized web UI for text control."""
     html = """
 <!DOCTYPE html>
 <html>
@@ -250,25 +250,22 @@ def web_ui():
                 margin-bottom: 35px;
             }
         }
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
         input[type="text"] {
-            flex: 1;
+            width: 100%;
             padding: 16px;
             font-size: 16px;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
             outline: none;
             transition: border-color 0.3s;
+            margin-bottom: 15px;
         }
         input[type="text"]:focus {
             border-color: #667eea;
         }
         .btn {
-            padding: 14px 24px;
+            width: 100%;
+            padding: 16px;
             font-size: 16px;
             border: none;
             border-radius: 12px;
@@ -276,45 +273,18 @@ def web_ui():
             font-weight: 600;
             transition: all 0.3s;
             touch-action: manipulation;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
         @media (min-width: 768px) {
             .btn {
-                padding: 16px 32px;
+                padding: 18px;
                 font-size: 18px;
             }
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            flex: 1;
-        }
-        .btn-primary:hover:not(:disabled) {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .btn-voice {
-            background: white;
-            border: 2px solid #667eea;
-            color: #667eea;
-            min-width: 56px;
-        }
-        @media (min-width: 768px) {
-            .btn-voice {
-                min-width: 64px;
-            }
-        }
-        .btn-voice:hover:not(:disabled):not(.listening) {
-            background: #f0f0ff;
-        }
-        .btn-voice.listening {
-            background: #ff4757;
-            border-color: #ff4757;
-            color: white;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
         }
         .btn:active {
             transform: scale(0.98);
@@ -329,6 +299,7 @@ def web_ui():
             display: flex;
             align-items: center;
             justify-content: center;
+            margin-top: 20px;
         }
         @media (min-width: 768px) {
             .response-area {
@@ -339,7 +310,6 @@ def web_ui():
             background: #f8f9fa;
             border-radius: 12px;
             padding: 18px;
-            margin-top: 10px;
             line-height: 1.6;
             white-space: pre-wrap;
             width: 100%;
@@ -380,17 +350,14 @@ def web_ui():
         <h1>🏠 Home Control</h1>
         <p class="subtitle">Tell me what you want</p>
 
-        <div class="input-group">
-            <input
-                type="text"
-                id="commandInput"
-                placeholder='Try "turn living room to fire"'
-                autocomplete="off"
-            />
-            <button class="btn btn-voice" id="voiceBtn" onclick="toggleVoice()">🎤</button>
-        </div>
+        <input
+            type="text"
+            id="commandInput"
+            placeholder='Try "turn living room to fire"'
+            autocomplete="off"
+        />
 
-        <button class="btn btn-primary" onclick="sendCommand()">Send</button>
+        <button class="btn" onclick="sendCommand()">Send</button>
 
         <div class="response-area">
             <div id="response">
@@ -400,63 +367,6 @@ def web_ui():
     </div>
 
     <script>
-        // Voice recognition
-        let recognition = null;
-        let isListening = false;
-
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (event) => {
-                const command = event.results[0][0].transcript;
-                document.getElementById('commandInput').value = command;
-                stopListening();
-                sendCommand();
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                stopListening();
-            };
-
-            recognition.onend = () => {
-                stopListening();
-            };
-        }
-
-        function toggleVoice() {
-            if (!recognition) {
-                alert('Voice recognition not supported on this browser');
-                return;
-            }
-
-            if (isListening) {
-                stopListening();
-            } else {
-                startListening();
-            }
-        }
-
-        function startListening() {
-            isListening = true;
-            document.getElementById('voiceBtn').classList.add('listening');
-            document.getElementById('voiceBtn').textContent = '⏹️';
-            recognition.start();
-        }
-
-        function stopListening() {
-            isListening = false;
-            document.getElementById('voiceBtn').classList.remove('listening');
-            document.getElementById('voiceBtn').textContent = '🎤';
-            if (recognition) {
-                recognition.stop();
-            }
-        }
-
         async function sendCommand() {
             const input = document.getElementById('commandInput');
             const responseDiv = document.getElementById('response');
