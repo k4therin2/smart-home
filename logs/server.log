@@ -24,3 +24,25 @@
  * Running on http://127.0.0.1:5001
  * Running on http://192.168.254.12:5001
 2025-11-29 12:08:47,356 [INFO] [33mPress CTRL+C to quit[0m
+2025-11-29 12:14:06,499 [INFO] ============================================================
+2025-11-29 12:14:06,500 [INFO] 🔍 DEBUG RAW REQUEST:
+2025-11-29 12:14:06,500 [INFO] {
+  "request": {
+    "type": "IntentRequest",
+    "intent": {
+      "name": "CatchAllIntent",
+      "slots": {
+        "query": {
+          "value": "turn living room to blue"
+        }
+      }
+    }
+  }
+}
+2025-11-29 12:14:06,500 [INFO] ============================================================
+2025-11-29 12:14:06,514 [INFO] 127.0.0.1 - - [29/Nov/2025 12:14:06] "POST /debug/raw HTTP/1.1" 200 -
+2025-11-29 12:14:06,836 [INFO] 📥 INCOMING REQUEST: 'turn living room to blue' (user: anonymous)
+2025-11-29 12:14:10,212 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:14:13,328 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-11-29 12:14:13,331 [INFO] 📤 RESPONSE: 'Perfect! I've set your living room to blue lighting with a cool 6500K color temperature at 70% brigh...'
+2025-11-29 12:14:13,333 [INFO] 127.0.0.1 - - [29/Nov/2025 12:14:13] "POST /api/command HTTP/1.1" 200 -

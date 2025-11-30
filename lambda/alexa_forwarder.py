@@ -32,9 +32,18 @@ def lambda_handler(event, context):
         Alexa response JSON
     """
 
+    # Log IMMEDIATELY - before any other code
+    print("="*80)
+    print("LAMBDA INVOKED!")
+    print(f"Lambda request ID: {context.request_id if context else 'N/A'}")
+    print("="*80)
+
     # Get agent URL from environment variable
     agent_url = os.environ.get('AGENT_URL')
+    print(f"AGENT_URL from environment: '{agent_url}'")
+
     if not agent_url:
+        print("ERROR: AGENT_URL not configured!")
         return build_alexa_response(
             "Configuration error. Please contact the developer.",
             should_end_session=True
