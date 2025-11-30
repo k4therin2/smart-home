@@ -203,32 +203,52 @@ def web_ui():
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
         }
         .container {
             background: white;
             border-radius: 20px;
-            padding: 30px;
+            padding: 25px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.15);
             max-width: 600px;
+            width: 100%;
             margin: 0 auto;
             flex: 1;
             display: flex;
             flex-direction: column;
         }
+        @media (min-width: 768px) {
+            body {
+                padding: 40px;
+            }
+            .container {
+                padding: 40px;
+                min-height: 500px;
+            }
+        }
         h1 {
             text-align: center;
             color: #333;
             margin-bottom: 10px;
-            font-size: 28px;
+            font-size: 24px;
         }
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-size: 14px;
+        }
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 32px;
+                margin-bottom: 15px;
+            }
+            .subtitle {
+                font-size: 16px;
+                margin-bottom: 35px;
+            }
         }
         .input-group {
             display: flex;
@@ -248,8 +268,8 @@ def web_ui():
             border-color: #667eea;
         }
         .btn {
-            padding: 16px 24px;
-            font-size: 18px;
+            padding: 14px 24px;
+            font-size: 16px;
             border: none;
             border-radius: 12px;
             cursor: pointer;
@@ -257,16 +277,34 @@ def web_ui():
             transition: all 0.3s;
             touch-action: manipulation;
         }
+        @media (min-width: 768px) {
+            .btn {
+                padding: 16px 32px;
+                font-size: 18px;
+            }
+        }
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             flex: 1;
         }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
         .btn-voice {
             background: white;
             border: 2px solid #667eea;
             color: #667eea;
-            min-width: 60px;
+            min-width: 56px;
+        }
+        @media (min-width: 768px) {
+            .btn-voice {
+                min-width: 64px;
+            }
+        }
+        .btn-voice:hover:not(:disabled):not(.listening) {
+            background: #f0f0ff;
         }
         .btn-voice.listening {
             background: #ff4757;
@@ -287,19 +325,31 @@ def web_ui():
         }
         .response-area {
             flex: 1;
-            min-height: 200px;
+            min-height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        @media (min-width: 768px) {
+            .response-area {
+                min-height: 250px;
+            }
+        }
         .response {
             background: #f8f9fa;
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             margin-top: 10px;
             line-height: 1.6;
             white-space: pre-wrap;
             width: 100%;
+            font-size: 15px;
+        }
+        @media (min-width: 768px) {
+            .response {
+                padding: 24px;
+                font-size: 16px;
+            }
         }
         .response.success {
             border-left: 4px solid #28a745;
@@ -316,7 +366,12 @@ def web_ui():
         .placeholder {
             text-align: center;
             color: #ccc;
-            font-size: 18px;
+            font-size: 16px;
+        }
+        @media (min-width: 768px) {
+            .placeholder {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
