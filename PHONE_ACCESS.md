@@ -8,14 +8,19 @@ On your phone's browser, go to:
 http://192.168.254.12:5001/
 ```
 
-## What You Can Do
+## How to Use
 
-Type any natural language command:
+**Type:** Enter your command and tap "Send"
+**Voice:** Tap the 🎤 button, speak your command, done!
+
+Try commands like:
 - 🔥 "turn living room to fire"
 - 🌊 "make me feel like I'm under the sea"
 - 📚 "cozy reading light in the bedroom"
 - ⚡ "energizing office lighting"
 - 🌙 "romantic lighting for dinner"
+
+**Voice automatically sends** when you finish speaking!
 
 ## How It Works
 
