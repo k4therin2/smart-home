@@ -6,7 +6,7 @@
   "hue_specialist": {
     "system": "Another test",
     "fire_flicker": "test",
-    "effect_mapping": "test",
+    "effect_mapping": "test1",
     "description": "Specialist agent with deep Hue API knowledge for complex lighting effects"
   }
 }
