@@ -26,6 +26,28 @@ from utils import load_prompts, track_api_usage
 load_dotenv()
 
 
+# Metadata for UI display
+METADATA = {
+    "name": "Main Agent",
+    "icon": "🏠",
+    "when_called": "Every user request from web UI or CLI",
+    "purpose": "Main coordinator that interprets all user lighting requests and delegates to tools",
+    "tools_available": [
+        "set_room_ambiance - Set lighting based on mood/description",
+        "get_available_rooms - Query available lights/rooms",
+        "apply_fire_flicker - Apply fire flickering effect (DEPRECATED - use apply_abstract_effect instead)",
+        "apply_abstract_effect - Apply looping effects using Hue's built-in scenes"
+    ],
+    "can_delegate_to": ["Hue Specialist"],
+    "examples": [
+        "'turn living room to fire' → Uses apply_abstract_effect with Fire scene",
+        "'make bedroom cozy' → Sets warm color temp (2500K) with low brightness",
+        "'under the sea in living room' → Uses apply_abstract_effect with Arctic aurora scene",
+        "'energize the office' → Sets cool white (4500K) with high brightness"
+    ]
+}
+
+
 def load_system_prompt() -> str:
     """Load the system prompt from config."""
     prompts = load_prompts()

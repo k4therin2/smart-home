@@ -216,9 +216,9 @@ def apply_abstract_effect(description: str, room: str) -> Dict:
 
     # Ask specialist agent for recommendation
     specialist = get_hue_specialist()
-    recommendation = specialist.suggest_effect_for_description(
-        description,
-        available_scenes
+    recommendation = specialist.recommend_scene(
+        user_description=description,
+        available_scenes=available_scenes
     )
 
     if not recommendation.get("success"):
@@ -229,7 +229,7 @@ def apply_abstract_effect(description: str, room: str) -> Dict:
         room=room,
         scene_name=recommendation["scene"],
         speed=recommendation.get("speed"),
-        brightness_pct=recommendation.get("brightness_pct")
+        brightness_pct=recommendation.get("brightness")  # Note: changed from brightness_pct to brightness
     )
 
     if result.get("success"):

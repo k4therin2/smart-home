@@ -27,6 +27,7 @@ from tools.lights import get_available_rooms
 from tools.effects import get_hue_scenes
 from utils import load_prompts, save_prompts, get_daily_usage, commit_prompt_changes
 from tools.review_agent import get_review_agent
+from tools.prompt_improvement_agent import get_improvement_agent
 
 # Load environment
 load_dotenv()
@@ -292,6 +293,132 @@ def get_usage():
         })
     except Exception as e:
         logger.error(f"Error getting usage data: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/prompts/metadata', methods=['GET'])
+def get_prompts_metadata():
+    """Get metadata for all agents (for UI display)."""
+    try:
+        # Import metadata from agents
+        from agent import METADATA as main_metadata
+        from tools.hue_specialist import METADATA as hue_metadata
+
+        return jsonify({
+            "success": True,
+            "metadata": {
+                "main_agent": main_metadata,
+                "hue_specialist": hue_metadata
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error loading metadata: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/prompts/improve', methods=['POST'])
+def improve_prompt():
+    """
+    AI assistant for one-shot prompt improvement.
+
+    Request body:
+    {
+        "agent_name": "main_agent" | "hue_specialist",
+        "prompt_type": "system",
+        "current_prompt": "<current prompt text>",
+        "user_feedback": "<what the user wants to improve>"
+    }
+
+    Returns suggested improved prompt with reasoning.
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['agent_name', 'prompt_type', 'current_prompt', 'user_feedback']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    "success": False,
+                    "error": f"Missing required field: {field}"
+                }), 400
+
+        # Get the improvement agent
+        improvement_agent = get_improvement_agent()
+
+        # Get suggestion
+        logger.info(f"💡 Improving {data['agent_name']}.{data['prompt_type']} prompt...")
+        result = improvement_agent.suggest_improvement(
+            agent_name=data['agent_name'],
+            prompt_type=data['prompt_type'],
+            current_prompt=data['current_prompt'],
+            user_feedback=data['user_feedback']
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error improving prompt: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/prompts/chat', methods=['POST'])
+def chat_prompt_improvement():
+    """
+    Multi-turn chat with AI assistant for iterative prompt refinement.
+
+    Request body:
+    {
+        "agent_name": "main_agent" | "hue_specialist",
+        "prompt_type": "system",
+        "current_prompt": "<current prompt text>",
+        "user_message": "<user's latest message>",
+        "chat_history": [  // optional
+            {"role": "user", "content": "..."},
+            {"role": "assistant", "content": "..."}
+        ]
+    }
+
+    Returns AI response and updated chat history.
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['agent_name', 'prompt_type', 'current_prompt', 'user_message']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    "success": False,
+                    "error": f"Missing required field: {field}"
+                }), 400
+
+        # Get the improvement agent
+        improvement_agent = get_improvement_agent()
+
+        # Chat with the agent
+        logger.info(f"💬 Chat for {data['agent_name']}.{data['prompt_type']} prompt...")
+        result = improvement_agent.chat(
+            agent_name=data['agent_name'],
+            prompt_type=data['prompt_type'],
+            current_prompt=data['current_prompt'],
+            user_message=data['user_message'],
+            chat_history=data.get('chat_history', None)
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in chat: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)
