@@ -1153,10 +1153,11 @@ def settings_ui():
             if (mainMeta.purpose) html += `<div class="metadata-item"><span class="metadata-label">Purpose:</span> ${mainMeta.purpose}</div>`;
             html += '</div>';
             html += '<label>System Prompt</label>';
-            html += `<textarea id="main_agent_system" disabled>${escapeHtml(prompts.main_agent?.system || '')}</textarea>`;
+            const mainSystem = (prompts.main_agent && prompts.main_agent.system) || '';
+            html += `<textarea id="main_agent_system" disabled>${escapeHtml(mainSystem)}</textarea>`;
             html += '<div class="button-row">';
-            html += '<button class="action-btn btn-ai" onclick="openAIChat(\'main_agent\', \'system\')">💡 Help Improve This Prompt</button>';
-            html += '<button class="action-btn btn-edit" onclick="enableEdit(\'main_agent\', \'system\')">✏️ Direct Edit</button>';
+            html += '<button class="action-btn btn-ai" onclick="openAIChat(\\\'main_agent\\\', \\\'system\\\')">💡 Help Improve This Prompt</button>';
+            html += '<button class="action-btn btn-edit" onclick="enableEdit(\\\'main_agent\\\', \\\'system\\\')">✏️ Direct Edit</button>';
             html += '</div>';
             html += '</div>';
 
@@ -1169,10 +1170,11 @@ def settings_ui():
             if (hueMeta.purpose) html += `<div class="metadata-item"><span class="metadata-label">Purpose:</span> ${hueMeta.purpose}</div>`;
             html += '</div>';
             html += '<label>System Prompt</label>';
-            html += `<textarea id="hue_specialist_system" disabled>${escapeHtml(prompts.hue_specialist?.system || '')}</textarea>`;
+            const hueSystem = (prompts.hue_specialist && prompts.hue_specialist.system) || '';
+            html += `<textarea id="hue_specialist_system" disabled>${escapeHtml(hueSystem)}</textarea>`;
             html += '<div class="button-row">';
-            html += '<button class="action-btn btn-ai" onclick="openAIChat(\'hue_specialist\', \'system\')">💡 Help Improve This Prompt</button>';
-            html += '<button class="action-btn btn-edit" onclick="enableEdit(\'hue_specialist\', \'system\')">✏️ Direct Edit</button>';
+            html += '<button class="action-btn btn-ai" onclick="openAIChat(\\\'hue_specialist\\\', \\\'system\\\')">💡 Help Improve This Prompt</button>';
+            html += '<button class="action-btn btn-edit" onclick="enableEdit(\\\'hue_specialist\\\', \\\'system\\\')">✏️ Direct Edit</button>';
             html += '</div>';
             html += '</div>';
 
