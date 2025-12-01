@@ -105,16 +105,20 @@ Smarthome/
 ├── tools/
 │   ├── lights.py           # Lighting control
 │   ├── effects.py          # Dynamic effects
-│   └── hue_specialist.py   # Hue domain expert
+│   ├── hue_specialist.py   # Hue domain expert
+│   ├── review_agent.py     # Prompt review AI
+│   └── prompt_improvement_agent.py  # Prompt improvement chatbot
 ├── prompts/
-│   └── system_prompt.txt   # Agent behavior
+│   └── config.json         # Agent prompts configuration
 ├── docs/                   # All documentation
 │   ├── README.md
 │   ├── getting-started.md
 │   ├── architecture.md
 │   ├── api-reference.md
 │   ├── development.md
+│   ├── startup-guide.md
 │   └── session-log.md
+├── QUICKSTART.md           # Quick reference guide
 ├── PHONE_ACCESS.md         # Mobile UI guide
 └── docker-compose.yml      # Home Assistant container
 ```

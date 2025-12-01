@@ -374,7 +374,7 @@ def process_tool_call(tool_name: str, tool_input: dict) -> dict:
 5. **Update system prompt** if needed:
 
 ```
-# prompts/system_prompt.txt
+# prompts/config.json
 You can also control the robot vacuum...
 ```
 
@@ -424,7 +424,7 @@ def start_vacuum_optimized(rooms: List[str]) -> dict:
 
 ### Modifying System Prompt
 
-Edit [prompts/system_prompt.txt](../prompts/system_prompt.txt):
+Edit [prompts/config.json](../prompts/config.json):
 
 ```
 You are a home automation assistant...

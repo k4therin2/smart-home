@@ -120,7 +120,7 @@ python agent.py "wake up lighting in the bedroom"
 
 ## What's Next?
 
-- **Iterate on prompts**: Edit `prompts/system_prompt.txt` to fine-tune interpretations
+- **Iterate on prompts**: Edit `prompts/config.json` to fine-tune interpretations
 - **Test edge cases**: Try ambiguous commands and see how the agent handles them
 - **Add more rooms**: Expand your `room_entity_map` as you add more lights
 - **Explore architecture**: Read [architecture.md](architecture.md) to understand how it works

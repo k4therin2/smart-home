@@ -30,3 +30,6 @@ home-assistant-config/
 
 # OS
 .DS_Store
+
+# Logs
+logs/

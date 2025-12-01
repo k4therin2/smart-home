@@ -277,7 +277,7 @@ At the **end of every working session**, update `docs/session-log.md`. This is y
 ### Code Patterns Established
 - Tool functions in `tools/` directory, imported by `agent.py`
 - All HA API calls go through `ha_client.HueController`
-- System prompt lives in `prompts/system_prompt.txt`
+- System prompt lives in `prompts/config.json`
 - We're NOT using HA scenes (decided against it for flexibility)
 ```
 
