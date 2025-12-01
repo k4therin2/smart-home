@@ -1250,12 +1250,20 @@ def settings_ui():
                         let assistantHtml = `<div class="chat-message assistant">`;
                         if (data.response.reasoning) assistantHtml += `<p>${escapeHtml(data.response.reasoning)}</p>`;
                         assistantHtml += `</div>`;
-                        assistantHtml += `<div class="suggestion-box">`;
+
+                        // Create suggestion box with data attribute for the prompt
+                        const suggestionBoxId = 'suggestion-' + Date.now();
+                        assistantHtml += `<div class="suggestion-box" id="${suggestionBoxId}">`;
                         assistantHtml += `<h4>Suggested Prompt:</h4>`;
                         assistantHtml += `<div class="suggestion-prompt">${escapeHtml(data.response.suggested_prompt)}</div>`;
-                        assistantHtml += `<button class="accept-btn" onclick="acceptSuggestion('${currentAgent}', '${currentPromptType}', \`${escapeHtml(data.response.suggested_prompt).replace(/`/g, '\\`')}\`)">Accept & Apply</button>`;
+                        assistantHtml += `<button class="accept-btn" onclick="acceptSuggestionFromBox('${suggestionBoxId}', '${currentAgent}', '${currentPromptType}')">Accept & Apply</button>`;
                         assistantHtml += `</div>`;
                         chatContainer.innerHTML += assistantHtml;
+
+                        // Store the suggestion in the element's dataset
+                        setTimeout(() => {
+                            document.getElementById(suggestionBoxId).dataset.suggestion = data.response.suggested_prompt;
+                        }, 0);
                     } else if (data.response.message) {
                         // AI asking clarifying question
                         chatContainer.innerHTML += `<div class="chat-message assistant">${escapeHtml(data.response.message)}</div>`;
@@ -1272,7 +1280,9 @@ def settings_ui():
             }
         }
 
-        function acceptSuggestion(agent, promptType, suggestedPrompt) {
+        function acceptSuggestionFromBox(boxId, agent, promptType) {
+            const box = document.getElementById(boxId);
+            const suggestedPrompt = box.dataset.suggestion;
             const textarea = document.getElementById(`${agent}_${promptType}`);
             textarea.value = suggestedPrompt;
             textarea.disabled = false;
