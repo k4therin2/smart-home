@@ -759,7 +759,7 @@ def web_ui():
 
 @app.route('/settings', methods=['GET'])
 def settings_ui():
-    """Settings page for editing agent prompts."""
+    """Settings page for editing agent prompts with AI assistant."""
     html = """
 <!DOCTYPE html>
 <html>
@@ -822,11 +822,29 @@ def settings_ui():
         }
         .prompt-section {
             margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
         }
         .prompt-section h2 {
             color: #667eea;
             font-size: 18px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+        }
+        .metadata {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0 15px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .metadata-item {
+            margin: 5px 0;
+        }
+        .metadata-label {
+            font-weight: 600;
+            color: #333;
         }
         .prompt-section label {
             display: block;
@@ -838,7 +856,7 @@ def settings_ui():
         }
         .prompt-section textarea {
             width: 100%;
-            min-height: 150px;
+            min-height: 200px;
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
@@ -850,6 +868,39 @@ def settings_ui():
         }
         .prompt-section textarea:focus {
             border-color: #667eea;
+        }
+        .prompt-section textarea:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-ai {
+            background: #667eea;
+            color: white;
+        }
+        .btn-ai:hover {
+            background: #5568d3;
+        }
+        .btn-edit {
+            background: #28a745;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #218838;
         }
         .save-btn {
             width: 100%;
@@ -887,45 +938,142 @@ def settings_ui():
             background: #f8d7da;
             color: #721c24;
         }
-        .message.warning {
-            background: #fff3cd;
-            color: #856404;
+
+        /* Chat Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
         }
-        .review-results {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 8px;
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
+        .modal.active {
+            display: flex;
         }
-        .review-results h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: #667eea;
+            font-size: 20px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .close-btn:hover {
             color: #333;
         }
-        .issue-item {
-            padding: 8px 12px;
-            margin: 8px 0;
-            border-radius: 6px;
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 12px;
+            max-width: 85%;
+        }
+        .chat-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+        .chat-message.assistant {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .chat-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             font-size: 14px;
+            resize: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        .issue-item.critical {
-            background: #f8d7da;
-            border-left: 3px solid #dc3545;
+        .chat-input:focus {
+            border-color: #667eea;
+            outline: none;
         }
-        .issue-item.warning {
-            background: #fff3cd;
-            border-left: 3px solid #ffc107;
+        .chat-send-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
         }
-        .issue-item.suggestion {
-            background: #d1ecf1;
-            border-left: 3px solid #17a2b8;
+        .chat-send-btn:hover:not(:disabled) {
+            background: #5568d3;
         }
-        .issue-severity {
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 11px;
-            margin-right: 8px;
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .suggestion-box {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #17a2b8;
+            border-radius: 8px;
+        }
+        .suggestion-box h4 {
+            margin: 0 0 10px 0;
+            color: #17a2b8;
+        }
+        .suggestion-prompt {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+        .accept-btn {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .accept-btn:hover {
+            background: #218838;
         }
     </style>
 </head>
@@ -934,31 +1082,57 @@ def settings_ui():
         <button class="back-btn" onclick="window.location.href='/'">← Back to Home</button>
 
         <h1>⚙️ Settings</h1>
-        <p class="subtitle">Edit agent prompts (AI-reviewed & auto-committed)</p>
+        <p class="subtitle">Edit agent prompts with AI assistance</p>
 
         <div id="promptsContainer">
             <div class="message">Loading prompts...</div>
         </div>
 
-        <button class="save-btn" id="saveBtn" onclick="savePrompts()" disabled>Save & Review Changes</button>
+        <button class="save-btn" id="saveBtn" onclick="savePrompts()" disabled>Save Changes</button>
 
         <div id="message"></div>
     </div>
 
+    <!-- AI Chat Modal -->
+    <div id="chatModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">AI Prompt Assistant</h2>
+                <button class="close-btn" onclick="closeChat()">&times;</button>
+            </div>
+            <div class="chat-container" id="chatMessages"></div>
+            <div class="chat-input-area">
+                <textarea id="chatInput" class="chat-input" rows="3" placeholder="Describe what you want to improve..."></textarea>
+                <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let prompts = {};
+        let metadata = {};
+        let chatHistory = [];
+        let currentAgent = '';
+        let currentPromptType = '';
 
-        async function loadPrompts() {
+        async function loadData() {
             try {
-                const response = await fetch('/api/prompts');
-                const data = await response.json();
+                // Load both prompts and metadata in parallel
+                const [promptsRes, metadataRes] = await Promise.all([
+                    fetch('/api/prompts'),
+                    fetch('/api/prompts/metadata')
+                ]);
 
-                if (data.success) {
-                    prompts = data.prompts;
+                const promptsData = await promptsRes.json();
+                const metadataData = await metadataRes.json();
+
+                if (promptsData.success && metadataData.success) {
+                    prompts = promptsData.prompts;
+                    metadata = metadataData.metadata;
                     renderPrompts();
                 } else {
                     document.getElementById('promptsContainer').innerHTML =
-                        '<div class="message error">Failed to load prompts</div>';
+                        '<div class="message error">Failed to load data</div>';
                 }
             } catch (error) {
                 document.getElementById('promptsContainer').innerHTML =
@@ -968,25 +1142,38 @@ def settings_ui():
 
         function renderPrompts() {
             const container = document.getElementById('promptsContainer');
-
             let html = '';
 
             // Main Agent Section
+            const mainMeta = metadata.main_agent || {};
             html += '<div class="prompt-section">';
-            html += '<h2>🏠 Main Agent</h2>';
+            html += `<h2>${mainMeta.icon || '🏠'} ${mainMeta.name || 'Main Agent'}</h2>`;
+            html += '<div class="metadata">';
+            if (mainMeta.when_called) html += `<div class="metadata-item"><span class="metadata-label">When Called:</span> ${mainMeta.when_called}</div>`;
+            if (mainMeta.purpose) html += `<div class="metadata-item"><span class="metadata-label">Purpose:</span> ${mainMeta.purpose}</div>`;
+            html += '</div>';
             html += '<label>System Prompt</label>';
-            html += `<textarea id="main_agent_system">${escapeHtml(prompts.main_agent?.system || '')}</textarea>`;
+            html += `<textarea id="main_agent_system" disabled>${escapeHtml(prompts.main_agent?.system || '')}</textarea>`;
+            html += '<div class="button-row">';
+            html += '<button class="action-btn btn-ai" onclick="openAIChat(\'main_agent\', \'system\')">💡 Help Improve This Prompt</button>';
+            html += '<button class="action-btn btn-edit" onclick="enableEdit(\'main_agent\', \'system\')">✏️ Direct Edit</button>';
+            html += '</div>';
             html += '</div>';
 
             // Hue Specialist Section
+            const hueMeta = metadata.hue_specialist || {};
             html += '<div class="prompt-section">';
-            html += '<h2>💡 Hue Specialist</h2>';
+            html += `<h2>${hueMeta.icon || '💡'} ${hueMeta.name || 'Hue Specialist'}</h2>`;
+            html += '<div class="metadata">';
+            if (hueMeta.when_called) html += `<div class="metadata-item"><span class="metadata-label">When Called:</span> ${hueMeta.when_called}</div>`;
+            if (hueMeta.purpose) html += `<div class="metadata-item"><span class="metadata-label">Purpose:</span> ${hueMeta.purpose}</div>`;
+            html += '</div>';
             html += '<label>System Prompt</label>';
-            html += `<textarea id="hue_specialist_system">${escapeHtml(prompts.hue_specialist?.system || '')}</textarea>`;
-            html += '<label>Fire Flicker Template</label>';
-            html += `<textarea id="hue_specialist_fire_flicker">${escapeHtml(prompts.hue_specialist?.fire_flicker || '')}</textarea>`;
-            html += '<label>Effect Mapping Template</label>';
-            html += `<textarea id="hue_specialist_effect_mapping">${escapeHtml(prompts.hue_specialist?.effect_mapping || '')}</textarea>`;
+            html += `<textarea id="hue_specialist_system" disabled>${escapeHtml(prompts.hue_specialist?.system || '')}</textarea>`;
+            html += '<div class="button-row">';
+            html += '<button class="action-btn btn-ai" onclick="openAIChat(\'hue_specialist\', \'system\')">💡 Help Improve This Prompt</button>';
+            html += '<button class="action-btn btn-edit" onclick="enableEdit(\'hue_specialist\', \'system\')">✏️ Direct Edit</button>';
+            html += '</div>';
             html += '</div>';
 
             container.innerHTML = html;
@@ -999,15 +1186,108 @@ def settings_ui():
             return div.innerHTML;
         }
 
+        function enableEdit(agent, promptType) {
+            const textarea = document.getElementById(`${agent}_${promptType}`);
+            textarea.disabled = false;
+            textarea.focus();
+        }
+
+        function openAIChat(agent, promptType) {
+            currentAgent = agent;
+            currentPromptType = promptType;
+            chatHistory = [];
+
+            document.getElementById('modalTitle').textContent = `AI Assistant - ${agent.replace('_', ' ')} (${promptType})`;
+            document.getElementById('chatMessages').innerHTML = '<div class="chat-message assistant">Hi! I can help you improve this prompt. What would you like to change or improve?</div>';
+            document.getElementById('chatModal').classList.add('active');
+            document.getElementById('chatInput').focus();
+        }
+
+        function closeChat() {
+            document.getElementById('chatModal').classList.remove('active');
+            chatHistory = [];
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const userMessage = input.value.trim();
+
+            if (!userMessage) return;
+
+            // Add user message to chat
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.innerHTML += `<div class="chat-message user">${escapeHtml(userMessage)}</div>`;
+            input.value = '';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Disable send button
+            const sendBtn = document.getElementById('chatSendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Thinking...';
+
+            try {
+                const currentPrompt = document.getElementById(`${currentAgent}_${currentPromptType}`).value;
+
+                const response = await fetch('/api/prompts/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        agent_name: currentAgent,
+                        prompt_type: currentPromptType,
+                        current_prompt: currentPrompt,
+                        user_message: userMessage,
+                        chat_history: chatHistory
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.response) {
+                    chatHistory = data.chat_history || [];
+
+                    if (data.response.suggested_prompt) {
+                        // AI made a suggestion
+                        let assistantHtml = `<div class="chat-message assistant">`;
+                        if (data.response.reasoning) assistantHtml += `<p>${escapeHtml(data.response.reasoning)}</p>`;
+                        assistantHtml += `</div>`;
+                        assistantHtml += `<div class="suggestion-box">`;
+                        assistantHtml += `<h4>Suggested Prompt:</h4>`;
+                        assistantHtml += `<div class="suggestion-prompt">${escapeHtml(data.response.suggested_prompt)}</div>`;
+                        assistantHtml += `<button class="accept-btn" onclick="acceptSuggestion('${currentAgent}', '${currentPromptType}', \`${escapeHtml(data.response.suggested_prompt).replace(/`/g, '\\`')}\`)">Accept & Apply</button>`;
+                        assistantHtml += `</div>`;
+                        chatContainer.innerHTML += assistantHtml;
+                    } else if (data.response.message) {
+                        // AI asking clarifying question
+                        chatContainer.innerHTML += `<div class="chat-message assistant">${escapeHtml(data.response.message)}</div>`;
+                    }
+                } else {
+                    chatContainer.innerHTML += `<div class="chat-message assistant">Sorry, I encountered an error. Please try again.</div>`;
+                }
+            } catch (error) {
+                chatContainer.innerHTML += `<div class="chat-message assistant">Sorry, I couldn't connect to the AI assistant.</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        function acceptSuggestion(agent, promptType, suggestedPrompt) {
+            const textarea = document.getElementById(`${agent}_${promptType}`);
+            textarea.value = suggestedPrompt;
+            textarea.disabled = false;
+            closeChat();
+        }
+
         async function savePrompts() {
             const saveBtn = document.getElementById('saveBtn');
             const messageDiv = document.getElementById('message');
 
             saveBtn.disabled = true;
-            saveBtn.textContent = 'Reviewing...';
+            saveBtn.textContent = 'Saving...';
             messageDiv.innerHTML = '';
 
-            // Collect updated prompts
+            // Collect updated prompts (only system prompts now)
             const updatedPrompts = {
                 main_agent: {
                     system: document.getElementById('main_agent_system').value,
@@ -1015,8 +1295,6 @@ def settings_ui():
                 },
                 hue_specialist: {
                     system: document.getElementById('hue_specialist_system').value,
-                    fire_flicker: document.getElementById('hue_specialist_fire_flicker').value,
-                    effect_mapping: document.getElementById('hue_specialist_effect_mapping').value,
                     description: prompts.hue_specialist?.description || ''
                 }
             };
@@ -1024,9 +1302,7 @@ def settings_ui():
             try {
                 const response = await fetch('/api/prompts', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ prompts: updatedPrompts })
                 });
 
@@ -1034,20 +1310,16 @@ def settings_ui():
 
                 if (data.success) {
                     prompts = updatedPrompts;
-
-                    // Build success message with commit info
                     let html = '<div class="message success">✓ Prompts saved successfully!';
                     if (data.commit && data.commit.committed) {
                         html += ` (Committed: ${data.commit.commit_hash})`;
                     }
                     html += '</div>';
-
-                    // Show review results
-                    if (data.review && data.review.reviews) {
-                        html += renderReviewResults(data.review);
-                    }
-
                     messageDiv.innerHTML = html;
+
+                    // Disable textareas again
+                    document.getElementById('main_agent_system').disabled = true;
+                    document.getElementById('hue_specialist_system').disabled = true;
                 } else {
                     messageDiv.innerHTML = `<div class="message error">Failed to save: ${data.error}</div>`;
                 }
@@ -1055,61 +1327,23 @@ def settings_ui():
                 messageDiv.innerHTML = '<div class="message error">Failed to connect to server</div>';
             } finally {
                 saveBtn.disabled = false;
-                saveBtn.textContent = 'Save & Review Changes';
+                saveBtn.textContent = 'Save Changes';
             }
         }
 
-        function renderReviewResults(review) {
-            if (!review.reviews || Object.keys(review.reviews).length === 0) {
-                return '<div class="review-results"><h3>✓ No changes detected</h3><p>No prompts were modified.</p></div>';
-            }
-
-            let html = '<div class="review-results">';
-
-            // Show overall review status
-            const approved = review.approved !== false;
-            const statusIcon = approved ? '✅' : '⚠️';
-            const statusText = approved ? 'Approved' : 'Has Critical Issues';
-
-            html += `<h3>${statusIcon} AI Review: ${statusText}</h3>`;
-            html += `<p><strong>Summary:</strong> ${review.summary}</p>`;
-            html += `<p><strong>Total Issues Found:</strong> ${review.total_issues || 0}</p>`;
-
-            // Go through each reviewed prompt
-            for (const [key, result] of Object.entries(review.reviews)) {
-                html += `<p style="margin-top: 15px;"><strong>📝 ${key}:</strong></p>`;
-
-                if (result.issues && result.issues.length > 0) {
-                    result.issues.forEach(issue => {
-                        const severity = issue.severity.toLowerCase();
-                        const severityIcon = severity === 'critical' ? '🔴' :
-                                            severity === 'warning' ? '⚠️' : '💡';
-
-                        html += `<div class="issue-item ${severity}">`;
-                        html += `${severityIcon} <span class="issue-severity">${issue.severity}</span>`;
-                        html += `<strong>${issue.category}:</strong> ${issue.message}`;
-                        if (issue.suggestion) {
-                            html += `<br><small>💡 <strong>Suggestion:</strong> ${issue.suggestion}</small>`;
-                        }
-                        html += '</div>';
-                    });
-                } else {
-                    html += `<div class="issue-item suggestion">`;
-                    html += `✅ No issues found with this prompt.`;
-                    html += '</div>';
+        // Enter key in chat input
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatInput = document.getElementById('chatInput');
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
                 }
-            }
+            });
+        });
 
-            if (review.total_issues === 0) {
-                html += '<p style="margin-top: 15px; color: #28a745; font-weight: 600;">✓ All changes passed AI review!</p>';
-            }
-
-            html += '</div>';
-            return html;
-        }
-
-        // Load prompts on page load
-        loadPrompts();
+        // Load data on page load
+        loadData();
     </script>
 </body>
 </html>
