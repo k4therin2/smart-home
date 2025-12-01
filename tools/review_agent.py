@@ -13,7 +13,8 @@ import os
 import json
 from typing import Dict, List
 from anthropic import Anthropic
-from utils import track_api_usage
+from config import MODEL_NAME
+from utils import track_api_usage, extract_json_from_markdown
 
 
 class PromptReviewAgent:
@@ -23,7 +24,7 @@ class PromptReviewAgent:
 
     def __init__(self):
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        self.model = "claude-sonnet-4-20250514"
+        self.model = MODEL_NAME
 
         self.review_prompt = """You are a prompt engineering expert reviewing changes to agent system prompts.
 
@@ -115,12 +116,10 @@ Please review the NEW PROMPT and identify any issues."""
             # Parse JSON response
             response_text = response.content[0].text.strip()
 
-            # Remove markdown code blocks if present
-            if response_text.startswith("```"):
-                lines = response_text.split("\n")
-                response_text = "\n".join(lines[1:-1])
+            # Remove markdown code blocks using robust utility function
+            clean_json = extract_json_from_markdown(response_text)
 
-            review_result = json.loads(response_text)
+            review_result = json.loads(clean_json)
 
             return {
                 "success": True,

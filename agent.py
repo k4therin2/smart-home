@@ -16,6 +16,9 @@ import json
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
+# Import configuration
+from config import MODEL_NAME, MAX_AGENT_ITERATIONS
+
 # Import our custom tools
 from tools.lights import set_room_ambiance, get_available_rooms, apply_fire_flicker
 from tools.effects import apply_abstract_effect
@@ -196,11 +199,10 @@ def run_agent(user_input: str, verbose: bool = True) -> str:
         print(f"{'='*60}\n")
 
     # Agentic loop (can handle multiple tool calls if needed)
-    max_iterations = 5
-    for iteration in range(max_iterations):
+    for iteration in range(MAX_AGENT_ITERATIONS):
         # Call Claude
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=MODEL_NAME,
             max_tokens=1024,
             system=system_prompt,
             tools=tools,

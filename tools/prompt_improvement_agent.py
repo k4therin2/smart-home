@@ -10,13 +10,14 @@ import os
 import json
 from typing import Dict, List, Any
 from anthropic import Anthropic
-from utils import track_api_usage, load_prompts
+from config import MODEL_NAME, MAX_CHAT_HISTORY
+from utils import track_api_usage, load_prompts, extract_json_from_markdown
 
 
 # TODO: Implement context compression for long chat histories
 # Consider using tiktoken or similar to keep under token limits
 # For now, we keep last 10 messages (common practice, ~2-3K tokens)
-MAX_CHAT_HISTORY = 10
+# MAX_CHAT_HISTORY is now defined in config.py
 
 
 class PromptImprovementAgent:
@@ -32,7 +33,7 @@ class PromptImprovementAgent:
 
     def __init__(self):
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        self.model = "claude-sonnet-4-20250514"
+        self.model = MODEL_NAME
 
         self.system_prompt = """# Prompt Engineering Assistant
 
@@ -234,22 +235,10 @@ Now, let's work on improving it based on your feedback!"""
             # Parse response
             response_text = response.content[0].text.strip()
 
-            # Remove markdown code blocks if present
-            if response_text.startswith("```"):
-                lines = response_text.split("\n")
-                # Find the end of the opening code fence
-                start_idx = 1
-                if lines[0].startswith("```json"):
-                    start_idx = 1
-                # Find the closing fence
-                end_idx = len(lines) - 1
-                for i in range(len(lines) - 1, 0, -1):
-                    if lines[i].strip().startswith("```"):
-                        end_idx = i
-                        break
-                response_text = "\n".join(lines[start_idx:end_idx])
+            # Remove markdown code blocks using robust utility function
+            clean_json = extract_json_from_markdown(response_text)
 
-            result = json.loads(response_text)
+            result = json.loads(clean_json)
 
             return {
                 "success": True,

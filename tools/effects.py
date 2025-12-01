@@ -8,6 +8,7 @@ capabilities rather than continuous API calls.
 import os
 import requests
 from typing import Optional, Dict, List
+from config import ROOM_ENTITY_MAP
 
 
 def get_hue_scenes(room: str) -> Dict:
@@ -26,15 +27,8 @@ def get_hue_scenes(room: str) -> Dict:
     if not ha_token:
         return {"success": False, "error": "HA_TOKEN not set"}
 
-    # Map room names to entity IDs
-    room_entity_map = {
-        "living_room": "light.living_room",
-        "bedroom": "light.bedroom",
-        "kitchen": "light.kitchen",
-        "office": "light.office",
-    }
-
-    entity_id = room_entity_map.get(room.lower().replace(" ", "_"))
+    # Get entity ID from shared config
+    entity_id = ROOM_ENTITY_MAP.get(room.lower().replace(" ", "_"))
     if not entity_id:
         return {"success": False, "error": f"Unknown room: {room}"}
 
@@ -87,15 +81,8 @@ def activate_dynamic_scene(
     if not ha_token:
         return {"success": False, "error": "HA_TOKEN not set"}
 
-    # Map room to entity ID
-    room_entity_map = {
-        "living_room": "light.living_room",
-        "bedroom": "light.bedroom",
-        "kitchen": "light.kitchen",
-        "office": "light.office",
-    }
-
-    entity_id = room_entity_map.get(room.lower().replace(" ", "_"))
+    # Get entity ID from shared config
+    entity_id = ROOM_ENTITY_MAP.get(room.lower().replace(" ", "_"))
     if not entity_id:
         return {"success": False, "error": f"Unknown room: {room}"}
 

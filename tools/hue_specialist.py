@@ -8,6 +8,7 @@ scenes and parameters for user requests.
 import os
 from typing import Dict
 from anthropic import Anthropic
+from config import MODEL_NAME
 from utils import load_prompts, track_api_usage
 
 
@@ -32,7 +33,7 @@ class HueSpecialist:
 
     def __init__(self):
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        self.model = "claude-sonnet-4-20250514"
+        self.model = MODEL_NAME
 
         # Load system prompt from config
         prompts = load_prompts()

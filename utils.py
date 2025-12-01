@@ -5,6 +5,7 @@ Utility scripts for managing the home automation agent.
 
 import os
 import json
+import re
 from datetime import datetime
 from typing import Dict, Any
 from functools import wraps
@@ -184,6 +185,28 @@ def save_prompts(prompts: Dict[str, Any]) -> bool:
     except Exception as e:
         print(f"Error saving prompts: {e}")
         return False
+
+
+def extract_json_from_markdown(response_text: str) -> str:
+    """
+    Robustly extract JSON from Claude response that may contain markdown code blocks.
+
+    Handles various formats:
+    - ```json\\n{...}\\n```
+    - ```\\n{...}\\n```
+    - {...} (plain JSON)
+
+    Args:
+        response_text: Raw response text from Claude
+
+    Returns:
+        Clean JSON string ready for parsing
+    """
+    # Remove markdown code fences
+    response_text = re.sub(r'```[a-z]*\n', '', response_text)
+    response_text = re.sub(r'\n?```', '', response_text)
+
+    return response_text.strip()
 
 
 def track_api_usage(input_tokens: int, output_tokens: int):

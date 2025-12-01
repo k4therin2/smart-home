@@ -3,8 +3,13 @@ Philips Hue lighting control via Home Assistant API
 """
 
 import os
+import logging
 import requests
 from typing import Optional
+from config import ROOM_ENTITY_MAP, MIN_KELVIN, MAX_KELVIN
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 def kelvin_to_mireds(kelvin: int) -> int:
@@ -49,26 +54,30 @@ def set_room_ambiance(
 
     # Convert kelvin to mireds for Hue
     mireds = kelvin_to_mireds(color_temp_kelvin)
+    original_mireds = mireds
+    original_brightness = brightness_pct
 
     # Clamp values to valid ranges
     mireds = max(153, min(500, mireds))  # Hue range: ~2000K-6500K
     brightness_pct = max(0, min(100, brightness_pct))
 
-    # Map room names to Home Assistant entity IDs
-    # TODO: Make this dynamic by querying HA for lights in an area
-    room_entity_map = {
-        "living_room": "light.living_room",
-        "bedroom": "light.bedroom",
-        "kitchen": "light.kitchen",
-        "office": "light.office",
-    }
+    # Log warnings if values were clamped
+    if original_mireds != mireds:
+        original_kelvin = round(1000000 / original_mireds)
+        clamped_kelvin = round(1000000 / mireds)
+        logger.warning(f"Color temperature clamped from {original_kelvin}K to {clamped_kelvin}K (valid range: {MIN_KELVIN}K-{MAX_KELVIN}K)")
 
-    entity_id = room_entity_map.get(room.lower().replace(" ", "_"))
+    if original_brightness != brightness_pct:
+        logger.warning(f"Brightness clamped from {original_brightness}% to {brightness_pct}% (valid range: 0-100%)")
+
+    # Get entity ID from shared config
+    # TODO: Make this dynamic by querying HA for lights in an area
+    entity_id = ROOM_ENTITY_MAP.get(room.lower().replace(" ", "_"))
 
     if not entity_id:
         return {
             "success": False,
-            "error": f"Unknown room: {room}. Available rooms: {', '.join(room_entity_map.keys())}"
+            "error": f"Unknown room: {room}. Available rooms: {', '.join(ROOM_ENTITY_MAP.keys())}"
         }
 
     # Prepare the API call to Home Assistant
