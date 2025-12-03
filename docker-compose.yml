@@ -11,9 +11,10 @@ services:
       - "8123:8123"
     volumes:
       - ./home-assistant-config:/config
-      - /etc/localtime:/etc/localtime:ro
+      # Uncomment for Linux/Mac (not needed on Windows):
+      # - /etc/localtime:/etc/localtime:ro
     environment:
-      - TZ=America/Los_Angeles  # Change to your timezone
+      - TZ=America/Los_Angeles  # Change to your timezone (cross-platform)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8123"]
       interval: 30s

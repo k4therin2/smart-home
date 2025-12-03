@@ -23,7 +23,9 @@ python agent.py "turn living room to fire"
 
 ## Docker Deployment (Recommended)
 
-Run everything in Docker for easy deployment on any machine:
+Run everything in Docker for easy deployment on any machine (Mac, Linux, **Windows**):
+
+**→ Windows users**: See [WINDOWS_DEPLOYMENT.md](WINDOWS_DEPLOYMENT.md) for detailed guide
 
 ```bash
 # 1. Clone the repo
