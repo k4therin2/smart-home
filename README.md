@@ -21,6 +21,41 @@ python agent.py "turn living room to fire"
 
 **→ Full setup guide**: [docs/getting-started.md](docs/getting-started.md)
 
+## Docker Deployment (Recommended)
+
+Run everything in Docker for easy deployment on any machine:
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/k4therin2/smart-home.git
+cd smart-home
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your ANTHROPIC_API_KEY and HA_TOKEN
+
+# 3. Start both services (Home Assistant + Agent)
+docker-compose up -d
+
+# 4. Access the services
+# Home Assistant: http://localhost:8123
+# Agent Web UI: http://localhost:5000
+```
+
+**What this runs:**
+- **Home Assistant** on port 8123 (smart home platform)
+- **Home Automation Agent** on port 5000 (AI control interface)
+- **Automatic networking** between services
+- **Persistent data** for configs, logs, and prompts
+
+**Check status:**
+```bash
+docker-compose ps              # View running containers
+docker-compose logs agent      # View agent logs
+docker-compose logs homeassistant  # View Home Assistant logs
+docker-compose down            # Stop all services
+```
+
 ## What This Does
 
 Transforms vague lighting requests into precisely orchestrated scenes:
@@ -102,6 +137,8 @@ Access the web UI: http://192.168.254.12:5001/ (local network)
 Smarthome/
 ├── agent.py                 # Main coordinator agent
 ├── server.py                # Flask web UI server
+├── config.py                # Shared configuration constants
+├── utils.py                 # Utility functions
 ├── tools/
 │   ├── lights.py           # Lighting control
 │   ├── effects.py          # Dynamic effects
@@ -120,7 +157,9 @@ Smarthome/
 │   └── session-log.md
 ├── QUICKSTART.md           # Quick reference guide
 ├── PHONE_ACCESS.md         # Mobile UI guide
-└── docker-compose.yml      # Home Assistant container
+├── Dockerfile              # Agent container image
+├── docker-compose.yml      # Full stack deployment (HA + Agent)
+└── test_e2e.py             # End-to-end tests
 ```
 
 ## Contributing
