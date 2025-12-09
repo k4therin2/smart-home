@@ -252,15 +252,30 @@ User says "turn living room to fire":
 
 ## Git Workflow
 
+**IMPORTANT: Auto-commit after every prompt**
+After completing work on any user prompt, ALWAYS commit changes with a descriptive message:
+```bash
+git add -A
+git commit -m "Brief description of what was done
+
+🤖 Generated with Claude Code"
+```
+
+**Commit message guidelines:**
+- First line: Brief summary (50 chars or less)
+- Blank line
+- Detailed explanation if needed
+- Always end with "🤖 Generated with Claude Code"
+
 **Fresh Start (2025-12-09):**
 - Previous implementation completely deleted
 - All planning documents created (REQUIREMENTS.md, priorities.md, etc.)
 - Clean slate for systematic rebuild
-- Starting from Week 0 with no code
+- Starting from Phase 1 with no code
 
-**Git commit structure:**
+**Recent commits:**
+- 9c02a27: "Fresh start: Complete planning phase" - planning documents created
 - e29e890: "Final commit before fresh start" - deleted all previous code
-- Now: Building from scratch based on comprehensive requirements
 
 ## Environment Variables
 
