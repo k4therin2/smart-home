@@ -159,3 +159,26 @@
 2025-11-29 18:37:29,734 [INFO] 192.168.254.12 - - [29/Nov/2025 18:37:29] "POST /api/command HTTP/1.1" 200 -
 2025-11-29 18:39:18,094 [INFO] 192.168.254.12 - - [29/Nov/2025 18:39:18] "GET / HTTP/1.1" 200 -
 2025-11-29 18:39:19,886 [INFO] 192.168.254.12 - - [29/Nov/2025 18:39:19] "GET / HTTP/1.1" 200 -
+2025-12-03 15:02:27,341 [INFO] Server starting up...
+2025-12-03 15:02:36,977 [INFO] Server starting up...
+2025-12-03 15:02:36,982 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.254.12:5001
+2025-12-03 15:02:36,982 [INFO] [33mPress CTRL+C to quit[0m
+2025-12-03 15:03:57,811 [INFO] 127.0.0.1 - - [03/Dec/2025 15:03:57] "GET /api/prompts HTTP/1.1" 200 -
+2025-12-03 15:03:57,814 [INFO] 127.0.0.1 - - [03/Dec/2025 15:03:57] "GET /api/prompts/metadata HTTP/1.1" 200 -
+2025-12-03 15:03:57,816 [INFO] 📥 INCOMING REQUEST: 'what rooms are available?' (user: anonymous)
+2025-12-03 15:04:00,833 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 15:04:04,734 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 15:04:04,738 [INFO] 📤 RESPONSE: 'I'm unable to connect to your Home Assistant system to check what rooms are available. This could be...'
+2025-12-03 15:04:04,739 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:04] "POST /api/command HTTP/1.1" 200 -
+2025-12-03 15:04:04,756 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:04] "GET / HTTP/1.1" 200 -
+2025-12-03 15:04:23,123 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:23] "GET /api/prompts HTTP/1.1" 200 -
+2025-12-03 15:04:23,126 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:23] "GET /api/prompts/metadata HTTP/1.1" 200 -
+2025-12-03 15:04:23,128 [INFO] 📥 INCOMING REQUEST: 'what rooms are available?' (user: anonymous)
+2025-12-03 15:04:25,399 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 15:04:29,801 [INFO] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 15:04:29,805 [INFO] 📤 RESPONSE: 'I'm having trouble connecting to your Home Assistant system to check the available rooms. This could...'
+2025-12-03 15:04:29,806 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:29] "POST /api/command HTTP/1.1" 200 -
+2025-12-03 15:04:29,819 [INFO] 127.0.0.1 - - [03/Dec/2025 15:04:29] "GET / HTTP/1.1" 200 -
