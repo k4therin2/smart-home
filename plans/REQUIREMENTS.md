@@ -55,11 +55,11 @@
 **The system MUST run entirely on a local machine (platform-agnostic: macOS, Linux, Windows) with no required cloud dependencies for core functionality.**
 
 **Acceptance Criteria:**
-- [ ] System runs on macOS, Linux, or Windows
-- [ ] Development on macOS, deployment target configurable
-- [ ] Core features (lights, voice, basic control) work without internet
-- [ ] No data sent to third-party services except explicitly configured APIs (ChatGPT, Spotify)
-- [ ] System continues basic operation if internet is lost
+- [x] System runs on macOS, Linux, or Windows
+- [x] Development on macOS, deployment target configurable
+- [x] Core features (lights, voice, basic control) work without internet (lights work, voice pending Phase 3)
+- [x] No data sent to third-party services except explicitly configured APIs (Claude, Spotify)
+- [x] System continues basic operation if internet is lost
 
 **Dependencies:** None (foundational)
 
@@ -77,10 +77,10 @@
 **The system MUST use Home Assistant as the underlying device control layer.**
 
 **Acceptance Criteria:**
-- [ ] Home Assistant installed and running
-- [ ] Custom system can send commands to HA
-- [ ] Custom system can receive device state from HA
-- [ ] Integration documented for adding new device types
+- [x] Home Assistant installed and running
+- [x] Custom system can send commands to HA
+- [x] Custom system can receive device state from HA
+- [x] Integration documented for adding new device types
 
 **Dependencies:** REQ-001
 
@@ -98,11 +98,11 @@
 **The system MUST integrate with Claude API (Anthropic) for natural language processing with cost tracking.**
 
 **Acceptance Criteria:**
-- [ ] ChatGPT API successfully processes voice/text requests
-- [ ] Cost tracking implemented (per-request token usage)
-- [ ] Daily cost monitoring ($2 average threshold)
-- [ ] Alert mechanism when daily cost exceeds $5
-- [ ] Alert sent via push notification or text message
+- [x] Claude API successfully processes voice/text requests
+- [x] Cost tracking implemented (per-request token usage)
+- [x] Daily cost monitoring ($2 average threshold)
+- [ ] Alert mechanism when daily cost exceeds $5 (deferred)
+- [ ] Alert sent via push notification or text message (deferred)
 
 **Dependencies:** REQ-001
 
@@ -163,11 +163,11 @@
 **The system MUST store all user data locally with optional encrypted cloud backup.**
 
 **Acceptance Criteria:**
-- [ ] All user data (preferences, history, device mappings) stored locally
-- [ ] No unencrypted data sent to cloud services
-- [ ] Optional encrypted backup configuration
-- [ ] Backup restore procedure documented and tested
-- [ ] Data export functionality for user portability
+- [x] All user data (preferences, history, device mappings) stored locally
+- [x] No unencrypted data sent to cloud services
+- [ ] Optional encrypted backup configuration (deferred)
+- [ ] Backup restore procedure documented and tested (deferred)
+- [ ] Data export functionality for user portability (deferred)
 
 **Dependencies:** REQ-001
 
@@ -232,13 +232,13 @@
 **The system MUST control Philips Hue lights with support for abstract vibe-based requests using latest lighting design research and best practices.**
 
 **Acceptance Criteria:**
-- [ ] Basic on/off control for individual lights and groups
-- [ ] Brightness and color control
-- [ ] Specialist agent researches latest online guidance for lighting design/color theory
-- [ ] LLM translates abstract requests ("cozy evening vibes") to specific light settings informed by research
-- [ ] Room-based grouping maintained in system (not just Hue app)
-- [ ] Changes sync to Philips Hue app structure
-- [ ] Example vibes tested: "morning energy", "focus mode", "wind down", "romantic"
+- [x] Basic on/off control for individual lights and groups
+- [x] Brightness and color control
+- [x] Specialist agent researches latest online guidance for lighting design/color theory
+- [x] LLM translates abstract requests ("cozy evening vibes") to specific light settings informed by research
+- [x] Room-based grouping maintained in system (not just Hue app)
+- [x] Changes sync to Philips Hue app structure
+- [x] Example vibes tested: "morning energy", "focus mode", "wind down", "romantic" (10 vibe presets + 22 scene keywords)
 
 **Dependencies:** REQ-002, REQ-003, REQ-034
 
@@ -368,13 +368,13 @@
 **The system MUST provide a web-based user interface accessible from desktop and mobile browsers.**
 
 **Acceptance Criteria:**
-- [ ] Responsive design works on desktop and mobile
-- [ ] Device control interface for all integrated devices
-- [ ] Voice input via browser (using native browser speech recognition)
-- [ ] Text chat interface for commands
-- [ ] Dashboard showing device status
-- [ ] Settings/configuration interface
-- [ ] Log viewer integrated into UI (see REQ-036)
+- [x] Responsive design works on desktop and mobile
+- [x] Device control interface for all integrated devices
+- [x] Voice input via browser (using native browser speech recognition)
+- [x] Text chat interface for commands
+- [x] Dashboard showing device status
+- [ ] Settings/configuration interface (deferred to later phase)
+- [ ] Log viewer integrated into UI (deferred - see REQ-036)
 
 **Dependencies:** REQ-001
 

@@ -1,0 +1,31 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# Demo lights for testing
+light:
+  - platform: template
+    lights:
+      living_room:
+        friendly_name: "Living Room"
+        turn_on:
+        turn_off:
+        set_level:
+      bedroom:
+        friendly_name: "Bedroom"
+        turn_on:
+        turn_off:
+        set_level:
+      kitchen:
+        friendly_name: "Kitchen"
+        turn_on:
+        turn_off:
+        set_level:

@@ -2,291 +2,186 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+## Primary System instructions
+
+You are an expert. Experts always look at the documentation before they try to use a library.
+We are on a Macbook Air m3 with 8 gb of memory, though you probably want to check available RAM before running memory intensive experiments.
+
+Prefer raw SQL over SQLAlchemy except for model definition.
+
+Always implement a centralized, robust logging module for each component of the project
+Always use python if possible
+Never use single-letter variable names
+Use Playwright to check your work if creating a web-based project, always take a screenshot in between actions so you can be sure that the routes exist.
+
+Every project should have a requirements.md file, and it should be in the /plans directory
+Always make a plan, and save requirements and plans in the /plans directory. The main execution plan should be in plan.md
+As you build complex, multi-step processes, save markdown-formatted diary entries in /devlog, under the feature name (if one is not already created). Always check in plans and diary entries.
+
+
+NEVER comment out existing features or functionality to "simplify for now" or "focus on testing." Instead:
+- Create separate test files or scripts for isolated testing
+- Use feature flags or configuration switches if you need to temporarily disable functionality
+- Maintain all existing features while adding new ones
+- If testing specific behavior, write a dedicated test harness that doesn't modify the main codebase
+
+
+When writing tests, prioritize integration testing over heavily mocked unit tests:
+- Test real interactions between components rather than isolated units with mocks
+- Only mock external dependencies (APIs, databases) when absolutely necessary
+- Test the actual integration points where bugs commonly occur
+- If you must mock, mock at the boundaries (external services) not internal components
+- Write tests that exercise the same code paths users will actually use
+
+Remember: The goal is to catch real bugs that affect users, not to achieve artificial test coverage metrics.
+
+
+Always use a virtual environment, either create one if it isn't present, or remember to activate it, it's probably in ./env or ./venv
+
+Check the documentation online for how SDKs actually work instead of trying to directly recall everything. Always check the docs before you use a library.
+
+Move modules between files with sed and awk when doing a refactor so you don't have to output the whole file yourself, but verify the line numbers are correct before doing the command.
+
+Don't confirm once you find a solution- just proceed to fix it. Your role is not to teach but to execute. Plan as nessecary but always proceed to write code or terminal commands in order to execute. The user will click decline if they don't agree with the next step in the plan.
+Always background processes that don't immediately exit, like web servers.
+
+Never use Conda, ever, under any circumstances.
+
+Don't hallucinate.
+Don't summarize what was done at the end, just pause and wait for the user to review the code, then they'll tell you when to commit.
+
 ## Project Overview
 
 Self-hosted, AI-powered smart home assistant built on Home Assistant. Uses Claude Sonnet 4 via Anthropic API for natural language processing with multi-agent architecture. Replaces commercial ecosystems (Alexa/Google) with privacy-focused, open-source automation.
 
-**Core Philosophy**: Minimal personality, wake-word activated, self-monitoring, LLM-powered natural language understanding.
+**Core Philosophy**: Minimal personality, wake-word activated, self-monitoring, LLM-powered NLU.
 
-**CURRENT STATUS (2025-12-09):** Starting from scratch. Previous implementation has been deleted. We have comprehensive planning documents (REQUIREMENTS.md, priorities.md, BUSINESS_VALUE_ANALYSIS.md, PARALLEL_EXECUTION_ROADMAP.md) but NO CODE yet. Ready to begin Phase 1 implementation.
+## Current State
+
+The main smart home system is **not yet implemented**. Planning documents exist in `plans/` directory. One supporting system is built:
+
+- **mcp-agent-chat/** - NATS JetStream-based MCP server for multi-agent coordination (Slack-like chat channels for parallel agents)
 
 ## Development Commands
 
-**NOTE:** These commands will work once we build the system. Currently nothing is implemented.
-
-### Setup (Future)
+### MCP Agent Chat (Working Now)
 ```bash
-# Install dependencies
+# Start NATS server with JetStream
+nats-server -js
+
+# Test MCP server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node mcp-agent-chat/index.js
+```
+
+### Smart Home System (Once Built)
+```bash
 pip install -r requirements.txt
+cp .env.example .env  # Set ANTHROPIC_API_KEY, HA_TOKEN, HA_URL
 
-# Configure environment
-cp .env.example .env
-# Required: ANTHROPIC_API_KEY, HA_TOKEN, HA_URL
+python agent.py "turn living room to fire"  # CLI mode
+python server.py                            # Web server at :5000
+docker-compose up -d                        # Docker deployment
 ```
 
-### Running the System (Future)
-```bash
-# CLI mode (single command)
-python agent.py "turn living room to fire"
+## Architecture
 
-# Web server (persistent UI)
-python server.py
-# Access at http://localhost:5000
+### Multi-Agent System (Planned)
 
-# Docker deployment (Home Assistant + Agent)
-docker-compose up -d
-docker-compose logs agent
-docker-compose logs homeassistant
-```
+**Main Agent** (`agent.py`): Coordinates requests, interprets NL → tool calls, uses Claude Sonnet 4 with 5-iteration max loop.
 
-### Testing (Future)
-```bash
-# Manual test scenarios
-python tests/test_lights.py
-
-# End-to-end tests
-python test_e2e.py
-```
-
-## Architecture (Planned)
-
-**NOTE:** This describes the target architecture. Nothing is implemented yet.
-
-### Multi-Agent System
-
-**Main Agent** (`agent.py` - TO BUILD):
-- Coordinates all user requests
-- Interprets natural language → tool calls
-- Uses Claude Sonnet 4 with function calling
-- 5-iteration max loop
-
-**Specialist Agents** (`tools/hue_specialist.py` - TO BUILD):
-- Deep domain expertise (Philips Hue API knowledge)
-- Maps abstract descriptions → optimal Hue scenes
-- Consulted by tools, not directly by user
-- Example: "under the sea" → Arctic aurora scene with dynamic mode
-
-### Request Flow
+**Specialist Agents** (`tools/hue_specialist.py`): Domain expertise (e.g., Philips Hue API), maps abstract descriptions → device-specific settings.
 
 ```
-User Command
-  ↓
-Main Agent (agent.py) - interprets intent
-  ↓
-Tool Selection (set_room_ambiance, apply_abstract_effect, etc.)
-  ↓
-Specialist Consultation (if needed) - HueSpecialist recommends scene
-  ↓
-Home Assistant API call
-  ↓
-Device Control (Philips Hue Bridge)
+User Command → Main Agent → Tool Selection → Specialist Consultation → HA API → Device
 ```
 
-### Key Design Patterns
+### MCP Agent Chat (Implemented)
 
-1. **Native Over Software**: Always prefer device-native capabilities (Hue dynamic scenes) over API-emulated effects (software flickering)
-   - Good: 1 API call, loops indefinitely on hardware
-   - Bad: 11+ API calls, finite duration, network-intensive
+NATS JetStream server providing persistent channels for multi-agent coordination:
+- `#roadmap` - Project plans/requirements discussion
+- `#coordination` - Parallel work sync, status updates
+- `#errors` - Bug reports and issues
 
-2. **Tool Descriptions Guide Selection**: Tool metadata tells main agent when to use which approach
+Messages persist 7 days. See `mcp-agent-chat/README.md` for Claude Desktop config.
 
-3. **Specialist Pattern**: Domain expertise separated into specialist agents, keeping main agent focused on coordination
+## Key Design Patterns
 
-## File Structure
+1. **Native Over Software**: Prefer device-native capabilities (Hue dynamic scenes) over API-emulated effects. 1 API call looping on hardware > 11+ calls with software flickering.
 
-**CURRENT (Week 0):**
-```
-Smarthome/
-├── CLAUDE.md             # This file - development guide
-├── plans/
-│   ├── REQUIREMENTS.md   # 37 requirements document
-│   ├── priorities.md     # Strategic priorities analysis
-│   ├── BUSINESS_VALUE_ANALYSIS.md  # Value analysis
-│   └── PARALLEL_EXECUTION_ROADMAP.md  # Implementation roadmap
-└── (everything else to be built)
-```
+2. **Tool Descriptions Guide Selection**: Tool metadata tells main agent when to use which approach.
 
-**TARGET (Once Built):**
-```
-Smarthome/
-├── agent.py              # Main coordinator agent (Claude Sonnet 4)
-├── server.py             # Flask web UI server
-├── config.py             # Shared constants (ROOM_ENTITY_MAP, etc.)
-├── utils.py              # Setup checks, prompt loading, usage tracking
-├── tools/
-│   ├── lights.py         # set_room_ambiance, apply_fire_flicker
-│   ├── effects.py        # apply_abstract_effect, activate_dynamic_scene
-│   ├── hue_specialist.py # HueSpecialist agent class
-│   ├── review_agent.py   # Prompt review assistant
-│   └── prompt_improvement_agent.py  # Chatbot for prompt tuning
-├── prompts/
-│   └── config.json       # System prompts (main_agent, hue_specialist)
-├── tests/
-│   └── test_lights.py    # Manual test scenarios
-├── test_e2e.py           # End-to-end API tests
-├── docs/                 # Architecture, API reference, guides
-└── logs/                 # Server and tunnel logs
-```
+3. **Specialist Pattern**: Domain expertise in specialist agents, main agent focuses on coordination.
 
 ## Critical Technical Details
 
-### Color Temperature Conversion
-Philips Hue uses **mireds** (micro reciprocal degrees), not Kelvin:
-```python
-mireds = 1000000 / kelvin
-# 2700K (warm) = 370 mireds
-# 5000K (cool) = 200 mireds
-# Valid range: 153-500 mireds (~2000K-6500K)
-```
-
-### Home Assistant API Authentication
-All requests require:
-```python
-headers = {"Authorization": f"Bearer {HA_TOKEN}"}
-```
-
-### Service Calls
-
-**Basic lighting**:
-```python
-POST /api/services/light/turn_on
-{
-  "entity_id": "light.living_room",
-  "color_temp": 370,
-  "brightness_pct": 50
-}
-```
-
-**Dynamic Hue scenes** (preferred):
-```python
-POST /api/services/hue/activate_scene
-{
-  "entity_id": "scene.living_room_arctic_aurora",
-  "dynamic": true,
-  "speed": 25,  # 0=slow, 100=fast
-  "brightness": 60
-}
-```
-
 ### Agent Loop Pattern
 ```python
-max_iterations = 5
-for iteration in range(max_iterations):
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        tools=tools,
-        messages=messages
-    )
+for iteration in range(5):  # max_iterations
+    response = client.messages.create(model="claude-sonnet-4-20250514", tools=tools, messages=messages)
     if response.stop_reason == "end_turn":
         return final_response
-    elif response.stop_reason == "tool_use":
-        # Execute tools, add results to messages, continue
+    # Execute tools, add results, continue
 ```
-
-## Configuration
-
-### Room Entity Mapping
-Edit `config.py` to map room names to Home Assistant entity IDs:
-```python
-ROOM_ENTITY_MAP = {
-    "living_room": "light.living_room",
-    "bedroom": "light.bedroom"
-}
-```
-
-### System Prompts
-Edit `prompts/config.json` to modify agent behavior:
-- `main_agent.system`: Main coordinator instructions
-- `hue_specialist.system`: Hue scene mapping knowledge
 
 ## Cost Tracking
 
-- Daily average target: ≤ $2/day
-- Alert threshold: $5/day
-- Token usage tracked via `utils.track_api_usage()`
-- Check usage: `utils.get_daily_usage()`
+- Daily target: ≤ $2/day, alert threshold: $5/day
+- Track via `utils.track_api_usage()`, check via `utils.get_daily_usage()`
 
-## Requirements & Planning Documents
+## Environment Variables
 
-Full project documentation in `plans/` directory:
-- **REQUIREMENTS.md** - 37 requirements across 8 phases
-- **priorities.md** - Strategic priorities and ROI analysis
-- **BUSINESS_VALUE_ANALYSIS.md** - Value analysis for each requirement
-- **PARALLEL_EXECUTION_ROADMAP.md** - Multi-agent execution plan
+```
+ANTHROPIC_API_KEY  # Claude API access
+HA_TOKEN           # Home Assistant long-lived access token
+HA_URL             # Home Assistant URL (default: http://localhost:8123)
+NATS_URL           # For agent chat (default: nats://localhost:4222)
+```
 
-**Current status:** Week 0 - Nothing implemented yet, starting Phase 1
-**Next steps:** Build foundation (REQ-001, 002, 003, 006, 015) - Weeks 1-6
+## Agent Coordination
 
-## Performance Metrics
+When working in this repository, you MUST register yourself with the agent chat system at the START of your session:
 
-- Response time: 1-2 seconds typical
-- Scene activation: 1 API call, runs indefinitely
-- API flickering: 11+ calls over 15 seconds (avoid when possible)
-- Token usage per command: 300-500 tokens typical
+1. **Set your handle** using `set_agent_handle` - choose a descriptive name like:
+   - `Agent-Backend-Auth` (if working on backend auth)
+   - `Agent-Frontend-UI` (if working on frontend)
+   - `Agent-Testing` (if running tests)
+   - Use format: `Agent-<Area>-<Task>` or just `Agent-<YourRole>`
 
-## Known Patterns
+2. **Announce yourself** in `#coordination`:
+   ```
+   post_message(channel="coordination", message="Starting work on <what you're doing>. Files: <key files>")
+   ```
 
-### Abstract Effect Request
-User says "make me feel like I'm under the sea":
-1. Main agent recognizes abstract description
-2. Calls `apply_abstract_effect(description="under the sea", room="living_room")`
-3. Tool consults HueSpecialist agent
-4. Specialist recommends: `{"scene": "Arctic aurora", "dynamic": true, "speed": 25, "reasoning": "Cool blues simulate underwater"}`
-5. Tool activates scene via `hue.activate_scene` service
-6. Effect loops indefinitely on Hue bridge hardware
+3. **Check for conflicts** - read recent `#coordination` messages to see what other agents are working on:
+   ```
+   read_messages(channel="coordination", limit=20)
+   ```
 
-### Simple Ambiance Request
-User says "turn living room to fire":
-1. Main agent interprets mood
-2. Calls `set_room_ambiance(room="living_room", color_temp_kelvin=2200, brightness_pct=50)`
-3. Tool converts Kelvin → mireds, makes single HA API call
-4. Lights change instantly
+4. **Report completion** when done:
+   ```
+   post_message(channel="coordination", message="Completed <task>. Ready for integration.")
+   ```
 
-## Adding New Devices
+5. **Report errors** to `#errors` channel if you encounter blocking issues.
 
-1. Integrate device in Home Assistant
-2. Add entity ID to `config.py` ROOM_ENTITY_MAP (for lights) or create new tool
-3. Create tool function in `tools/` if new device type
-4. Add tool to agent's available tools in `agent.py`
-5. Update system prompt if specialized knowledge needed
+This enables parallel agent coordination and prevents merge conflicts.
 
 ## Git Workflow
 
-**IMPORTANT: Auto-commit after every prompt**
-After completing work on any user prompt, ALWAYS commit changes with a descriptive message:
+**Auto-commit after every prompt:**
 ```bash
-git add -A
-git commit -m "Brief description of what was done
+git add -A && git commit -m "Brief description
 
 🤖 Generated with Claude Code"
 ```
 
-**Commit message guidelines:**
-- First line: Brief summary (50 chars or less)
-- Blank line
-- Detailed explanation if needed
-- Always end with "🤖 Generated with Claude Code"
+First line ≤50 chars. Always end with the Claude Code attribution.
 
-**Fresh Start (2025-12-09):**
-- Previous implementation completely deleted
-- All planning documents created (REQUIREMENTS.md, priorities.md, etc.)
-- Clean slate for systematic rebuild
-- Starting from Phase 1 with no code
+## Planning Documents
 
-**Recent commits:**
-- 9c02a27: "Fresh start: Complete planning phase" - planning documents created
-- e29e890: "Final commit before fresh start" - deleted all previous code
-
-## Environment Variables
-
-Required in `.env`:
-- `ANTHROPIC_API_KEY`: Claude API access
-- `HA_TOKEN`: Home Assistant long-lived access token
-- `HA_URL`: Home Assistant URL (default: http://localhost:8123)
-
-## Future Migration Paths
-
-1. **Local LLM**: Replace Claude API with Ollama + Qwen
-2. **Local Voice**: Replace Alexa with HA Wyoming protocol + Whisper
-3. **Multi-user**: Guest mode with permission levels (Phase 2)
-4. **Pattern Learning**: Suggest automations based on usage (Phase 6)
+Full requirements in `plans/`:
+- **REQUIREMENTS.md** - multiple requirements across multiple phases
+- **priorities.md** - Strategic priorities and ROI analysis
+- **BUSINESS_VALUE_ANALYSIS.md** - Value analysis per requirement
+- **PARALLEL_EXECUTION_ROADMAP.md** - Multi-agent execution plan

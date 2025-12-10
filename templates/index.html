@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Home Assistant - Control your home with natural language commands">
+    <title>Smart Home Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container" role="application" aria-label="Smart Home Assistant Interface">
+
+        <!-- Header with system status -->
+        <header role="banner">
+            <h1>Smart Home</h1>
+            <div
+                id="status-indicator"
+                class="status-badge status-unknown"
+                role="status"
+                aria-live="polite"
+                aria-label="System status"
+            >
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <main role="main">
+
+            <!-- Command Input Section -->
+            <section
+                class="command-section"
+                aria-label="Command input"
+                data-section="command-input"
+            >
+                <form id="command-form" role="search" aria-label="Submit command to smart home">
+                    <div class="input-group">
+                        <label for="command-input" class="visually-hidden">Enter command</label>
+                        <input
+                            type="text"
+                            id="command-input"
+                            name="command"
+                            placeholder="Enter a command... (e.g., 'turn on living room lights')"
+                            autocomplete="off"
+                            autofocus
+                            aria-describedby="command-hint"
+                        >
+                        <button
+                            type="submit"
+                            id="submit-btn"
+                            aria-label="Send command"
+                            title="Send command"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="command-hint" class="visually-hidden">
+                        Type a natural language command to control your smart home devices
+                    </span>
+                </form>
+                <button
+                    id="voice-btn"
+                    class="voice-button"
+                    type="button"
+                    title="Voice input (browser speech recognition)"
+                    aria-label="Start voice input"
+                    aria-pressed="false"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
+            </section>
+
+            <!-- Response Display - where assistant responses appear -->
+            <section
+                class="response-section"
+                aria-label="Assistant responses"
+                data-section="responses"
+            >
+                <h2 class="visually-hidden">Assistant Responses</h2>
+                <div
+                    id="response-area"
+                    role="log"
+                    aria-live="polite"
+                    aria-atomic="false"
+                    aria-relevant="additions"
+                >
+                    <p class="placeholder-text" data-placeholder="true">Responses will appear here...</p>
+                </div>
+            </section>
+
+            <!-- Command History - clickable to reuse commands -->
+            <section
+                class="history-section"
+                aria-label="Command history"
+                data-section="history"
+            >
+                <h2 id="history-heading">Recent Commands</h2>
+                <ul
+                    id="history-list"
+                    role="list"
+                    aria-labelledby="history-heading"
+                    aria-description="Click any command to load it into the input field"
+                >
+                    <li class="placeholder-text" data-placeholder="true">No commands yet</li>
+                </ul>
+            </section>
+
+            <!-- Device Status Dashboard -->
+            <section
+                class="devices-section"
+                aria-label="Device status"
+                data-section="devices"
+            >
+                <h2 id="devices-heading">Devices</h2>
+                <div
+                    id="devices-grid"
+                    class="devices-grid"
+                    role="list"
+                    aria-labelledby="devices-heading"
+                >
+                    <p class="placeholder-text" data-placeholder="true">No devices connected</p>
+                </div>
+            </section>
+
+        </main>
+
+        <footer role="contentinfo">
+            <p>Smart Home Assistant - Local - Private - LLM-Powered</p>
+        </footer>
+
+    </div>
+
+    <!-- API Documentation for LLM agents (hidden from visual display) -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Smart Home Assistant",
+        "description": "Natural language interface for smart home control",
+        "applicationCategory": "Home Automation",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "potentialAction": {
+            "@type": "ControlAction",
+            "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "/api/command",
+                "httpMethod": "POST",
+                "contentType": "application/json"
+            },
+            "actionStatus": "PotentialActionStatus"
+        }
+    }
+    </script>
+
+    <!--
+    API Reference for LLM Agents:
+
+    POST /api/command
+    Request: {"command": "natural language command string"}
+    Response: {"success": true/false, "response": "text response", "command": "echoed command"}
+
+    GET /api/status
+    Response: {"system": "operational|warning|error", "agent": "status", "home_assistant": "status", "devices": []}
+
+    GET /api/history
+    Response: {"history": ["command1", "command2", ...]}
+
+    Example commands:
+    - "turn on living room lights"
+    - "set bedroom lights to 50%"
+    - "make the kitchen cozy"
+    - "what's the status of the living room?"
+    -->
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

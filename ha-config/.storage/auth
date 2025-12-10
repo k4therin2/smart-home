@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "auth",
+  "data": {
+    "users": [
+      {
+        "id": "4ccab22d2c8e40c99917a3c6ae291c12",
+        "group_ids": [
+          "system-read-only"
+        ],
+        "is_owner": false,
+        "is_active": true,
+        "name": "Home Assistant Content",
+        "system_generated": true,
+        "local_only": false
+      },
+      {
+        "id": "b22d09d37c094bb08d9c41c2aa135f2e",
+        "group_ids": [
+          "system-admin"
+        ],
+        "is_owner": true,
+        "is_active": true,
+        "name": "Katherine Colby",
+        "system_generated": false,
+        "local_only": false
+      }
+    ],
+    "groups": [
+      {
+        "id": "system-admin",
+        "name": "Administrators"
+      },
+      {
+        "id": "system-users",
+        "name": "Users"
+      },
+      {
+        "id": "system-read-only",
+        "name": "Read Only"
+      }
+    ],
+    "credentials": [
+      {
+        "id": "93a9ff63be6a4a2cb7949b0c6ce65b9a",
+        "user_id": "b22d09d37c094bb08d9c41c2aa135f2e",
+        "auth_provider_type": "homeassistant",
+        "auth_provider_id": null,
+        "data": {
+          "username": "k4therin2"
+        }
+      }
+    ],
+    "refresh_tokens": [
+      {
+        "id": "081071177cce4b6ab48e6cda7e46d530",
+        "user_id": "4ccab22d2c8e40c99917a3c6ae291c12",
+        "client_id": null,
+        "client_name": null,
+        "client_icon": null,
+        "token_type": "system",
+        "created_at": "2025-12-09T22:47:07.160053+00:00",
+        "access_token_expiration": 1800.0,
+        "token": "8414f4471fb94b9ee0fdf2c79d6191eec7338ba9526475ddebf60ac87b9a2a630ae94486b3fe0e384c3262c42c009027914236317c6e802ad12bc398e17dadcc",
+        "jwt_key": "1e17d72e0fb1b74f2455eb44be897b29c950bccfba90ae0b1e098c0e20916e6ca93dff881ce7e3b1f64838f8f722996a2e2f6b95a29273d4c550e0f53e494852",
+        "last_used_at": null,
+        "last_used_ip": null,
+        "expire_at": null,
+        "credential_id": null,
+        "version": "2025.11.3"
+      },
+      {
+        "id": "f29bf374e68b43f6a7a3856045e673e2",
+        "user_id": "b22d09d37c094bb08d9c41c2aa135f2e",
+        "client_id": "http://localhost:8123/",
+        "client_name": null,
+        "client_icon": null,
+        "token_type": "normal",
+        "created_at": "2025-12-09T22:48:42.248811+00:00",
+        "access_token_expiration": 1800.0,
+        "token": "4a71afeae20e531b8df1005abccdcabfd82b83d03e714caf9cd05f58245b0c317ca687bca18841b050d9facb59049210f49a064597780e5125ca7043f6c0e5c3",
+        "jwt_key": "2e81a0d38153fe63a23ad832089a42180fc80902c4f5dea4411e4c424bbe0f7f6713e2325dac324f53e35e0f67f7b53d404826498e63e6690b713795fbc44567",
+        "last_used_at": "2025-12-09T22:48:42.248854+00:00",
+        "last_used_ip": "157.249.81.141",
+        "expire_at": 1773096522.248854,
+        "credential_id": "93a9ff63be6a4a2cb7949b0c6ce65b9a",
+        "version": "2025.11.3"
+      },
+      {
+        "id": "739c8c07b7ea49ea966537d5224c60c4",
+        "user_id": "b22d09d37c094bb08d9c41c2aa135f2e",
+        "client_id": null,
+        "client_name": "smarthome-claude-setup-dec9",
+        "client_icon": null,
+        "token_type": "long_lived_access_token",
+        "created_at": "2025-12-09T22:50:04.197235+00:00",
+        "access_token_expiration": 315360000.0,
+        "token": "17b570ffd0b3c880a28f374c7d74b4e44b79664db315653abfe1ff6d5f09a58d4556284d161296367c852b93d4368ad9d4dfb90fdba9696044050f87488fac94",
+        "jwt_key": "b21e3a9fc3893e8ee37c0ce20c18c720d0ce9dac626e77c2ce95775c38cf9107c3ea68c5b1609d80c5a2380670ee8e1062d6a4167c72fa7c14bbc3471900f194",
+        "last_used_at": "2025-12-09T22:50:04.198043+00:00",
+        "last_used_ip": null,
+        "expire_at": null,
+        "credential_id": null,
+        "version": "2025.11.3"
+      }
+    ]
+  }
+}

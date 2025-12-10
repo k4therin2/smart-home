@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "minor_version": 1,
+  "key": "person",
+  "data": {
+    "items": [
+      {
+        "id": "katherine_colby",
+        "name": "Katherine Colby",
+        "user_id": "b22d09d37c094bb08d9c41c2aa135f2e",
+        "device_trackers": []
+      }
+    ]
+  }
+}
