@@ -224,7 +224,7 @@
 
 ### REQ-009: Philips Hue Light Control
 
-**Status**: COMPLETED
+**Status**: CODE_COMPLETE - Physical hardware validation in progress (Phase 2 Stream E)
 **Priority**: HIGH
 **Phase**: 2
 **Last Updated**: 2025-12-09
@@ -232,13 +232,17 @@
 **The system MUST control Philips Hue lights with support for abstract vibe-based requests using latest lighting design research and best practices.**
 
 **Acceptance Criteria:**
-- [x] Basic on/off control for individual lights and groups
-- [x] Brightness and color control
-- [x] Specialist agent researches latest online guidance for lighting design/color theory
-- [x] LLM translates abstract requests ("cozy evening vibes") to specific light settings informed by research
-- [x] Room-based grouping maintained in system (not just Hue app)
-- [x] Changes sync to Philips Hue app structure
-- [x] Example vibes tested: "morning energy", "focus mode", "wind down", "romantic" (10 vibe presets + 22 scene keywords)
+- [x] Basic on/off control for individual lights and groups (code complete)
+- [x] Brightness and color control (code complete)
+- [x] Specialist agent researches latest online guidance for lighting design/color theory (implemented)
+- [x] LLM translates abstract requests ("cozy evening vibes") to specific light settings informed by research (implemented)
+- [x] Room-based grouping maintained in system (not just Hue app) (configured in demo)
+- [x] Physical Philips Hue hardware installed and configured in Home Assistant (COMPLETE)
+- [ ] Room mappings configured in Home Assistant to match config (USER - Phase 2 Stream E)
+- [ ] Example vibes tested with real hardware: "morning energy", "focus mode", "wind down", "romantic" (10 vibe presets + 22 scene keywords implemented, needs real testing)
+- [ ] Changes sync to Philips Hue app structure (pending hardware validation)
+
+**Note:** Integration code is complete with demo configuration. Physical Philips Hue bridge and lights are installed. Remaining work is hardware validation (Phase 2 Stream E - USER workstream). See PARALLEL_EXECUTION_ROADMAP.md.
 
 **Dependencies:** REQ-002, REQ-003, REQ-034
 
@@ -270,12 +274,12 @@
 
 ### REQ-011: Smart Thermostat Control
 
-**Status**: NOT_STARTED
-**Priority**: MEDIUM
-**Phase**: 2
+**Status**: DEFERRED
+**Priority**: LOW
+**Phase**: 7 (moved from Phase 2)
 **Last Updated**: 2025-12-09
 
-**The system MUST control a smart thermostat (replacing Google Nest 2nd gen with open-source alternative).**
+**The system SHOULD control a smart thermostat (replacing Google Nest 2nd gen with open-source alternative).**
 
 **Acceptance Criteria:**
 - [ ] Open-source compatible thermostat selected and installed
@@ -288,16 +292,18 @@
 
 **Complexity:** M
 
+**Deferral Reason:** User requested to defer "way later" to simplify Phase 2 focus
+
 ---
 
 ### REQ-012: Smart Plug Control
 
-**Status**: NOT_STARTED
+**Status**: DEFERRED
 **Priority**: LOW
-**Phase**: 2
+**Phase**: 7 (moved from Phase 2)
 **Last Updated**: 2025-12-09
 
-**The system MUST control smart plugs for various devices (lamps, toaster oven, heater, speaker system).**
+**The system SHOULD control smart plugs for various devices (lamps, toaster oven, heater, speaker system).**
 
 **Acceptance Criteria:**
 - [ ] On/off control for individual plugs
@@ -309,6 +315,8 @@
 **Dependencies:** REQ-002
 
 **Complexity:** S
+
+**Deferral Reason:** User requested to defer to simplify Phase 2 focus
 
 ---
 
@@ -919,12 +927,11 @@
 - REQ-003: LLM Integration
 - REQ-006: Data Storage
 
-### Phase 2: Core Device Control (After Phase 1)
-- REQ-009: Philips Hue Control (depends on REQ-002, REQ-003)
-- REQ-010: Vacuum Control (depends on REQ-002)
-- REQ-011: Thermostat Control (depends on REQ-002)
-- REQ-012: Smart Plug Control (depends on REQ-002)
-- REQ-013: Smart Blinds Control (depends on REQ-002)
+### Phase 2: Device Integrations (After Phase 1) - 3 Parallel Streams
+- REQ-009: Philips Hue Hardware Validation (depends on REQ-002, REQ-003) - Stream C (USER)
+- REQ-010: Vacuum Control (depends on REQ-002) - Stream A (Agent)
+- REQ-013: Smart Blinds Control (depends on REQ-002) - Stream B (Agent)
+- Note: REQ-011 (Thermostat) and REQ-012 (Smart Plugs) moved to Phase 7
 
 ### Phase 3: User Interfaces (Parallel with Phase 2)
 - REQ-015: Web UI (depends on REQ-001)
@@ -955,7 +962,9 @@
 - REQ-034: Continuous Improvement (depends on REQ-003, REQ-021)
 - REQ-031: Proactive Assistance (depends on REQ-028, REQ-003, REQ-020)
 
-### Phase 7: Advanced Features & Security
+### Phase 7: Deferred Device Integrations & Advanced Features
+- REQ-011: Smart Thermostat Control (moved from Phase 2)
+- REQ-012: Smart Plug Control (moved from Phase 2)
 - REQ-004: Local LLM Support (depends on REQ-003)
 - REQ-007: Secure Remote Access (depends on REQ-001, REQ-015)
 - REQ-008: Multi-User (depends on REQ-007, REQ-015)

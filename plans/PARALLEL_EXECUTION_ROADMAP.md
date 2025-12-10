@@ -12,6 +12,13 @@ This roadmap organizes the 37 requirements into **parallel work streams** that c
 
 **Key Principle:** Maximize parallelization while respecting hard dependencies. No timeframes - focus on what can run in parallel and what blocks what.
 
+**CRITICAL INSIGHT FOR PHASE 2:**
+- **3 parallel workstreams**: 2 agent streams (vacuum, blinds) + 1 user stream (Hue hardware validation)
+- **THESE RUN IN PARALLEL** - User validates Hue hardware while agents code other device integrations
+- **NO BLOCKING** - Agents don't wait for user, user doesn't wait for agents
+- **Hue integration code is complete** - user stream is hardware validation only
+- **Smart plugs and thermostat deferred** - moved to Phase 7 to simplify current work
+
 ---
 
 ## Current State
@@ -26,52 +33,44 @@ See `plans/completed/` for archived completed work:
 - Claude Sonnet 4 agent with 5-iteration agentic loop
 - Cost tracking and daily usage monitoring
 - Home Assistant REST API client (Docker container running)
-- Light control via natural language
+- Light control via natural language (code complete - see Phase 2 Stream E for hardware validation)
 - CLI mode (`python agent.py "command"`)
 - Web UI at localhost:5050 with text and voice input
 - Device status dashboard with 30-second auto-refresh
-- 10 vibe presets for Philips Hue
+- 10 vibe presets for Philips Hue (code complete, physical hardware setup pending)
 
-### 🎯 Next Steps: Choose Path
+### 🎯 Next Steps: Parallel Work Available
 
-**Two paths forward:**
+**READY TO START NOW: Phase 2 Device Integrations**
 
-1. **Phase 3: Voice Control (RECOMMENDED - Critical Path)**
-   - REQ-016: Voice Control via HA Voice Puck
+All 3 streams can run simultaneously - 2 agent streams + 1 user stream:
+
+#### Phase 2 Workstreams (ALL PARALLEL)
+   - **Stream A (Agent):** REQ-010: Vacuum Control (Dreamehome L10s) - M complexity
+   - **Stream B (Agent):** REQ-013: Smart Blinds Control (Hapadif) - M complexity
+   - **Stream C (User):** Philips Hue Hardware Validation - S complexity (USER effort)
+   - Status: All ready to start - completely parallel work
+   - **Deferred:** REQ-012 (Smart Plugs) and REQ-011 (Thermostat) moved to Phase 7
+
+**FUTURE: Phase 3 Voice Control (After Phase 2)**
+   - REQ-016: Voice Control via HA Voice Puck - CRITICAL PATH
    - MAKE OR BREAK feature
    - Required for: Daily usage adoption, replacement of commercial assistants
    - Action: Purchase 2-3 HA voice pucks, implement wake word integration
    - Effort: M complexity, 2 agents recommended
-
-2. **Phase 2A: Additional Device Integrations (Can run parallel)**
-   - REQ-010: Vacuum Control (Dreamehome L10s)
-   - REQ-011: Smart Thermostat Control
-   - REQ-012: Smart Plug Control
-   - REQ-013: Smart Blinds Control (Hapadif)
-   - Effort: 4 parallel streams, S-M complexity each
-   - Can start immediately with multiple agents
+   - Status: Wait until Phase 2 complete (or start early if hardware arrives)
 
 ---
 
-## Phase 2A: Additional Device Integrations
+## Phase 2: Device Integrations
 
 **Critical Path:** None - expand device coverage
-**Parallelization Level:** HIGH (4 agents can work simultaneously)
+**Parallelization Level:** MEDIUM (2 agents + 1 user can work simultaneously)
 **Dependencies:** Phase 1 complete (agent + HA integration working)
-**Note:** Philips Hue is already done in Phase 1, now adding other devices
+**Note:** Philips Hue integration code is done (Phase 1), Stream C is physical hardware validation
+**Simplified:** Smart Plugs (REQ-012) and Thermostat (REQ-011) moved to Phase 7
 
-#### 🔵 Stream 1: Smart Plugs (Agent A)
-**REQ-012: Smart Plug Control**
-- **Complexity:** S
-- **Dependencies:** Phase 1 Streams 1 & 2 complete
-- **Tasks:**
-  - Integrate smart plug API with Home Assistant
-  - Implement basic on/off control
-  - Add scheduling support
-  - Add safety checks for high-power devices
-- **Deliverable:** Voice/UI control of plugs for lamps, heater, toaster oven, speaker
-
-#### 🟢 Stream 2: Vacuum (Agent B)
+#### 🟢 Stream A: Vacuum (Agent A)
 **REQ-010: Vacuum Control (Dreamehome L10s)**
 - **Complexity:** M
 - **Dependencies:** Phase 1 Streams 1 & 2 complete
@@ -82,18 +81,7 @@ See `plans/completed/` for archived completed work:
   - Test natural language commands
 - **Deliverable:** Voice-controlled vacuum with status visibility
 
-#### 🟡 Stream 3: Thermostat (Agent C)
-**REQ-011: Smart Thermostat Control**
-- **Complexity:** M
-- **Dependencies:** Phase 1 Streams 1 & 2 complete
-- **Tasks:**
-  - Research open-source thermostat alternatives to Google Nest
-  - Select and order hardware if needed
-  - Integrate with Home Assistant
-  - Implement temperature control and scheduling
-- **Deliverable:** Voice-controlled thermostat (privacy-compliant)
-
-#### 🟣 Stream 4: Smart Blinds (Agent D)
+#### 🟣 Stream B: Smart Blinds (Agent B)
 **REQ-013: Smart Blinds Control (Hapadif)**
 - **Complexity:** M
 - **Dependencies:** Phase 1 Streams 1 & 2 complete
@@ -104,7 +92,33 @@ See `plans/completed/` for archived completed work:
   - Add scheduling automation
 - **Deliverable:** Voice-controlled blinds with light coordination
 
-**⚡ PARALLELIZATION:** All 4 streams are independent - can run fully parallel
+#### 🟠 Stream C: Philips Hue Hardware Validation (USER)
+**Status:** IN_PROGRESS - Integration code complete, hardware validation pending
+**Priority:** MEDIUM
+**Complexity:** S (USER effort - shopping, installation, configuration)
+**Owner:** USER (Katherine)
+- **Dependencies:** Phase 1 Streams 1 & 2 complete
+- **Note:** Integration code already complete - this is physical hardware validation only
+- **Tasks:**
+  - [x] Purchase Philips Hue bridge and bulbs/light strips
+  - [x] Physically install Hue lights in rooms
+  - [x] Set up Philips Hue bridge on local network
+  - [x] Add Philips Hue integration to Home Assistant
+  - [ ] Configure room mappings in Home Assistant to match `src/config.py` room names
+  - [ ] Test existing demo code with actual hardware (verify scenes work)
+  - [ ] Verify vibe presets apply correctly with real lights
+  - [ ] Update room mappings in `src/config.py` if physical layout differs
+  - [ ] Test dynamic scenes (fire, ocean, aurora) and tune speed/brightness if needed
+- **Deliverable:** Physical Philips Hue lights working with existing integration code
+
+**Current Status:**
+- Integration code COMPLETE (tools/lights.py, tools/hue_specialist.py)
+- Demo scenes and vibe presets configured (22 scene keywords, 10 vibe presets)
+- Home Assistant client ready
+- Physical hardware installed, Hue integration added to Home Assistant
+- **Remaining:** Room mapping configuration and real hardware testing
+
+**⚡ PARALLELIZATION:** All 3 streams (A, B, C) are independent - can run fully parallel
 
 ---
 
@@ -521,11 +535,37 @@ See `plans/completed/` for archived completed work:
 
 ---
 
-### Phase 7: Advanced Features (Post-launch)
+### Phase 7: Deferred Device Integrations & Advanced Features (Post-launch)
 
 **Parallelization Level:** HIGH (community-driven, priority by feedback)
 
 These features are deferred until community validation. Execute based on user demand:
+
+#### Deferred Device Integrations (Moved from Phase 2)
+
+**REQ-012: Smart Plug Control**
+- **Complexity:** S
+- **Dependencies:** Phase 1 Streams 1 & 2 complete
+- **Deferred Reason:** Simplify Phase 2 focus, can be added later as needed
+- **Tasks:**
+  - Integrate smart plug API with Home Assistant
+  - Implement basic on/off control
+  - Add scheduling support
+  - Add safety checks for high-power devices
+- **Deliverable:** Voice/UI control of plugs for lamps, heater, toaster oven, speaker
+
+**REQ-011: Smart Thermostat Control**
+- **Complexity:** M
+- **Dependencies:** Phase 1 Streams 1 & 2 complete
+- **Deferred Reason:** User requested deferral, can be done "way later"
+- **Tasks:**
+  - Research open-source thermostat alternatives to Google Nest
+  - Select and order hardware if needed
+  - Integrate with Home Assistant
+  - Implement temperature control and scheduling
+- **Deliverable:** Voice-controlled thermostat (privacy-compliant)
+
+#### Advanced Features
 
 #### High-Complexity, Defer Until Validated
 **REQ-020: Pattern Learning & Routine Discovery**
@@ -598,7 +638,7 @@ These features are deferred until community validation. Execute based on user de
 ### Peak Parallelization Periods
 
 **Maximum 4 agents:**
-- Phase 2A: 4 agents on device integrations
+- Phase 2: 4 agents on device integrations + 1 user on hardware validation
 - Phase 4A: 3-4 agents on features
 - Phase 5: 3-4 agents on intelligence features
 
@@ -617,8 +657,9 @@ These features are deferred until community validation. Execute based on user de
 CRITICAL PATH (Cannot ship without):
  ✅ Foundation (REQ-001, 002, 003, 006) - COMPLETE
 
- Device Integrations (REQ-010, 011, 012, 013)
-  ↓ (4 parallel streams)
+ Device Integrations (REQ-010, 013) + Hue Hardware Validation (REQ-009)
+  ↓ (3 parallel streams: 2 agent + 1 user)
+  ↓ (REQ-011, REQ-012 deferred to Phase 7)
 
  🔴 VOICE CONTROL (REQ-016) ← MAKE OR BREAK
   ↓ (Must complete)
@@ -668,10 +709,12 @@ Post-launch : Community-Driven Features (REQ-004, 007, 008, 014, 020, 026, 031)
 
 ## Success Metrics by Phase
 
-### Phase 2A
-- ✅ All 4 device types integrated
-- ✅ Voice/UI control for all devices
-- ✅ Natural language working for all
+### Phase 2
+- ✅ All 3 device workstreams complete (2 integrations + 1 hardware validation)
+- ✅ Voice/UI control for vacuum and blinds
+- ✅ Natural language working for all integrated devices
+- ✅ Physical Hue hardware validated with real-world testing
+- Note: Smart Plugs (REQ-012) and Thermostat (REQ-011) deferred to Phase 7
 
 ### Phase 3 - CRITICAL
 - ✅ Voice wake word response ≤1 second
@@ -705,8 +748,14 @@ Post-launch : Community-Driven Features (REQ-004, 007, 008, 014, 020, 026, 031)
 
 ### What CAN Run in Parallel
 
-✅ **All device integrations** (Phase 2A)
-- Plugs, vacuum, thermostat, blinds - independent
+✅ **USER hardware validation + AGENT coding** (Phase 2 - All 3 streams)
+- User Stream C: Physical Hue hardware validation (room mapping, testing)
+- Agent Stream A: Vacuum integration
+- Agent Stream B: Smart blinds integration
+- Completely independent - no blocking between user and agent work
+
+✅ **All device integrations** (Phase 2)
+- Streams A, B, C - all independent work streams
 
 ✅ **UI + Voice** (Phase 3, 
 - Mobile UI work doesn't block voice development
@@ -744,7 +793,7 @@ Post-launch : Community-Driven Features (REQ-004, 007, 008, 014, 020, 026, 031)
 ---
 
 **Last reviewed:** 2025-12-09
-**Next review:** After Phase 2A or Phase 3 completion
+**Next review:** After Phase 2 or Phase 3 completion
 
 ---
 

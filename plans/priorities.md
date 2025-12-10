@@ -54,13 +54,15 @@ This project has strong fundamentals but requires immediate course correction on
 
 ## Revised Implementation Roadmap
 
-### Phase 2A: Complete Core Devices (Weeks 1-4) - CURRENT
-- REQ-012: Smart Plug Control (1 week)
-- REQ-010: Vacuum Control (1 week)
-- REQ-011: Thermostat Control (1 week)
-- REQ-013: Smart Blinds Control (1 week)
+### Phase 2: Complete Core Devices (Weeks 1-4) - CURRENT
+**3 Parallel Workstreams:**
+- REQ-010: Vacuum Control (Stream A - Agent, 1 week)
+- REQ-013: Smart Blinds Control (Stream B - Agent, 1 week)
+- REQ-009: Philips Hue Hardware Validation (Stream C - USER, ongoing)
 
 **Goal:** Finish what was started, achieve basic device control parity
+**Note:** All streams can run in parallel - 2 agent streams + 1 user stream
+**Deferred:** REQ-012 (Smart Plugs) and REQ-011 (Thermostat) moved to Phase 7
 
 ---
 
@@ -126,7 +128,9 @@ This project has strong fundamentals but requires immediate course correction on
 
 ---
 
-### Phase 7: Advanced Features (Weeks 37+) - POST-LAUNCH
+### Phase 7: Deferred Device Integrations & Advanced Features (Weeks 37+) - POST-LAUNCH
+- REQ-012: Smart Plug Control (1 week) ← MOVED FROM PHASE 2
+- REQ-011: Smart Thermostat Control (1 week) ← MOVED FROM PHASE 2
 - REQ-007: Secure Remote Access (4 weeks)
 - REQ-004: Local LLM Support (4 weeks)
 - REQ-020: Pattern Learning (8+ weeks) ← DEFERRED UNTIL VALIDATED
@@ -135,7 +139,7 @@ This project has strong fundamentals but requires immediate course correction on
 - REQ-014: Ring Camera Integration (4 weeks)
 - REQ-008: Multi-User Support (4 weeks)
 
-**Goal:** Evolve based on community feedback and validated user needs
+**Goal:** Add deferred device integrations when needed, evolve based on community feedback and validated user needs
 
 ---
 
@@ -206,8 +210,8 @@ This project has strong fundamentals but requires immediate course correction on
    - Budget: ~$200 one-time
    - Test wake word functionality immediately
 
-2. **Begin Phase 2A Device Integrations**
-   - Start with smart plugs (easiest, high utility)
+2. **Begin Phase 2 Device Integrations**
+   - Start with vacuum or blinds control
    - Allocate 12-15 hours this week
 
 3. **Plan Phase 3 Architecture**
@@ -222,7 +226,7 @@ This project has strong fundamentals but requires immediate course correction on
    - Document any limitations/gotchas
 
 2. **Continue Device Integrations**
-   - Complete vacuum or thermostat control
+   - Complete remaining device control (vacuum or blinds)
    - Ensure all devices respond to natural language
 
 3. **Finalize Phase 3 Plan**
