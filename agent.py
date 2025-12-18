@@ -37,6 +37,8 @@ from src.utils import (
 from src.ha_client import get_ha_client
 from tools.lights import LIGHT_TOOLS, execute_light_tool
 from tools.vacuum import VACUUM_TOOLS, execute_vacuum_tool
+from tools.blinds import BLINDS_TOOLS, execute_blinds_tool
+from tools.system import get_current_time, get_current_date, get_datetime_info
 
 logger = setup_logging("agent")
 
@@ -45,7 +47,30 @@ logger = setup_logging("agent")
 SYSTEM_TOOLS = [
     {
         "name": "get_current_time",
-        "description": "Get the current date and time. Use this when the user asks what time it is.",
+        "description": "Get the current time. Use this when the user asks what time it is.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "format_24h": {
+                    "type": "boolean",
+                    "description": "If true, return 24-hour format (e.g., 14:30). If false, return 12-hour format (e.g., 2:30 PM). Default is false.",
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "get_current_date",
+        "description": "Get the current date with day of week. Use this when the user asks what today's date is or what day of the week it is.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_datetime_info",
+        "description": "Get comprehensive datetime information including time, date, day of week, timestamp, and timezone. Use this for detailed datetime queries.",
         "input_schema": {
             "type": "object",
             "properties": {},
@@ -64,7 +89,7 @@ SYSTEM_TOOLS = [
 ]
 
 # Combine all tools - device tools come from tools/*.py modules
-TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS
+TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS + BLINDS_TOOLS
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> str:
@@ -82,8 +107,18 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
 
     # System tools
     if tool_name == "get_current_time":
-        now = datetime.now()
-        result = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
+        format_24h = tool_input.get("format_24h", False)
+        result = get_current_time(format_24h=format_24h)
+        log_tool_call(tool_name, tool_input, result)
+        return result
+
+    elif tool_name == "get_current_date":
+        result = get_current_date()
+        log_tool_call(tool_name, tool_input, result)
+        return result
+
+    elif tool_name == "get_datetime_info":
+        result = json.dumps(get_datetime_info())
         log_tool_call(tool_name, tool_input, result)
         return result
 
@@ -110,6 +145,13 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     vacuum_tool_names = [tool["name"] for tool in VACUUM_TOOLS]
     if tool_name in vacuum_tool_names:
         result = execute_vacuum_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Blinds tools - delegate to tools/blinds.py
+    blinds_tool_names = [tool["name"] for tool in BLINDS_TOOLS]
+    if tool_name in blinds_tool_names:
+        result = execute_blinds_tool(tool_name, tool_input)
         log_tool_call(tool_name, tool_input, result)
         return json.dumps(result) if isinstance(result, dict) else str(result)
 
