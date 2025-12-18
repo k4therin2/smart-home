@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Initial Setup - Smart Home Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .auth-container {
+            max-width: 450px;
+            margin: 60px auto;
+            padding: 2rem;
+        }
+        .auth-form {
+            background: var(--bg-secondary, #1a1a2e);
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .auth-form h1 {
+            margin-bottom: 0.5rem;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary, #888);
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color, #333);
+            border-radius: 4px;
+            background: var(--bg-primary, #0f0f1a);
+            color: var(--text-primary, #e0e0e0);
+            font-size: 1rem;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color, #6366f1);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        .form-group .hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #888);
+            margin-top: 0.25rem;
+        }
+        .auth-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--accent-color, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .auth-button:hover {
+            background: var(--accent-hover, #5457e5);
+        }
+        .error-message {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .password-suggestion {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .password-suggestion h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary, #888);
+        }
+        .password-display {
+            font-family: monospace;
+            font-size: 1rem;
+            background: var(--bg-primary, #0f0f1a);
+            padding: 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+            user-select: all;
+        }
+        .copy-btn {
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            background: transparent;
+            border: 1px solid var(--border-color, #333);
+            border-radius: 4px;
+            color: var(--text-primary, #e0e0e0);
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+            background: var(--bg-primary, #0f0f1a);
+        }
+        .security-note {
+            margin-top: 1.5rem;
+            padding: 0.75rem;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #fcd34d;
+        }
+        .auth-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary, #888);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-form">
+            <h1>Welcome to Smart Home</h1>
+            <p class="subtitle">Create your admin account to get started</p>
+
+            {% if error %}
+            <div class="error-message" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            {% if generated_password %}
+            <div class="password-suggestion">
+                <h3>Suggested secure password:</h3>
+                <div class="password-display" id="suggested-password">{{ generated_password }}</div>
+                <button type="button" class="copy-btn" onclick="copyPassword()">Copy to clipboard</button>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('auth.setup') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        autocomplete="username"
+                        autofocus
+                        minlength="3"
+                    >
+                    <p class="hint">At least 3 characters</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="new-password"
+                        minlength="8"
+                    >
+                    <p class="hint">At least 8 characters</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm Password</label>
+                    <input
+                        type="password"
+                        id="confirm_password"
+                        name="confirm_password"
+                        required
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <button type="submit" class="auth-button">Create Account</button>
+            </form>
+
+            <div class="security-note">
+                <strong>Important:</strong> Save your password in a password manager.
+                There is no password recovery - if you forget it, you'll need to reset the database.
+            </div>
+
+            <div class="auth-footer">
+                <p>Smart Home Assistant - Private & Secure</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyPassword() {
+            const password = document.getElementById('suggested-password').textContent;
+            navigator.clipboard.writeText(password).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = 'Copy to clipboard'; }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -39,6 +39,11 @@ HA_TOKEN = os.getenv("HA_TOKEN")
 DAILY_COST_TARGET = float(os.getenv("DAILY_COST_TARGET", "2.00"))
 DAILY_COST_ALERT = float(os.getenv("DAILY_COST_ALERT", "5.00"))
 
+# Vacuum Configuration
+# Entity ID for the Dreame L10s vacuum (set via env or use default)
+# The Dreame integration typically creates vacuum.dreame_<model> entities
+VACUUM_ENTITY_ID = os.getenv("VACUUM_ENTITY_ID", "vacuum.dreame_l10s")
+
 # Claude Sonnet 4 Pricing (per 1M tokens as of 2025)
 CLAUDE_INPUT_COST_PER_MILLION = 3.00   # $3 per 1M input tokens
 CLAUDE_OUTPUT_COST_PER_MILLION = 15.00  # $15 per 1M output tokens
@@ -137,6 +142,16 @@ def kelvin_to_mireds(kelvin: int) -> int:
 def mireds_to_kelvin(mireds: int) -> int:
     """Convert mireds to Kelvin."""
     return int(1000000 / mireds)
+
+
+def get_vacuum_entity() -> Optional[str]:
+    """
+    Get the vacuum entity ID.
+
+    Returns:
+        Vacuum entity ID string or None if not configured
+    """
+    return VACUUM_ENTITY_ID if VACUUM_ENTITY_ID else None
 
 
 def get_room_entity(room_name: str, device_type: str = "lights") -> Optional[str]:

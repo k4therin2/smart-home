@@ -36,6 +36,7 @@ from src.utils import (
 )
 from src.ha_client import get_ha_client
 from tools.lights import LIGHT_TOOLS, execute_light_tool
+from tools.vacuum import VACUUM_TOOLS, execute_vacuum_tool
 
 logger = setup_logging("agent")
 
@@ -62,8 +63,8 @@ SYSTEM_TOOLS = [
     },
 ]
 
-# Combine all tools - light tools come from tools/lights.py
-TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS
+# Combine all tools - device tools come from tools/*.py modules
+TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> str:
@@ -102,6 +103,13 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     light_tool_names = [tool["name"] for tool in LIGHT_TOOLS]
     if tool_name in light_tool_names:
         result = execute_light_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Vacuum tools - delegate to tools/vacuum.py
+    vacuum_tool_names = [tool["name"] for tool in VACUUM_TOOLS]
+    if tool_name in vacuum_tool_names:
+        result = execute_vacuum_tool(tool_name, tool_input)
         log_tool_call(tool_name, tool_input, result)
         return json.dumps(result) if isinstance(result, dict) else str(result)
 
