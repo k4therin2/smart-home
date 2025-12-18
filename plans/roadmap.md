@@ -1,12 +1,40 @@
 # Roadmap
 
-**Recent Completions (2025-12-18):** Security quick wins, test suite foundation (4 test suites, 57 test cases), security monitoring Slack integration. See `plans/completed/2025-12-18-security-and-testing.md` for details.
+## How to Read This Roadmap
+
+### Terminology
+- **Phase**: Major milestone grouping (e.g., "Phase 2: Device Integrations + Security")
+- **Work Package**: Individual unit of work that can be assigned to one agent (atomic, single-PR scope)
+- **Parallel Group**: Work packages with no dependencies that can run simultaneously
+
+### Understanding Dependencies
+- **Can start immediately**: Status is ⚪ Not Started with no "Blocked by" line
+- **Must wait**: Has "Blocked by" line listing required work packages
+- **Parallel-safe**: Work packages in the same Parallel Group can run at the same time
+
+### Claiming Work
+1. Check `#coordination` channel for active work to avoid conflicts
+2. Choose a ⚪ Not Started work package with no blockers
+3. Post to `#coordination`: "Claiming [Work Package ID]: [Title]"
+4. Begin work immediately
+
+### Status Icons
+- ⚪ Not Started (available to claim if no blockers)
+- 🟡 In Progress (actively being worked)
+- 🟢 Complete (moved to archive)
+- 🔴 Blocked (waiting on dependencies)
+
+---
+
+## Recent Completions
+
+**2025-12-18:** Security quick wins, test suite foundation (4 test suites, 57 test cases), security monitoring Slack integration. See `plans/completed/2025-12-18-security-and-testing.md` for details.
 
 ---
 
 ## Alerting Standards
 
-All future phases must include appropriate Slack alerts for operational visibility. Use these channels:
+All work packages must include appropriate Slack alerts for operational visibility. Use these channels:
 
 **#colby-server-security** - Server-level security events:
 - SSH authentication failures
@@ -27,103 +55,144 @@ All future phases must include appropriate Slack alerts for operational visibili
 - Self-healing actions (success/failure)
 - Critical service restarts
 
-**Acceptance Criteria for Future Work:**
-All new features must include:
+**Acceptance Criteria for All Work:**
 - [ ] Appropriate alerts configured for the feature area
 - [ ] Alert messages include actionable context
 - [ ] Alert severity appropriate to the channel
 
 ---
 
-## Current Phase: Phase 2 Device Integrations + Security Hardening
+## Phase 2: Device Integrations + Security Hardening
 
-### Batch 1: Security Hardening (HIGH PRIORITY)
+### Parallel Group 1: Security Hardening (HIGH PRIORITY - Start Here)
 
-#### Phase 2.1: Application Security Baseline
+Both work packages can run in parallel.
+
+#### WP-2.1: Application Security Baseline
 - **Status:** ⚪ Not Started
 - **Priority:** CRITICAL (blocking for production use)
 - **Effort:** M
+- **Owner:** Available
+- **Can start:** Yes (no blockers)
 - **Tasks:**
   - [ ] Implement basic authentication for web UI (session-based)
   - [ ] Add CSRF protection for all POST endpoints
   - [ ] Implement Pydantic schema validation on API inputs
   - [ ] Add rate limiting on `/api/command` (10 req/min per IP)
   - [ ] Review all SQL queries for parameterization (prevent SQL injection)
-- **Done When:** Web UI requires authentication, input validation in place
-- **Plan:** See `devlog/security-audit/2025-12-18-security-backlog-analysis.md`
+  - [ ] Configure Slack alerts to #smarthome-health for auth failures
+- **Done When:**
+  - Web UI requires authentication with session management
+  - All POST endpoints have CSRF protection
+  - Input validation via Pydantic on all API endpoints
+  - Rate limiting active and logged
+  - SQL injection vector audit complete
+- **Reference:** `devlog/security-audit/2025-12-18-security-backlog-analysis.md`
 
-#### Phase 2.2: HTTPS/TLS Configuration
+#### WP-2.2: HTTPS/TLS Configuration
 - **Status:** ⚪ Not Started
 - **Priority:** HIGH
 - **Effort:** S
-- **Dependencies:** Can run parallel with Phase 2.1
+- **Owner:** Available
+- **Can start:** Yes (no blockers, parallel with WP-2.1)
 - **Tasks:**
   - [ ] Generate self-signed certificate for local network use
   - [ ] Configure Flask to use HTTPS
   - [ ] Add HTTP→HTTPS redirect
   - [ ] Configure HSTS header (max-age=31536000)
-  - [ ] Document certificate generation process
-- **Done When:** Web UI only accessible via HTTPS, valid cert installed
-
----
-
-### Batch 2: Device Integrations (After/Parallel with Security)
-
-#### Stream A: Vacuum Control - Dreamehome L10s (REQ-010)
-- **Status:** ⚪ Not Started
-- **Owner:** Available for any agent
-- **Effort:** M
-- **Tasks:**
-  - [ ] Integrate Dreamehome L10s with Home Assistant
-  - [ ] Implement start/stop/pause controls
-  - [ ] Add status monitoring
-  - [ ] Test natural language commands
-- **Done When:** Voice-controlled vacuum with status visibility
-
-#### Stream B: Smart Blinds Control - Hapadif (REQ-013)
-- **Status:** ⚪ Not Started
-- **Owner:** Available for any agent
-- **Effort:** M
-- **Tasks:**
-  - [ ] Integrate Hapadif blinds with Home Assistant
-  - [ ] Implement open/close/partial control
-  - [ ] Create light scene integration
-  - [ ] Add scheduling automation
-- **Done When:** Voice-controlled blinds with light coordination
-
-#### Stream C: Philips Hue Hardware Validation (USER)
-- **Status:** 🟡 In Progress
-- **Owner:** USER (Katherine)
-- **Effort:** S (USER effort - hardware setup, not agent coding)
-- **Note:** Integration code already complete - this is physical hardware validation
-- **Tasks:**
-  - [x] Purchase Philips Hue bridge (if not already owned)
-  - [x] Purchase Philips Hue bulbs/light strips for desired rooms
-  - [x] Physically install Hue lights in rooms (living room, bedroom, kitchen, etc.)
-  - [x] Set up Philips Hue bridge on local network
-  - [x] Add Philips Hue integration to Home Assistant
-  - [ ] Configure room mappings in Home Assistant to match `src/config.py` room names
-  - [ ] Test existing demo code with actual hardware (verify scenes work)
-  - [ ] Verify vibe presets apply correctly with real lights
-  - [ ] Update room mappings in `src/config.py` if physical layout differs
-  - [ ] Test dynamic scenes (fire, ocean, aurora) and tune speed/brightness if needed
+  - [ ] Document certificate generation process in README
+  - [ ] Update Slack webhook URLs to use HTTPS
 - **Done When:**
-  - Physical Philips Hue bridge and lights are installed
-  - Hue integration is active in Home Assistant
-  - All room names in config match Home Assistant entity IDs
-  - Existing vibe presets and scene keywords work with real hardware
-  - User can control lights via CLI: `python agent.py "turn living room to fire"`
-  - User can control lights via Web UI at localhost:5050
+  - Web UI only accessible via HTTPS
+  - Valid self-signed certificate installed
+  - HTTP requests automatically redirect to HTTPS
+  - HSTS header present in all responses
+  - Certificate generation documented
 
 ---
 
-### Batch 3: Test Coverage Completion (Can run parallel with Batch 2)
+### Parallel Group 2: Device Integrations
 
-#### Phase 2.3: Remaining Test Suites
+All three work packages can run in parallel with each other AND with Parallel Group 1 (Security).
+
+#### WP-2.3: Vacuum Control (Dreamehome L10s)
 - **Status:** ⚪ Not Started
 - **Priority:** MEDIUM
 - **Effort:** M
-- **Dependencies:** Test infrastructure complete (done)
+- **Owner:** Available
+- **Can start:** Yes (no blockers)
+- **Requirement:** REQ-010
+- **Tasks:**
+  - [ ] Integrate Dreamehome L10s with Home Assistant
+  - [ ] Implement start/stop/pause controls via HA API
+  - [ ] Add status monitoring (cleaning/docked/battery)
+  - [ ] Create tool definition for main agent
+  - [ ] Test natural language commands ("vacuum the living room")
+  - [ ] Configure Slack alerts to #smarthome-health for vacuum errors
+- **Done When:**
+  - Voice commands control vacuum (start/stop/pause)
+  - Status visible in web UI
+  - At least 3 test NL commands working
+  - Error handling for offline/low battery states
+
+#### WP-2.4: Smart Blinds Control (Hapadif)
+- **Status:** ⚪ Not Started
+- **Priority:** MEDIUM
+- **Effort:** M
+- **Owner:** Available
+- **Can start:** Yes (no blockers)
+- **Requirement:** REQ-013
+- **Tasks:**
+  - [ ] Integrate Hapadif blinds with Home Assistant
+  - [ ] Implement open/close/partial control (percentage-based)
+  - [ ] Create light scene integration (coordinate with Hue)
+  - [ ] Add scheduling automation (sunrise/sunset)
+  - [ ] Test natural language commands ("close bedroom blinds 50%")
+  - [ ] Configure Slack alerts to #smarthome-health for blind motor failures
+- **Done When:**
+  - Voice commands control blinds (open/close/position)
+  - Blinds coordinate with light scenes
+  - Sunrise/sunset automation working
+  - At least 3 test NL commands working
+
+#### WP-2.5: Philips Hue Hardware Validation (USER TASK)
+- **Status:** 🟡 In Progress
+- **Priority:** MEDIUM
+- **Effort:** S (hardware setup, not coding)
+- **Owner:** USER (Katherine)
+- **Can start:** Already started
+- **Note:** Integration code already complete - this is physical hardware validation
+- **Tasks:**
+  - [x] Purchase Philips Hue bridge
+  - [x] Purchase Philips Hue bulbs/light strips
+  - [x] Physically install lights in rooms
+  - [x] Set up Hue bridge on local network
+  - [x] Add Philips Hue integration to Home Assistant
+  - [ ] Configure room mappings in HA to match `src/config.py`
+  - [ ] Test existing demo code with actual hardware
+  - [ ] Verify vibe presets (cozy/energize/focus/sleep) work
+  - [ ] Test dynamic scenes (fire/ocean/aurora) and tune speed/brightness
+  - [ ] Update room mappings in `src/config.py` if layout differs
+- **Done When:**
+  - Physical Hue bridge and lights installed
+  - Hue integration active in Home Assistant
+  - Room names in config match HA entity IDs
+  - All vibe presets work with real hardware
+  - CLI command works: `python agent.py "turn living room to fire"`
+  - Web UI controls work at localhost:5050
+
+---
+
+### Parallel Group 3: Test Coverage Completion
+
+Can run in parallel with all work in Parallel Groups 1 and 2.
+
+#### WP-2.6: Remaining Test Suites
+- **Status:** ⚪ Not Started
+- **Priority:** MEDIUM
+- **Effort:** M
+- **Owner:** Available
+- **Can start:** Yes (test infrastructure complete)
 - **Tasks:**
   - [ ] Implement Agent Loop integration tests (11 test cases)
   - [ ] Implement Device Sync tests (12 test cases)
@@ -132,45 +201,105 @@ All new features must include:
   - [ ] Implement Effects tests (7 test cases)
   - [ ] Implement Utils tests (12 test cases)
   - [ ] Achieve 85%+ code coverage
-  - [ ] Add CI/CD test automation
-- **Done When:** All test suites passing, 85%+ coverage achieved
-- **Plan:** See `plans/test-plan.md`
+  - [ ] Add CI/CD test automation (GitHub Actions)
+- **Done When:**
+  - All 6 test suites implemented and passing
+  - Code coverage ≥85%
+  - CI/CD runs tests on every push
+  - Coverage report generated automatically
+- **Reference:** `plans/test-plan.md`
 
 ---
 
-## Backlog
+## Phase 3: Voice & Critical Foundation
 
-### Phase 3: Voice & Critical Foundation (After Phase 2)
-- [ ] Voice Control via HA Voice Puck (REQ-016) - CRITICAL PATH
-- [ ] Request Caching & Optimization (REQ-005)
-- [ ] Mobile-Optimized Web Interface (REQ-017)
-- [ ] Time & Date Queries (REQ-024)
+**Blocked by:** All work packages in Parallel Group 1 (Security) must complete before Phase 3 starts.
 
-### Phase 4A: Essential Intelligence (After Phase 3)
-- [ ] Todo List & Reminders (REQ-028)
-- [ ] Spotify Playback Control (REQ-025)
-- [ ] Simple Automation Creation (REQ-022)
-- [ ] Timers & Alarms (REQ-023)
-- [ ] Shopping List Management (REQ-029)
+### Work Packages (Not Yet Detailed)
 
-### Phase 5: Advanced Intelligence
-- [ ] Self-Monitoring & Self-Healing (REQ-021)
-- [ ] Device Organization Assistant (REQ-019)
-- [ ] Location-Aware Commands (REQ-018)
-- [ ] Music Education & Context (REQ-027)
-- [ ] Continuous Improvement (REQ-034)
+#### WP-3.1: Voice Control via HA Voice Puck
+- **Status:** 🔴 Blocked
+- **Blocked by:** WP-2.1 (security baseline required first)
+- **Priority:** CRITICAL (critical path item)
+- **Effort:** TBD
+- **Requirement:** REQ-016
 
-### Phase 6: Community Preparation
-- [ ] Comprehensive Logging Enhancement (REQ-036)
-- [ ] CI/CD Pipeline (REQ-037)
-- [ ] Public Repository (REQ-032)
-- [ ] Setup & Installation Documentation (REQ-033)
+#### WP-3.2: Request Caching & Optimization
+- **Status:** 🔴 Blocked
+- **Blocked by:** WP-2.1
+- **Priority:** HIGH
+- **Effort:** TBD
+- **Requirement:** REQ-005
 
-### Phase 7: Additional Device Integrations (Deferred)
-- [ ] Smart Plug Control (REQ-012) - Moved from Phase 2
-- [ ] Smart Thermostat Control (REQ-011) - Moved from Phase 2
+#### WP-3.3: Mobile-Optimized Web Interface
+- **Status:** 🔴 Blocked
+- **Blocked by:** WP-2.1, WP-2.2
+- **Priority:** MEDIUM
+- **Effort:** TBD
+- **Requirement:** REQ-017
 
-### Phase 8+: Advanced Features (Post-launch)
+#### WP-3.4: Time & Date Queries
+- **Status:** 🔴 Blocked
+- **Blocked by:** WP-2.1
+- **Priority:** LOW
+- **Effort:** TBD
+- **Requirement:** REQ-024
+
+---
+
+## Phase 4A: Essential Intelligence
+
+**Blocked by:** Phase 3 completion
+
+### Work Packages (Not Yet Detailed)
+- [ ] WP-4.1: Todo List & Reminders (REQ-028)
+- [ ] WP-4.2: Spotify Playback Control (REQ-025)
+- [ ] WP-4.3: Simple Automation Creation (REQ-022)
+- [ ] WP-4.4: Timers & Alarms (REQ-023)
+- [ ] WP-4.5: Shopping List Management (REQ-029)
+
+---
+
+## Phase 5: Advanced Intelligence
+
+**Blocked by:** Phase 4A completion
+
+### Work Packages (Not Yet Detailed)
+- [ ] WP-5.1: Self-Monitoring & Self-Healing (REQ-021)
+- [ ] WP-5.2: Device Organization Assistant (REQ-019)
+- [ ] WP-5.3: Location-Aware Commands (REQ-018)
+- [ ] WP-5.4: Music Education & Context (REQ-027)
+- [ ] WP-5.5: Continuous Improvement (REQ-034)
+
+---
+
+## Phase 6: Community Preparation
+
+**Blocked by:** Phase 5 completion
+
+### Work Packages (Not Yet Detailed)
+- [ ] WP-6.1: Comprehensive Logging Enhancement (REQ-036)
+- [ ] WP-6.2: CI/CD Pipeline (REQ-037)
+- [ ] WP-6.3: Public Repository (REQ-032)
+- [ ] WP-6.4: Setup & Installation Documentation (REQ-033)
+
+---
+
+## Phase 7: Additional Device Integrations (Deferred)
+
+**Blocked by:** Phase 3 completion
+
+### Work Packages (Not Yet Detailed)
+- [ ] WP-7.1: Smart Plug Control (REQ-012)
+- [ ] WP-7.2: Smart Thermostat Control (REQ-011)
+
+---
+
+## Phase 8+: Advanced Features (Post-Launch)
+
+**Status:** Backlog (no immediate plan)
+
+### Work Packages (Not Yet Detailed)
 - [ ] Future Local LLM Support (REQ-004)
 - [ ] Secure Remote Access (REQ-007)
 - [ ] Multi-User Support (REQ-008)
@@ -182,4 +311,4 @@ All new features must include:
 ---
 
 **Last Updated:** 2025-12-18
-**Next Review:** After Batch 1 (Security Hardening) completion
+**Next Review:** After Parallel Group 1 (Security Hardening) completion
