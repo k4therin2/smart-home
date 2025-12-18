@@ -24,9 +24,22 @@ from src.config import (
     DAILY_COST_ALERT,
     validate_config,
 )
+from src.security.slack_client import SlackNotifier
+from src.security.config import SLACK_COST_WEBHOOK_URL
 
 # Database path for usage tracking
 USAGE_DB_PATH = DATA_DIR / "usage.db"
+
+# Lazy-initialized cost alerter (avoid circular imports at module load)
+_cost_notifier = None
+
+
+def _get_cost_notifier() -> SlackNotifier:
+    """Get or create the cost alert Slack notifier."""
+    global _cost_notifier
+    if _cost_notifier is None:
+        _cost_notifier = SlackNotifier(webhook_url=SLACK_COST_WEBHOOK_URL)
+    return _cost_notifier
 
 
 def setup_logging(name: str = "smarthome") -> logging.Logger:
@@ -208,10 +221,20 @@ def track_api_usage(
         f"API usage: {input_tokens} in / {output_tokens} out = ${total_cost:.4f}"
     )
 
-    # Check daily limit
+    # Check daily limit and send Slack alert if threshold exceeded
     daily_cost = get_daily_usage()
     if daily_cost >= DAILY_COST_ALERT:
         logger.warning(f"COST ALERT: Daily spend ${daily_cost:.2f} exceeds ${DAILY_COST_ALERT:.2f} threshold!")
+        _get_cost_notifier().send_alert(
+            title="API Cost Alert",
+            message=f"Daily API spend has reached *${daily_cost:.2f}* (threshold: ${DAILY_COST_ALERT:.2f})",
+            severity="warning",
+            fields=[
+                {"title": "Today's Cost", "value": f"${daily_cost:.2f}"},
+                {"title": "Threshold", "value": f"${DAILY_COST_ALERT:.2f}"},
+                {"title": "Last Request", "value": f"${total_cost:.4f}"},
+            ]
+        )
     elif daily_cost >= DAILY_COST_TARGET:
         logger.info(f"Daily spend ${daily_cost:.2f} exceeds target ${DAILY_COST_TARGET:.2f}")
 

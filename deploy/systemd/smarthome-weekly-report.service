@@ -1,0 +1,22 @@
+[Unit]
+Description=Smarthome Weekly Security Report
+After=network.target
+
+[Service]
+Type=oneshot
+User=k4therin2
+Group=k4therin2
+WorkingDirectory=/home/k4therin2/projects/Smarthome
+Environment=PYTHONPATH=/home/k4therin2/projects/Smarthome
+EnvironmentFile=/home/k4therin2/projects/Smarthome/.env
+
+# Generate and send weekly report
+ExecStart=/home/k4therin2/projects/Smarthome/venv/bin/python -m src.security.weekly_report
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smarthome-weekly-report
+
+[Install]
+WantedBy=multi-user.target

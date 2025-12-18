@@ -1,0 +1,14 @@
+[Unit]
+Description=Weekly Security Report Timer
+Requires=smarthome-weekly-report.service
+
+[Timer]
+# Run every Friday at 5 PM
+OnCalendar=Fri *-*-* 17:00:00
+Persistent=true
+
+# Randomize start time within 5 minutes
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

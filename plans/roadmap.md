@@ -1,14 +1,77 @@
 # Roadmap
 
-## Current Phase: Phase 2 Device Integrations
+**Recent Completions (2025-12-18):** Security quick wins, test suite foundation (4 test suites, 57 test cases), security monitoring Slack integration. See `plans/completed/2025-12-18-security-and-testing.md` for details.
 
-### Phase 2: Device Integration Workstreams
-**Status:** All 3 streams can run in parallel
-**Parallelization:** 2 agent streams + 1 user stream working simultaneously
+---
+
+## Alerting Standards
+
+All future phases must include appropriate Slack alerts for operational visibility. Use these channels:
+
+**#colby-server-security** - Server-level security events:
+- SSH authentication failures
+- UFW firewall blocks
+- Intrusion detection alerts
+- File integrity violations
+- Suspicious process activity
+
+**#smarthome-costs** - Cost management alerts:
+- Daily API cost threshold exceeded ($5/day)
+- Monthly budget warnings
+- Unusual API usage spikes
+
+**#smarthome-health** - Service health monitoring:
+- Service up/down status changes
+- Home Assistant connectivity issues
+- Device connectivity failures
+- Self-healing actions (success/failure)
+- Critical service restarts
+
+**Acceptance Criteria for Future Work:**
+All new features must include:
+- [ ] Appropriate alerts configured for the feature area
+- [ ] Alert messages include actionable context
+- [ ] Alert severity appropriate to the channel
+
+---
+
+## Current Phase: Phase 2 Device Integrations + Security Hardening
+
+### Batch 1: Security Hardening (HIGH PRIORITY)
+
+#### Phase 2.1: Application Security Baseline
+- **Status:** ⚪ Not Started
+- **Priority:** CRITICAL (blocking for production use)
+- **Effort:** M
+- **Tasks:**
+  - [ ] Implement basic authentication for web UI (session-based)
+  - [ ] Add CSRF protection for all POST endpoints
+  - [ ] Implement Pydantic schema validation on API inputs
+  - [ ] Add rate limiting on `/api/command` (10 req/min per IP)
+  - [ ] Review all SQL queries for parameterization (prevent SQL injection)
+- **Done When:** Web UI requires authentication, input validation in place
+- **Plan:** See `devlog/security-audit/2025-12-18-security-backlog-analysis.md`
+
+#### Phase 2.2: HTTPS/TLS Configuration
+- **Status:** ⚪ Not Started
+- **Priority:** HIGH
+- **Effort:** S
+- **Dependencies:** Can run parallel with Phase 2.1
+- **Tasks:**
+  - [ ] Generate self-signed certificate for local network use
+  - [ ] Configure Flask to use HTTPS
+  - [ ] Add HTTP→HTTPS redirect
+  - [ ] Configure HSTS header (max-age=31536000)
+  - [ ] Document certificate generation process
+- **Done When:** Web UI only accessible via HTTPS, valid cert installed
+
+---
+
+### Batch 2: Device Integrations (After/Parallel with Security)
 
 #### Stream A: Vacuum Control - Dreamehome L10s (REQ-010)
 - **Status:** ⚪ Not Started
-- **Owner:** Agent A
+- **Owner:** Available for any agent
 - **Effort:** M
 - **Tasks:**
   - [ ] Integrate Dreamehome L10s with Home Assistant
@@ -19,7 +82,7 @@
 
 #### Stream B: Smart Blinds Control - Hapadif (REQ-013)
 - **Status:** ⚪ Not Started
-- **Owner:** Agent B
+- **Owner:** Available for any agent
 - **Effort:** M
 - **Tasks:**
   - [ ] Integrate Hapadif blinds with Home Assistant
@@ -51,6 +114,27 @@
   - Existing vibe presets and scene keywords work with real hardware
   - User can control lights via CLI: `python agent.py "turn living room to fire"`
   - User can control lights via Web UI at localhost:5050
+
+---
+
+### Batch 3: Test Coverage Completion (Can run parallel with Batch 2)
+
+#### Phase 2.3: Remaining Test Suites
+- **Status:** ⚪ Not Started
+- **Priority:** MEDIUM
+- **Effort:** M
+- **Dependencies:** Test infrastructure complete (done)
+- **Tasks:**
+  - [ ] Implement Agent Loop integration tests (11 test cases)
+  - [ ] Implement Device Sync tests (12 test cases)
+  - [ ] Implement Hue Specialist tests (11 test cases)
+  - [ ] Implement Server API tests (13 test cases)
+  - [ ] Implement Effects tests (7 test cases)
+  - [ ] Implement Utils tests (12 test cases)
+  - [ ] Achieve 85%+ code coverage
+  - [ ] Add CI/CD test automation
+- **Done When:** All test suites passing, 85%+ coverage achieved
+- **Plan:** See `plans/test-plan.md`
 
 ---
 
@@ -97,5 +181,5 @@
 
 ---
 
-**Last Updated:** 2025-12-09
-**Next Review:** After Phase 2 completion
+**Last Updated:** 2025-12-18
+**Next Review:** After Batch 1 (Security Hardening) completion

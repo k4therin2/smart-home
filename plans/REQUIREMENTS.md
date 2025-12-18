@@ -101,8 +101,8 @@
 - [x] Claude API successfully processes voice/text requests
 - [x] Cost tracking implemented (per-request token usage)
 - [x] Daily cost monitoring ($2 average threshold)
-- [ ] Alert mechanism when daily cost exceeds $5 (deferred)
-- [ ] Alert sent via push notification or text message (deferred)
+- [x] Alert mechanism when daily cost exceeds $5 (Slack #smarthome-costs channel)
+- [x] Slack alerting infrastructure operational
 
 **Dependencies:** REQ-001
 
@@ -520,9 +520,10 @@
 - [ ] Automatic restart of failed services
 - [ ] Device connectivity monitoring (periodic checks for all integrated devices)
 - [ ] Connection quality monitoring (API response times, network issues)
-- [ ] Alerts user only when auto-heal fails
+- [ ] Alerts user only when auto-heal fails (via Slack #smarthome-health)
 - [ ] Helpful error messages (no silent failures)
 - [ ] Logs all issues and resolutions
+- [ ] Leverages Slack alerting infrastructure (#smarthome-health, #colby-server-security, #smarthome-costs)
 
 **Dependencies:** REQ-001, REQ-002, REQ-036
 

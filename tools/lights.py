@@ -18,6 +18,35 @@ from src.utils import setup_logging
 
 logger = setup_logging("tools.lights")
 
+# Common color name to RGB mapping
+COLOR_NAME_TO_RGB = {
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+    "blue": (0, 0, 255),
+    "yellow": (255, 255, 0),
+    "orange": (255, 165, 0),
+    "purple": (128, 0, 128),
+    "violet": (238, 130, 238),
+    "pink": (255, 192, 203),
+    "cyan": (0, 255, 255),
+    "magenta": (255, 0, 255),
+    "white": (255, 255, 255),
+    "warm white": (255, 244, 229),
+    "cool white": (255, 255, 255),
+    "lime": (0, 255, 0),
+    "teal": (0, 128, 128),
+    "lavender": (230, 230, 250),
+    "coral": (255, 127, 80),
+    "salmon": (250, 128, 114),
+    "turquoise": (64, 224, 208),
+    "gold": (255, 215, 0),
+    "navy": (0, 0, 128),
+    "maroon": (128, 0, 0),
+    "olive": (128, 128, 0),
+    "aqua": (0, 255, 255),
+    "indigo": (75, 0, 130),
+}
+
 
 # Tool definitions for Claude
 LIGHT_TOOLS = [
@@ -26,6 +55,7 @@ LIGHT_TOOLS = [
         "description": """Set the ambiance of a room's lights. Use this for any lighting request.
 
 For specific settings: provide brightness (0-100) and/or color_temp_kelvin (2200-6500).
+For color requests: provide a color name like 'blue', 'red', 'green', 'purple', 'pink', 'orange', 'cyan'.
 For vibe requests: provide a vibe like 'cozy', 'focus', 'romantic', 'movie', 'energetic'.
 For on/off: use action='on' or action='off'.
 
@@ -33,13 +63,15 @@ Examples:
 - "turn on living room lights" -> action='on', room='living room'
 - "dim the bedroom to 30%" -> action='set', room='bedroom', brightness=30
 - "make kitchen cozy" -> action='set', room='kitchen', vibe='cozy'
-- "turn living room to warm white" -> action='set', room='living room', color_temp_kelvin=2700""",
+- "turn living room to warm white" -> action='set', room='living room', color_temp_kelvin=2700
+- "turn office to blue" -> action='set', room='office', color='blue'
+- "make bedroom purple" -> action='set', room='bedroom', color='purple'""",
         "input_schema": {
             "type": "object",
             "properties": {
                 "room": {
                     "type": "string",
-                    "description": "Room name: living room, bedroom, kitchen, bathroom, office"
+                    "description": "Room name: living room, bedroom, kitchen, office, upstairs, downstairs, garage, staircase"
                 },
                 "action": {
                     "type": "string",
@@ -52,11 +84,15 @@ Examples:
                     "maximum": 100,
                     "description": "Brightness percentage (0-100)"
                 },
+                "color": {
+                    "type": "string",
+                    "description": "Color name: red, green, blue, yellow, orange, purple, pink, cyan, magenta, teal, lavender, coral, turquoise, gold, navy, indigo"
+                },
                 "color_temp_kelvin": {
                     "type": "integer",
                     "minimum": 2200,
                     "maximum": 6500,
-                    "description": "Color temperature: 2700=warm, 4000=neutral, 5000=cool, 6500=daylight"
+                    "description": "Color temperature (white light): 2700=warm, 4000=neutral, 5000=cool, 6500=daylight. Do NOT use for colors like blue/red/green - use color parameter instead."
                 },
                 "vibe": {
                     "type": "string",
@@ -139,6 +175,7 @@ def set_room_ambiance(
     room: str,
     action: str,
     brightness: int | None = None,
+    color: str | None = None,
     color_temp_kelvin: int | None = None,
     vibe: str | None = None,
     transition: float = 0.5
@@ -150,6 +187,7 @@ def set_room_ambiance(
         room: Room name
         action: 'on', 'off', or 'set'
         brightness: Brightness percentage (0-100)
+        color: Color name (e.g., 'blue', 'red', 'purple')
         color_temp_kelvin: Color temperature in Kelvin
         vibe: Vibe preset name
         transition: Transition time in seconds
@@ -167,6 +205,16 @@ def set_room_ambiance(
             "available_rooms": available
         }
 
+    # Convert color name to RGB if specified
+    rgb_color = None
+    if color:
+        color_lower = color.lower().strip()
+        if color_lower in COLOR_NAME_TO_RGB:
+            rgb_color = COLOR_NAME_TO_RGB[color_lower]
+            logger.info(f"Converted color '{color}' to RGB: {rgb_color}")
+        else:
+            logger.warning(f"Unknown color '{color}', ignoring")
+
     # Apply vibe preset if specified
     if vibe:
         vibe_lower = vibe.lower()
@@ -174,7 +222,7 @@ def set_room_ambiance(
             preset = VIBE_PRESETS[vibe_lower]
             if brightness is None:
                 brightness = preset.get("brightness")
-            if color_temp_kelvin is None:
+            if color_temp_kelvin is None and rgb_color is None:
                 color_temp_kelvin = preset.get("color_temp_kelvin")
             logger.info(f"Applied vibe '{vibe}': brightness={brightness}, color_temp={color_temp_kelvin}K")
         else:
@@ -193,10 +241,14 @@ def set_room_ambiance(
             }
 
         elif action in ("on", "set"):
+            # Don't pass color_temp if we're using RGB color
+            effective_color_temp = None if rgb_color else color_temp_kelvin
+
             success = ha_client.turn_on_light(
                 entity_id=entity_id,
                 brightness_pct=brightness,
-                color_temp_kelvin=color_temp_kelvin,
+                color_temp_kelvin=effective_color_temp,
+                rgb_color=rgb_color,
                 transition=transition
             )
 
@@ -209,7 +261,10 @@ def set_room_ambiance(
 
             if brightness is not None:
                 result["brightness"] = brightness
-            if color_temp_kelvin is not None:
+            if rgb_color is not None:
+                result["color"] = color
+                result["rgb_color"] = rgb_color
+            if color_temp_kelvin is not None and rgb_color is None:
                 result["color_temp_kelvin"] = color_temp_kelvin
             if vibe:
                 result["vibe_applied"] = vibe
@@ -366,6 +421,7 @@ def execute_light_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
             room=tool_input.get("room", ""),
             action=tool_input.get("action", "on"),
             brightness=tool_input.get("brightness"),
+            color=tool_input.get("color"),
             color_temp_kelvin=tool_input.get("color_temp_kelvin"),
             vibe=tool_input.get("vibe"),
             transition=tool_input.get("transition", 0.5)

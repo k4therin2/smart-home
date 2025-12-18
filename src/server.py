@@ -6,6 +6,7 @@ REQ-015: Web UI (Basic)
 """
 
 import json
+import os
 import sqlite3
 from datetime import date
 from flask import Flask, render_template, request, jsonify
@@ -22,6 +23,24 @@ app = Flask(
     template_folder="../templates",
     static_folder="../static"
 )
+
+
+@app.after_request
+def add_security_headers(response):
+    """
+    Add security headers to all responses.
+
+    Security headers implemented:
+    - X-Content-Type-Options: Prevents MIME sniffing attacks
+    - X-Frame-Options: Prevents clickjacking attacks
+    - Referrer-Policy: Controls referrer information leakage
+    - X-XSS-Protection: Legacy XSS protection (for older browsers)
+    """
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
 
 
 def process_command(command: str) -> dict:
@@ -50,11 +69,19 @@ def process_command(command: str) -> dict:
         }
     except Exception as error:
         logger.error(f"Agent error: {error}")
+        # In production, don't leak error details to client
+        if app.debug:
+            error_message = f"Error processing command: {str(error)}"
+            error_detail = str(error)
+        else:
+            error_message = "Error processing command. Please try again."
+            error_detail = "Internal server error"
+
         return {
             "success": False,
-            "response": f"Error processing command: {str(error)}",
+            "response": error_message,
             "command": command,
-            "error": str(error)
+            "error": error_detail
         }
 
 
@@ -94,9 +121,11 @@ def handle_command():
 
     except Exception as error:
         logger.error(f"Error processing command: {error}")
+        # In production, don't leak error details to client
+        error_detail = str(error) if app.debug else "Internal server error"
         return jsonify({
             "success": False,
-            "error": str(error)
+            "error": error_detail
         }), 500
 
 
@@ -142,11 +171,13 @@ def get_status():
 
     except Exception as error:
         logger.error(f"Status check error: {error}")
+        # In production, don't leak error details to client
+        error_detail = str(error) if app.debug else "Status check failed"
         return jsonify({
             "system": "error",
             "agent": "error",
             "home_assistant": "error",
-            "error": str(error),
+            "error": error_detail,
             "devices": []
         })
 
@@ -183,7 +214,9 @@ def get_history():
 
     except Exception as error:
         logger.error(f"History fetch error: {error}")
-        return jsonify({"history": [], "error": str(error)})
+        # In production, don't leak error details to client
+        error_detail = str(error) if app.debug else "History fetch failed"
+        return jsonify({"history": [], "error": error_detail})
 
 
 def run_server(host: str = "0.0.0.0", port: int = 5050, debug: bool = False):
@@ -200,4 +233,7 @@ def run_server(host: str = "0.0.0.0", port: int = 5050, debug: bool = False):
 
 
 if __name__ == "__main__":
-    run_server(debug=True)
+    # Read debug mode from environment variable
+    # NEVER set debug=True in production
+    debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+    run_server(debug=debug)

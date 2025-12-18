@@ -185,7 +185,9 @@ NATS_URL           # For agent chat (default: nats://localhost:4222)
 
 ## Agent Coordination
 
-When working in this repository, you MUST register yourself with the agent chat system at the START of your session:
+When working in this repository, you MUST use the NATS agent chat system for coordination. This prevents conflicts when multiple agents work in parallel.
+
+### Setup at Session Start
 
 1. **Set your handle** using `set_agent_handle` - choose a descriptive name like:
    - `Agent-Backend-Auth` (if working on backend auth)
@@ -193,22 +195,59 @@ When working in this repository, you MUST register yourself with the agent chat 
    - `Agent-Testing` (if running tests)
    - Use format: `Agent-<Area>-<Task>` or just `Agent-<YourRole>`
 
-2. **Announce yourself** in `#coordination`:
-   ```
-   post_message(channel="coordination", message="Starting work on <what you're doing>. Files: <key files>")
-   ```
-
-3. **Check for conflicts** - read recent `#coordination` messages to see what other agents are working on:
+2. **Check for conflicts** - read recent `#coordination` messages BEFORE starting:
    ```
    read_messages(channel="coordination", limit=20)
    ```
 
-4. **Report completion** when done:
+3. **Announce yourself** in `#coordination`:
    ```
-   post_message(channel="coordination", message="Completed <task>. Ready for integration.")
+   post_message(channel="coordination", message="Starting work on <what you're doing>. Files: <key files>")
    ```
 
-5. **Report errors** to `#errors` channel if you encounter blocking issues.
+### When to Post Updates (IMPORTANT)
+
+Post to `#coordination` in these situations:
+
+1. **When you START work** - Announce what you're working on and which files you'll touch
+2. **When making system-impacting changes** - Changes to:
+   - Shared modules (src/config.py, src/database.py, src/utils.py)
+   - API contracts or interfaces
+   - Database schema
+   - Configuration files (.env, requirements.txt, CLAUDE.md)
+   - Build/test infrastructure
+3. **When your work might overlap** with what others could be doing:
+   - Similar feature areas
+   - Shared dependencies
+   - Files that multiple features touch
+4. **When you complete a task** - Summary of what changed and any follow-up needed
+5. **When blocked or encountering errors** - Post to `#errors` channel
+
+### Message Format Examples
+
+**Starting work:**
+```
+Starting: Test suite implementation. Files: tests/*, pytest.ini, requirements.txt
+```
+
+**System change:**
+```
+HEADS UP: Updating database schema - adding new index on api_usage table
+```
+
+**Potential overlap:**
+```
+Working on light controls - if anyone else is touching tools/lights.py, let's sync
+```
+
+**Completion:**
+```
+DONE: Test suite - 152 tests passing. Added pytest, pytest-mock, responses to requirements.txt
+```
+
+### Report Errors
+
+Post to `#errors` channel for blocking issues that other agents should know about.
 
 This enables parallel agent coordination and prevents merge conflicts.
 

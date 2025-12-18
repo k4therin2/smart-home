@@ -50,24 +50,36 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # Maps room names to Home Assistant entity IDs
 ROOM_ENTITY_MAP = {
     "living_room": {
-        "lights": ["light.living_room", "light.living_room_lamp"],
-        "default_light": "light.living_room",
+        "lights": ["light.living_room", "light.living_room_2"],
+        "default_light": "light.living_room_2",  # Has color support
     },
     "bedroom": {
-        "lights": ["light.bedroom", "light.bedroom_lamp"],
-        "default_light": "light.bedroom",
+        "lights": ["light.bedroom", "light.bedroom_2", "light.bed_north", "light.bed_south"],
+        "default_light": "light.bedroom_2",  # Has color support
     },
     "kitchen": {
-        "lights": ["light.kitchen"],
-        "default_light": "light.kitchen",
-    },
-    "bathroom": {
-        "lights": ["light.bathroom"],
-        "default_light": "light.bathroom",
+        "lights": ["light.kitchen", "light.kitchen_2"],
+        "default_light": "light.kitchen_2",  # Has color support
     },
     "office": {
-        "lights": ["light.office"],
-        "default_light": "light.office",
+        "lights": ["light.office_pendant", "light.office_2"],
+        "default_light": "light.office_pendant",  # Has color support, is available
+    },
+    "upstairs": {
+        "lights": ["light.upstairs", "light.top_of_stairs"],
+        "default_light": "light.upstairs",
+    },
+    "downstairs": {
+        "lights": ["light.downstairs"],
+        "default_light": "light.downstairs",
+    },
+    "garage": {
+        "lights": ["light.garage", "light.garage_2"],
+        "default_light": "light.garage",
+    },
+    "staircase": {
+        "lights": ["light.staircase", "light.top_of_stairs"],
+        "default_light": "light.staircase",
     },
 }
 
