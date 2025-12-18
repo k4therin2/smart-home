@@ -54,3 +54,13 @@ node_modules/
 tmp/
 temp/
 *.tmp
+fungicide
+
+# Claude Code local settings (permissions are machine-specific)
+.claude/settings.local.json
+
+# Personal/Private documents - never commit
+plans/LINKEDIN_MARKETING_PLAN.md
+data/gdrive_credentials.json
+data/gdrive_token.json
+data/backup_encryption.key

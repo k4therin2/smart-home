@@ -1,0 +1,1 @@
+I want you to use the project management agent to garden the roadmap. Put completed items in the completed folder on the archive roadmap and remove them from the roadmaps so that we only have incomplete work on the roadmap.

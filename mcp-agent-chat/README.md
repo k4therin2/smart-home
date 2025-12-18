@@ -57,14 +57,22 @@ npm install
 
 ## Configuration
 
-Add to your Claude Desktop MCP configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+### For Claude Code CLI
+
+The MCP server is configured in `.claude/settings.json` (committed to repo). After cloning, it should work automatically once NATS is running.
+
+### For Claude Desktop
+
+Add to your Claude Desktop MCP configuration:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "agent-chat": {
       "command": "node",
-      "args": ["/Users/katherine/Documents/Smarthome/mcp-agent-chat/index.js"],
+      "args": ["/path/to/Smarthome/mcp-agent-chat/index.js"],
       "env": {
         "NATS_URL": "nats://localhost:4222"
       }
@@ -73,7 +81,7 @@ Add to your Claude Desktop MCP configuration (`~/Library/Application Support/Cla
 }
 ```
 
-Then restart Claude Desktop.
+Replace `/path/to/Smarthome` with your actual repo path. Then restart Claude Desktop.
 
 ## Usage
 
