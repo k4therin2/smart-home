@@ -13,6 +13,15 @@ You are an expert. Experts always look at the documentation before they try to u
 
 Check which machine you're on with `hostname` if unsure. Check available RAM with `free -h` (Linux) or `vm_stat` (macOS) before memory-intensive operations.
 
+### Unified NATS Message Bus
+
+All agents (MacBook and colby) share a single NATS server running on colby, accessed via Tailscale:
+- **NATS URL:** `nats://100.75.232.36:4222` (colby via Tailscale)
+- **Channels:** `#roadmap`, `#coordination`, `#errors`
+- **Retention:** 7 days or 10,000 messages per channel
+
+This means messages posted from any machine are visible to all agents.
+
 ### SSH Access to Colby (from MacBook)
 
 Colby has **2FA enabled** (SSH key + TOTP code). To run remote commands:

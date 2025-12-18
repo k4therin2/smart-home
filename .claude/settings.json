@@ -4,7 +4,7 @@
       "command": "node",
       "args": ["mcp-agent-chat/index.js"],
       "env": {
-        "NATS_URL": "nats://localhost:4222"
+        "NATS_URL": "nats://100.75.232.36:4222"
       }
     }
   }

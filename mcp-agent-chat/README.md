@@ -146,6 +146,8 @@ post_message(channel="errors", message="Found issue in agent.py line 42: Missing
 ## Environment Variables
 
 - `NATS_URL`: NATS server URL (default: `nats://localhost:4222`)
+  - **Production:** All agents use colby's NATS via Tailscale: `nats://100.75.232.36:4222`
+  - This is configured in `.claude/settings.json`
 
 ## Troubleshooting
 
