@@ -13,6 +13,37 @@ You are an expert. Experts always look at the documentation before they try to u
 
 Check which machine you're on with `hostname` if unsure. Check available RAM with `free -h` (Linux) or `vm_stat` (macOS) before memory-intensive operations.
 
+### SSH Access to Colby (from MacBook)
+
+Colby has **2FA enabled** (SSH key + TOTP code). To run remote commands:
+
+1. **Ask user** to establish SSH control socket:
+   ```bash
+   ssh -M -S /tmp/colby-ssh -o ControlPersist=4h k4therin2@colby
+   ```
+   (User must enter TOTP code from authenticator app)
+
+2. **Then run commands** via the socket:
+   ```bash
+   ssh -S /tmp/colby-ssh k4therin2@colby "your command here"
+   ```
+
+3. **File transfers:**
+   ```bash
+   scp -o ControlPath=/tmp/colby-ssh local/file k4therin2@colby:~/destination/
+   ```
+
+**Key paths on colby:**
+- Smarthome repo: `~/projects/Smarthome`
+- Home Assistant config: `~/homeassistant`
+- NATS data: `/var/lib/nats`
+
+**Notes:**
+- Sudo works without password (NOPASSWD enabled, 2FA is the security boundary)
+- Control socket expires after 4 hours of inactivity
+- If socket dies, ask user to re-establish it
+- Tailscale IP: `100.75.232.36` (or hostname `colby`)
+
 Prefer raw SQL over SQLAlchemy except for model definition.
 
 Always implement a centralized, robust logging module for each component of the project
