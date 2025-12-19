@@ -227,7 +227,7 @@ All three work packages can run in parallel with each other AND with Parallel Gr
 - **User Setup Status (In Progress):**
   - [x] Create Spotify app at https://developer.spotify.com/dashboard
   - [x] Set SPOTIFY_CLIENT_ID in .env
-  - [ ] Set SPOTIFY_CLIENT_SECRET in .env (PENDING)
+  - [x] Set SPOTIFY_CLIENT_SECRET in .env (2025-12-19)
   - [ ] Run initial OAuth flow (browser-based authorization)
   - [ ] Test with Amazon Echo devices via voice commands
 
