@@ -1,4 +1,5 @@
 /* Smart Home Assistant - Web UI Styles */
+/* Mobile-Optimized for PWA (REQ-017) */
 
 :root {
     --bg-primary: #0f0f0f;
@@ -15,12 +16,24 @@
     --shadow: rgba(0, 0, 0, 0.3);
     --radius: 8px;
     --radius-lg: 12px;
+
+    /* Touch-friendly sizing (Apple HIG: 44pt minimum) */
+    --touch-target-min: 44px;
+    --touch-target-comfortable: 48px;
+
+    /* Safe area insets for notched devices (iPhone X+) */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    /* Prevent 300ms click delay on mobile */
+    touch-action: manipulation;
 }
 
 body {
@@ -29,12 +42,17 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
+    /* Prevent overscroll bounce on iOS */
+    overscroll-behavior: none;
+    /* Enable smooth scrolling */
+    -webkit-overflow-scrolling: touch;
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+    /* Safe area padding for notched devices */
+    padding: calc(20px + var(--safe-area-top)) calc(20px + var(--safe-area-right)) calc(20px + var(--safe-area-bottom)) calc(20px + var(--safe-area-left));
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -386,10 +404,11 @@ footer {
     }
 }
 
-/* Responsive Design */
+/* Responsive Design - Mobile First */
 @media (max-width: 600px) {
     .container {
-        padding: 15px;
+        /* Ensure safe area padding on mobile */
+        padding: calc(15px + var(--safe-area-top)) calc(15px + var(--safe-area-right)) calc(15px + var(--safe-area-bottom)) calc(15px + var(--safe-area-left));
     }
 
     header {
@@ -406,13 +425,1450 @@ footer {
         width: 100%;
     }
 
+    /* Touch-friendly input height */
+    #command-input {
+        min-height: var(--touch-target-comfortable);
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+
+    /* Touch-friendly submit button */
+    #submit-btn {
+        min-width: var(--touch-target-min);
+        min-height: var(--touch-target-comfortable);
+        padding: 14px 18px;
+    }
+
     .voice-button {
         width: 100%;
         border-radius: var(--radius);
-        height: 48px;
+        min-height: var(--touch-target-comfortable);
+        height: 52px;
+    }
+
+    /* Touch-friendly device cards */
+    .device-card {
+        min-height: var(--touch-target-comfortable);
+        padding: 16px 12px;
     }
 
     .devices-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    /* Touch-friendly history items */
+    #history-list li {
+        min-height: var(--touch-target-min);
+        padding: 14px 16px;
+    }
+}
+
+/* Extra small devices (320px) */
+@media (max-width: 375px) {
+    .container {
+        padding: calc(10px + var(--safe-area-top)) calc(10px + var(--safe-area-right)) calc(10px + var(--safe-area-bottom)) calc(10px + var(--safe-area-left));
+    }
+
+    header h1 {
+        font-size: 1.25rem;
+    }
+
+    .devices-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Standalone PWA mode adjustments */
+@media (display-mode: standalone) {
+    body {
+        /* Prevent pull-to-refresh in standalone mode */
+        overscroll-behavior-y: contain;
+    }
+
+    .container {
+        /* Extra top padding when in standalone mode (no browser chrome) */
+        padding-top: calc(30px + var(--safe-area-top));
+    }
+}
+
+/* Landscape mobile orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+    header {
+        flex-direction: row;
+        padding: 10px 0;
+        margin-bottom: 15px;
+    }
+
+    main {
+        gap: 15px;
+    }
+
+    .response-section {
+        min-height: 80px;
+    }
+}
+
+/* =============================================================================
+   TODO LIST STYLES (WP-4.1, WP-4.4)
+   ============================================================================= */
+
+.todo-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.todo-section h2 {
+    margin: 0 0 15px 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+/* Tab Navigation */
+.todo-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.todo-tab {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    min-height: var(--touch-target-min);
+    transition: all 0.2s ease;
+}
+
+.todo-tab:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.todo-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* Add Todo Form */
+.todo-add-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.todo-add-form input {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    min-height: var(--touch-target-min);
+}
+
+.todo-add-form input::placeholder {
+    color: var(--text-secondary);
+}
+
+.todo-add-form button {
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    font-size: 1.5rem;
+    width: var(--touch-target-comfortable);
+    min-height: var(--touch-target-min);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.todo-add-form button:hover {
+    background: var(--accent-hover);
+}
+
+/* Todo List */
+.todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    min-height: var(--touch-target-min);
+}
+
+.todo-item.completed {
+    opacity: 0.6;
+}
+
+.todo-item.completed .todo-content {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.todo-checkbox {
+    background: transparent;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.todo-checkbox:hover {
+    border-color: var(--success);
+}
+
+.todo-item.completed .todo-checkbox {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+}
+
+.todo-content {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.todo-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.todo-delete:hover {
+    background: var(--error);
+    color: #fff;
+}
+
+/* Priority Styling */
+.todo-item.priority-high {
+    border-left: 3px solid var(--warning);
+}
+
+.todo-item.priority-urgent {
+    border-left: 3px solid var(--error);
+}
+
+/* Category Badges (WP-4.4 Shopping List) */
+.todo-category {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+/* Category-specific colors */
+.category-produce { background: #2d5a27; color: #9ae094; }
+.category-dairy { background: #4a5568; color: #e2e8f0; }
+.category-meat { background: #744210; color: #fbd38d; }
+.category-seafood { background: #2c5282; color: #90cdf4; }
+.category-bakery { background: #744210; color: #fbd38d; }
+.category-frozen { background: #2b6cb0; color: #bee3f8; }
+.category-canned { background: #5a3e1b; color: #d69e2e; }
+.category-beverages { background: #553c9a; color: #d6bcfa; }
+.category-snacks { background: #702459; color: #f687b3; }
+.category-condiments { background: #744210; color: #f6ad55; }
+.category-household { background: #2f855a; color: #9ae6b4; }
+.category-personal { background: #805ad5; color: #e9d8fd; }
+.category-baby { background: #d53f8c; color: #fed7e2; }
+.category-pet { background: #dd6b20; color: #feebc8; }
+.category-other { background: var(--bg-primary); color: var(--text-secondary); }
+
+/* Show Completed Toggle */
+.todo-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.todo-toggle input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Placeholder text */
+.todo-list .placeholder-text,
+.todo-list .todo-error {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.todo-list .todo-error {
+    color: var(--error);
+}
+
+/* ============================================================================
+   LOG VIEWER STYLES (WP-6.1)
+   ============================================================================ */
+
+.logs-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.logs-section h2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.logs-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.logs-toggle-btn:hover {
+    color: var(--accent);
+}
+
+.logs-panel {
+    display: block;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, opacity 0.2s;
+}
+
+.logs-panel.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+}
+
+.logs-panel:not(.collapsed) {
+    max-height: 2000px;
+    opacity: 1;
+}
+
+/* Log Type Tabs */
+.logs-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.logs-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.logs-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.logs-tab.active {
+    background: var(--accent);
+    color: white;
+}
+
+/* Log Filters */
+.logs-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.logs-filters select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.logs-filters input[type="text"] {
+    flex: 1;
+    min-width: 150px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+.logs-filters input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.logs-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.logs-action-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+}
+
+.logs-action-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.logs-action-btn.active {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+/* Log Stats */
+.log-stats {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+/* Log Container */
+.logs-container {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.8rem;
+}
+
+/* Log Entry */
+.log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry-new {
+    animation: logHighlight 2s ease-out;
+}
+
+@keyframes logHighlight {
+    0% { background: rgba(74, 158, 255, 0.3); }
+    100% { background: transparent; }
+}
+
+.log-time {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.log-level {
+    font-weight: bold;
+    width: 70px;
+    flex-shrink: 0;
+    text-align: center;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.log-module {
+    color: var(--accent);
+    width: 100px;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.log-message {
+    color: var(--text-primary);
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Log Level Colors */
+.log-level-debug .log-level {
+    background: #2d3748;
+    color: #a0aec0;
+}
+
+.log-level-info .log-level {
+    background: #1a365d;
+    color: #90cdf4;
+}
+
+.log-level-warning .log-level {
+    background: #744210;
+    color: #fbd38d;
+}
+
+.log-level-error .log-level {
+    background: #742a2a;
+    color: #feb2b2;
+}
+
+.log-level-critical .log-level {
+    background: #97266d;
+    color: #fbb6ce;
+}
+
+/* Log Pagination */
+.logs-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.logs-page-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.logs-page-btn:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.logs-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#logs-page-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Loading & Error States */
+.logs-container .loading-text,
+.logs-container .error-text,
+.logs-container .placeholder-text {
+    padding: 30px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.logs-container .error-text {
+    color: var(--error);
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+    .logs-filters {
+        flex-direction: column;
+    }
+
+    .logs-filters select,
+    .logs-filters input[type="text"] {
+        width: 100%;
+    }
+
+    .logs-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .log-entry {
+        flex-wrap: wrap;
+    }
+
+    .log-module {
+        width: 100%;
+        order: 3;
+        margin-top: 4px;
+    }
+
+    .log-message {
+        width: 100%;
+        order: 4;
+        margin-top: 4px;
+    }
+}
+
+/* ============================================================
+   ZONES & DEVICE ONBOARDING STYLES (WP-8.2)
+   ============================================================ */
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.toolbar .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Zones Container */
+.zones-container {
+    margin-bottom: 32px;
+}
+
+.zones-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.zone-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+
+.zone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.zone-header h3 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.room-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius);
+}
+
+.room-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.device-count {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Unassigned Devices */
+.unassigned-container {
+    margin-top: 24px;
+}
+
+.unassigned-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.unassigned-list li {
+    padding: 8px 12px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    color: var(--warning);
+    font-size: 0.9rem;
+}
+
+/* Onboarding Wizard */
+.wizard {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px var(--shadow);
+    z-index: 1000;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.wizard.hidden {
+    display: none;
+}
+
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.wizard-header h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+
+.wizard-content {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 20px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 8px 0 20px;
+}
+
+/* Instruction Text */
+.instruction {
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+/* Color Badges */
+.color-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.color-badge {
+    width: var(--touch-target-comfortable);
+    height: var(--touch-target-comfortable);
+    font-size: 2rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.color-badge:hover:not(:disabled) {
+    transform: scale(1.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(74, 158, 255, 0.3);
+}
+
+.color-badge:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.color-badge.identified {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--success);
+}
+
+.color-badge:disabled {
+    cursor: not-allowed;
+}
+
+/* Room Selection */
+.room-selection {
+    margin: 20px 0;
+    padding: 16px;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius);
+}
+
+.room-selection.hidden {
+    display: none;
+}
+
+.room-selection h3 {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.room-selection label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.room-dropdown {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 1rem;
+    min-height: var(--touch-target-min);
+}
+
+.room-dropdown:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Identified List */
+.identified-list {
+    margin-top: 20px;
+}
+
+.identified-list h3 {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.identified-list ul {
+    list-style: none;
+}
+
+.identified-list li {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+}
+
+/* Button Styles */
+.btn {
+    padding: 12px 20px;
+    min-height: var(--touch-target-min);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    color: var(--text-primary);
+}
+
+.btn-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none;
+}
+
+.no-data {
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+}
+
+.loading {
+    color: var(--text-secondary);
+    padding: 20px;
+    text-align: center;
+}
+
+/* Navigation */
+nav {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+nav a:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+}
+
+nav a.active {
+    color: var(--accent);
+    background-color: var(--bg-tertiary);
+}
+
+/* ============================================================================
+   ZONES & DEVICE ONBOARDING STYLES (WP-8.2)
+   ============================================================================ */
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.toolbar .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: var(--touch-target-min);
+}
+
+.toolbar .btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.btn-primary {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Zones Container */
+.zones-container {
+    margin-bottom: 24px;
+}
+
+.zones-container h2,
+.unassigned-container h2 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.zones-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Zone Card */
+.zone-card {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.zone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+}
+
+.zone-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.zone-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.zone-rooms {
+    padding: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Room Card */
+.room-card {
+    background-color: var(--bg-tertiary);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 150px;
+    flex: 1;
+    max-width: 200px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.room-card:hover {
+    border-color: var(--accent);
+}
+
+.room-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.device-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.empty-rooms,
+.empty-message {
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 12px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Unassigned Devices */
+.unassigned-container {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+}
+
+.unassigned-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Onboarding Wizard */
+.wizard {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--accent);
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.wizard.hidden {
+    display: none;
+}
+
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.wizard-header h2 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 8px;
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--accent);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+/* Wizard Content */
+.wizard-content {
+    margin-bottom: 20px;
+}
+
+.wizard-content .instruction {
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+/* Color Badges */
+.color-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.color-badge {
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    color: #000;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+    position: relative;
+    min-height: var(--touch-target-min);
+}
+
+.color-badge:hover {
+    transform: scale(1.05);
+    border-color: var(--text-primary);
+}
+
+.color-badge.selected {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 10px rgba(74, 158, 255, 0.5);
+}
+
+.color-badge.identified {
+    opacity: 0.6;
+}
+
+.color-badge .check-mark {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: var(--success);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Room Selection */
+.room-selection {
+    background-color: var(--bg-tertiary);
+    padding: 16px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.room-selection.hidden {
+    display: none;
+}
+
+.room-selection h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.room-dropdown {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin-bottom: 12px;
+    min-height: var(--touch-target-min);
+}
+
+.room-dropdown:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Identified List */
+.identified-list {
+    background-color: var(--bg-tertiary);
+    padding: 16px;
+    border-radius: var(--radius);
+}
+
+.identified-list h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.identified-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.identified-list li {
+    padding: 8px 0;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.identified-list li.empty {
+    font-style: italic;
+}
+
+.color-label {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: #000;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+}
+
+/* Wizard Footer */
+.wizard-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 24px;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    z-index: 1000;
+    animation: slideUp 0.3s ease;
+    max-width: 90%;
+    text-align: center;
+}
+
+.notification-success {
+    background-color: var(--success);
+    color: white;
+}
+
+.notification-error {
+    background-color: var(--error);
+    color: white;
+}
+
+.notification-info {
+    background-color: var(--accent);
+    color: white;
+}
+
+.notification.fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
     }
 }
