@@ -893,36 +893,42 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 - **Priority:** HIGH (core voice feature broken)
 - **Reported:** 2025-12-20
 - **Reporter:** Katherine (user)
-- **Investigated:** 2025-12-20 by Agent-Anette
+- **Investigated:** 2025-12-20 by Agent-Anette, Agent-Nadia
 - **Owner:** User (needs HA log inspection)
 - **Symptom:** Voice puck blinks green after "hey jarvis what time is it" but doesn't produce any audio response
-- **Investigation Findings (Agent-Anette, 2025-12-20):**
-  - ✅ SmartHome server IS receiving and processing voice commands successfully
-  - ✅ Last successful voice command logged at 03:35:17 - "What time is it?" returned "It's 03:35..."
-  - ✅ Server logs show voice commands from 02:35-03:35 all processed correctly
-  - ❓ Wake word detection confirmed working (green blink)
-  - ❓ **Issue is BEFORE commands reach SmartHome server OR in TTS playback**
+- **Investigation Findings (Agent-Nadia, 2025-12-20 14:16):**
+  - ✅ Voice puck (192.168.1.30) is online and pingable
+  - ✅ SmartHome server running correctly on ports 5049/5050
+  - ✅ HA running in Docker with --network=host (localhost works correctly)
+  - ✅ Direct API calls work: curl to /api/voice_command returns correct responses
+  - ✅ Assist pipeline correctly configured:
+    - STT: stt.faster_whisper
+    - TTS: tts.piper (en_US-lessac-medium)
+    - Conversation: smart_home_agent custom component
+  - ❌ SmartHome logs show NO voice puck commands today - only test suite and curl tests
+  - ❓ Issue is between wake word detection and SmartHome server
 - **Diagnosis:**
-  The SmartHome server code is NOT the problem. Either:
-  1. **STT is failing silently** - Speech not being transcribed
-  2. **Webhook routing not configured** - HA not sending to SmartHome server
-  3. **TTS not playing audio** - Response not being spoken back
+  The SmartHome server and HA configuration are correct. The issue is in the HA voice pipeline:
+  1. **Faster Whisper STT** may not be transcribing correctly
+  2. **Assist pipeline** may not be routing to smart_home_agent
+  3. **Voice puck** may not be sending audio to HA correctly
 - **Required User Actions:**
-  - [ ] Check HA voice pipeline logs for STT transcription: Settings > System > Logs
-  - [ ] Verify conversation agent webhook is configured in HA (see docs/integrations/voice-puck.md)
-  - [ ] Check if TTS engine (Piper) is installed and configured
-  - [ ] Test TTS manually: Developer Tools > Services > tts.piper > Select voice puck media player
-  - [ ] Check voice puck ESPHome logs for errors
+  - [ ] When speaking to puck, check HA logs in real-time: Settings > System > Logs (set to DEBUG)
+  - [ ] Test assist pipeline directly: Developer Tools > Services > assist_pipeline.run
+  - [ ] Check voice puck ESPHome logs for audio/connection errors
+  - [ ] Verify faster_whisper is transcribing: check HA logs for "stt" entries
 - **Quick Tests:**
   ```bash
-  # Test SmartHome webhook directly (should work)
-  curl -k -X POST https://colby:5050/api/voice_command \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer YOUR_TOKEN" \
-    -d '{"text": "what time is it?"}'
+  # Test SmartHome webhook directly (confirmed working 2025-12-20 14:14)
+  curl -s http://localhost:5049/api/voice_command \
+    -X POST -H "Content-Type: application/json" \
+    -d '{"text": "what time is it"}'
+  # Returns: {"context":{"language":"en"},"response":"It's 2:14 PM.","success":true}
 
-  # Check recent voice logs
-  tail -f /home/k4therin2/projects/Smarthome/data/logs/smarthome_2025-12-20.log | grep voice
+  # Test from inside Docker (also works - --network=host)
+  docker exec homeassistant curl -s http://localhost:5049/api/voice_command \
+    -X POST -H "Content-Type: application/json" \
+    -d '{"text": "what time is it"}'
   ```
 - **Related:** WP-3.1a (Voice Software), WP-3.1b (Voice Hardware)
 
