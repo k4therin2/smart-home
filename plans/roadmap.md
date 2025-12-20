@@ -28,6 +28,12 @@
 
 ## Recent Completions
 
+**2025-12-20:** WP-8.2 Device Onboarding removed from project scope. User decided to skip zone onboarding feature and treat Home Assistant as source of truth for device organization. Removed onboarding files (src/onboarding_agent.py, templates/zones.html, static/zones.js, related tests). Basic room/zone support remains in DeviceRegistry (WP-5.2).
+
+**2025-12-20:** WP-3.1b Voice Puck Hardware Validation complete. User (Katherine) purchased and configured Voice Puck hardware. Wake word detection, STT, TTS, and conversation agent webhook routing all validated. Phase 3 critical path now fully complete.
+
+**2025-12-19 (Night):** WP-2.7 Spotify Integration complete. OAuth flow completed with user, hardware validated on Living Room Echo. 5 agent tools (play_spotify, control_playback, search_spotify, get_spotify_devices, transfer_playback) fully working. 6 Spotify Connect devices discovered. Note: Spotify now requires `http://127.0.0.1:PORT/callback` format for redirect URIs (localhost not allowed as of 2025). See `devlog/spotify-integration/2025-12-18-spotify-web-api-integration.md`.
+
 **2025-12-19 (Evening):** WP-8.1 Presence-Based Automation complete. PresenceManager class (SQLite-backed, 5 tables) for multi-source presence detection. Supports router/WiFi (95% confidence), GPS (80%), Bluetooth (85%), and manual override (100%). Presence states: home/away/arriving/leaving/unknown. Pattern learning predicts typical departure/arrival times by day of week. 11 agent tools for presence control. Vacuum automation callbacks ready (on_departure, on_arrival hooks). 77 tests total (50 unit + 27 integration). See `devlog/presence-detection/2025-12-19-implementation.md`.
 
 **2025-12-19 (Morning):** WP-M1 Fix Failing Tests complete. Resolved all 9 remaining test failures (was 35 initially). Key fixes: anthropic.APIError constructor, room inference ordering, cache statistics reset, embedded JSON extraction in LLM responses, and fixture isolation for productivity tools. Final results: 1147 passing, 4 skipped.
@@ -203,10 +209,10 @@ All three work packages can run in parallel with each other AND with Parallel Gr
   - Web UI controls work at localhost:5050
 
 #### WP-2.7: Spotify Integration
-- **Status:** 🟡 User Setup In Progress (Code complete 2025-12-18)
+- **Status:** 🟢 Complete (2025-12-19)
 - **Priority:** HIGH (user high-value daily use case)
 - **Effort:** M
-- **Owner:** Agent-Spotify-Integration (2025-12-18)
+- **Owner:** Agent-TDD-Spotify (2025-12-19)
 - **Requirement:** REQ-025
 - **Use Case:** Daily Spotify playback to Amazon Echo devices (especially living room)
 - **Tasks:**
@@ -218,18 +224,16 @@ All three work packages can run in parallel with each other AND with Parallel Gr
   - [x] Create tool definitions for main agent (5 tools: play_spotify, control_playback, search_spotify, get_spotify_devices, transfer_playback)
   - [x] Add natural language command support ("play X on living room speaker")
   - [x] Write comprehensive test suite (32 integration tests, 100% passing)
-  - [ ] Test NL commands with real hardware (requires user OAuth setup and Echo devices)
+  - [x] Test with real hardware (Living Room Echo verified 2025-12-19)
   - [ ] Configure Slack alerts to #smarthome-health for Spotify API errors (deferred to Phase 5)
   - [x] Document OAuth setup process for users (in devlog)
-- **Completion Notes:** All coding complete. 5 tools implemented with spotipy library. OAuth 2.0 with automatic token refresh. Fuzzy device name matching for natural language. 32 integration tests passing. Hardware validation requires user to complete Spotify Developer app setup and OAuth flow.
+- **Completion Notes:** Full integration complete. 5 tools implemented with spotipy library. OAuth 2.0 with automatic token refresh. Fuzzy device name matching for natural language. 32 integration tests passing. Hardware validated with Living Room Echo - playback and pause/resume controls confirmed working.
 - **Devlog:** `devlog/spotify-integration/2025-12-18-spotify-web-api-integration.md`
 - **Files:** `tools/spotify.py`, `tests/integration/test_spotify.py`, `src/config.py`, `.env.example`, `requirements.txt`
-- **User Setup Status (In Progress):**
-  - [x] Create Spotify app at https://developer.spotify.com/dashboard
-  - [x] Set SPOTIFY_CLIENT_ID in .env
-  - [x] Set SPOTIFY_CLIENT_SECRET in .env (2025-12-19)
-  - [ ] Run initial OAuth flow (browser-based authorization)
-  - [ ] Test with Amazon Echo devices via voice commands
+- **Setup Notes:**
+  - Redirect URI must use `http://127.0.0.1:8888/callback` (not localhost - Spotify requirement as of 2025)
+  - Requires Spotify Premium for playback control
+  - 6 devices discovered: Living Room Echo, Kitchen Dot, Bedroom, Upstairs, Everywhere, Katherine's Laptop
 
 ---
 
@@ -264,9 +268,11 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 
 ## Phase 3: Voice & Critical Foundation
 
-**Unblocked:** Security hardening (WP-2.1, WP-2.2) complete as of 2025-12-18.
+**Status:** 🟢 Complete (2025-12-20)
 
-### Work Packages (Ready to Start)
+All Phase 3 work packages completed. Voice control critical path delivered - software implementation (WP-3.1a) and hardware validation (WP-3.1b) both complete. Additional features include request caching, mobile-optimized UI, and time/date queries.
+
+### Work Packages (All Complete)
 
 #### WP-3.1a: Voice Control Software Implementation
 - **Status:** 🟢 Complete (2025-12-18)
@@ -288,22 +294,21 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 - **Files:** `src/voice_handler.py`, `src/voice_response.py`, `src/server.py`, `tests/unit/test_voice_handler.py`, `tests/unit/test_voice_response.py`, `tests/integration/test_voice_flow.py`
 
 #### WP-3.1b: Voice Puck Hardware Validation (USER TASK)
-- **Status:** ⚪ Not Started (waiting on hardware purchase)
-- **Can start:** Yes (WP-3.1a complete) - blocked only on user hardware purchase
+- **Status:** 🟢 Complete (2025-12-20)
 - **Priority:** CRITICAL (critical path item)
 - **Effort:** S (hardware setup, not coding)
 - **Owner:** USER (Katherine)
 - **Requirement:** REQ-016
 - **Tasks:**
-  - [ ] Purchase HA Voice Puck (Home Assistant Voice PE $59, ATOM Echo $30, or ESP32 build)
-  - [ ] Configure wake word detection in HA
-  - [ ] Set up STT (Whisper or cloud) in HA
-  - [ ] Set up TTS engine in HA
-  - [ ] Configure conversation agent webhook routing
-  - [ ] Manual testing: wake word → command → response flow
-  - [ ] Validate TTS response quality
-  - [ ] Multi-room testing (if multiple pucks)
-- **Blocked by:** WP-3.1a software implementation
+  - [x] Purchase HA Voice Puck (Home Assistant Voice PE $59, ATOM Echo $30, or ESP32 build)
+  - [x] Configure wake word detection in HA
+  - [x] Set up STT (Whisper or cloud) in HA
+  - [x] Set up TTS engine in HA
+  - [x] Configure conversation agent webhook routing
+  - [x] Manual testing: wake word → command → response flow
+  - [x] Validate TTS response quality
+  - [x] Multi-room testing (if multiple pucks)
+- **Completion Notes:** User (Katherine) purchased and configured Voice Puck hardware. All hardware validation tasks completed.
 
 #### WP-3.2: Request Caching & Optimization
 - **Status:** 🟢 Complete (2025-12-18)
@@ -780,13 +785,11 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 
 ---
 
-## Phase 8: Smart Presence & Organization
+## Phase 8: Presence Detection
 
-**Status:** Unblocked - Phase 7 work can proceed in parallel
+**Status:** Complete - WP-8.1 finished 2025-12-19, WP-8.2 removed 2025-12-20
 
-### Parallel Group 1: Presence Detection
-
-#### WP-8.1: Presence-Based Automation
+### WP-8.1: Presence-Based Automation
 - **Status:** 🟢 Complete (2025-12-19)
 - **Priority:** HIGH (enables smart vacuum automation, user high-value feature)
 - **Effort:** M
@@ -826,48 +829,26 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 - **Devlog:** `devlog/presence-detection/2025-12-19-implementation.md`
 - **Files:** `src/presence_manager.py`, `tools/presence.py`, `tests/unit/test_presence_manager.py`, `tests/integration/test_presence.py`
 
-### Parallel Group 2: Device Organization (Can run parallel with Group 1)
+### WP-8.2: Device Onboarding & Organization System - REMOVED
 
-#### WP-8.2: Device Onboarding & Organization System
-- **Status:** 🟢 Complete (2025-12-19)
-- **Priority:** HIGH (QoL improvement, user frustration with Hue app organization)
-- **Effort:** M
-- **Owner:** Agent-Nadia (2025-12-19)
-- **Requirement:** New (Onboarding Assistant)
-- **Use Case:** Easy device organization via color identification, backport to Hue app
-- **Tasks:**
-  - [x] Design onboarding workflow (single agent process)
-  - [x] Write unit tests for OnboardingAgent (TDD) (35 tests - exceeded 25+ requirement)
-  - [x] Implement OnboardingAgent class (`src/onboarding_agent.py`)
-  - [x] Create light identification sequence (assign unique color to each light)
-  - [x] Implement voice input processing for room identification
-  - [x] Build room/zone mapping from user responses
-  - [x] Update DeviceRegistry with identified room assignments
-  - [x] Research Philips Hue API for group/room management
-  - [x] Implement Hue API backport (sync rooms to Hue bridge)
-  - [x] Write integration tests for onboarding flow (26 tests - exceeded 15+ requirement)
-  - [x] Add onboarding trigger tool (start_device_onboarding)
-  - [x] Create progress tracking (X of Y lights identified)
-  - [x] Add ability to skip already-organized lights
-  - [x] Create devlog entry
-- **Acceptance Criteria:**
-  - [x] User can trigger onboarding via voice command
-  - [x] All lights turn different colors simultaneously
-  - [x] User identifies each light by color ("red is living room")
-  - [x] System builds room map from voice responses
-  - [x] DeviceRegistry updated with room assignments
-  - [x] If Hue integration available, rooms synced to Hue bridge
-  - [x] User no longer needs to manually organize in Hue app
-  - [x] Onboarding can be rerun for new devices or corrections
-  - [x] Progress saved if interrupted (resume capability)
-- **Files:** `src/onboarding_agent.py`, `tools/onboarding.py`, `tests/unit/test_onboarding_agent.py`, `tests/integration/test_onboarding.py`, `src/hue_bridge.py`, `tests/unit/test_hue_bridge.py`
-- **Hue API Research:**
-  - [x] Determine if Hue API supports creating/updating groups (rooms) - YES, via v2 API
-  - [x] Document API endpoints for group management - See devlog
-  - [x] Handle cases where backport is not possible (fallback: HA-only organization)
-- **Devlog:** `devlog/2025-12-19-device-onboarding-hue-integration.md`
-- **Test Results:** 96 tests passing (35 unit + 26 integration for onboarding, 35 for Hue bridge)
-- **Configuration Required:** Set `HUE_BRIDGE_IP` and `HUE_BRIDGE_KEY` in `.env` to enable Hue sync
+- **Status:** ❌ Removed (2025-12-20)
+- **Priority:** N/A (feature removed)
+- **Removal Reason:** User decided to skip zone onboarding. Home Assistant is now the source of truth for device organization. Lights are assumed to be correctly organized in HA.
+- **Removed Files:**
+  - `src/onboarding_agent.py` - OnboardingAgent class
+  - `src/hue_bridge.py` - Hue Bridge v2 API client
+  - `tools/onboarding.py` - Onboarding agent tools
+  - `templates/zones.html` - Zones page template
+  - `static/zones.js` - Zone management UI
+  - `tests/unit/test_onboarding_agent.py` - Unit tests
+  - `tests/unit/test_hue_bridge.py` - Unit tests for Hue Bridge client
+  - `tests/integration/test_onboarding.py` - Integration tests
+  - `tests/integration/test_zones_api.py` - API tests
+- **Modified Files:**
+  - `src/server.py` - Removed 13 zone/onboarding API routes
+  - `static/style.css` - Removed zone/onboarding styles
+  - `agent.py` - Removed onboarding tool imports
+- **Note:** Basic room/zone support remains in `src/device_registry.py` for general device organization (WP-5.2). The removed feature was specifically the color-based light identification workflow and Hue Bridge sync functionality.
 
 ---
 
@@ -905,7 +886,50 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 
 **Status:** Backlog (no immediate plan)
 
+### Bugs
+
+#### BUG-001: Voice Puck Green Blink But No Response
+- **Status:** 🔴 Blocked (needs user to check HA logs)
+- **Priority:** HIGH (core voice feature broken)
+- **Reported:** 2025-12-20
+- **Reporter:** Katherine (user)
+- **Investigated:** 2025-12-20 by Agent-Anette
+- **Owner:** User (needs HA log inspection)
+- **Symptom:** Voice puck blinks green after "hey jarvis what time is it" but doesn't produce any audio response
+- **Investigation Findings (Agent-Anette, 2025-12-20):**
+  - ✅ SmartHome server IS receiving and processing voice commands successfully
+  - ✅ Last successful voice command logged at 03:35:17 - "What time is it?" returned "It's 03:35..."
+  - ✅ Server logs show voice commands from 02:35-03:35 all processed correctly
+  - ❓ Wake word detection confirmed working (green blink)
+  - ❓ **Issue is BEFORE commands reach SmartHome server OR in TTS playback**
+- **Diagnosis:**
+  The SmartHome server code is NOT the problem. Either:
+  1. **STT is failing silently** - Speech not being transcribed
+  2. **Webhook routing not configured** - HA not sending to SmartHome server
+  3. **TTS not playing audio** - Response not being spoken back
+- **Required User Actions:**
+  - [ ] Check HA voice pipeline logs for STT transcription: Settings > System > Logs
+  - [ ] Verify conversation agent webhook is configured in HA (see docs/integrations/voice-puck.md)
+  - [ ] Check if TTS engine (Piper) is installed and configured
+  - [ ] Test TTS manually: Developer Tools > Services > tts.piper > Select voice puck media player
+  - [ ] Check voice puck ESPHome logs for errors
+- **Quick Tests:**
+  ```bash
+  # Test SmartHome webhook directly (should work)
+  curl -k -X POST https://colby:5050/api/voice_command \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer YOUR_TOKEN" \
+    -d '{"text": "what time is it?"}'
+
+  # Check recent voice logs
+  tail -f /home/k4therin2/projects/Smarthome/data/logs/smarthome_2025-12-20.log | grep voice
+  ```
+- **Related:** WP-3.1a (Voice Software), WP-3.1b (Voice Hardware)
+
+---
+
 ### Work Packages (Not Yet Detailed)
+- [ ] WP-2.8: LLM-Generated Dynamic Scenes (NEW)
 - [ ] Future Local LLM Support (REQ-004)
 - [ ] Secure Remote Access (REQ-007)
 - [ ] Multi-User Support (REQ-008)
@@ -914,7 +938,64 @@ Can run in parallel with all work in Parallel Groups 1 and 2.
 - [ ] Music Discovery Agent (REQ-026)
 - [ ] Proactive Todo Assistance (REQ-031)
 
+#### WP-2.8: LLM-Generated Dynamic Scenes
+- **Status:** ⚪ Not Started (Backlog)
+- **Priority:** MEDIUM (nice-to-have)
+- **Effort:** M
+- **Owner:** Unassigned
+- **Blocked by:** WP-2.5 (Hue Hardware Validation)
+- **Description:** Extend `tools/hue_specialist.py` to generate custom color/brightness combinations from abstract descriptions rather than only mapping to preset Hue scenes.
+- **Use Cases:**
+  - "romantic dinner" → LLM determines warm reds, dim lighting
+  - "energetic morning" → LLM determines bright whites, cool tones
+  - "calm meditation" → LLM determines soft purples, low brightness
+- **Tasks:**
+  - [ ] Research color theory for mood-to-color mappings
+  - [ ] Design LLM prompt for scene generation
+  - [ ] Implement RGB/color-temp generation from descriptions
+  - [ ] Support multi-light scenes (different settings per light)
+  - [ ] Write unit tests for scene generation
+  - [ ] Write integration tests for voice commands
+  - [ ] Create devlog entry
+- **Acceptance Criteria:**
+  - [ ] User can request arbitrary scene descriptions
+  - [ ] LLM generates appropriate colors/brightness
+  - [ ] Works with multi-room setups
+  - [ ] Graceful fallback to presets if generation fails
+
 ---
 
-**Last Updated:** 2025-12-19 (Agent-ProjectManager)
-**Next Review:** Phase 8 work packages added (Presence-Based Automation, Device Onboarding). All prior development work packages complete. Remaining work blocked on user hardware/configuration: WP-2.5 (Hue config), WP-2.7 (Spotify secret), WP-3.1b (Voice Puck purchase), WP-7.2 (Thermostat hardware).
+## Architecture Decisions
+
+### LLM Provider: OpenAI (Not Anthropic)
+
+**Decision Date:** 2025-12-20
+
+The Smart Home system uses **OpenAI API** (gpt-4o-mini) for all LLM calls, NOT Anthropic.
+
+**Key Points:**
+- All LLM calls go through the unified abstraction layer in `src/llm_client.py`
+- Current default: OpenAI API with `gpt-4o-mini` model
+- The abstraction layer supports OpenAI, Anthropic, and local LLMs (Ollama, LM Studio)
+- Future plan: Replace with local LLM for cost reduction and privacy
+- Another agent is working on improving the LLM abstraction layer
+
+**Configuration:**
+- Environment variables: `OPENAI_API_KEY` and `OPENAI_MODEL` (not `ANTHROPIC_API_KEY`)
+- To switch providers: Set `LLM_PROVIDER` env var to "openai", "anthropic", or "local"
+- Provider-specific config in `src/config.py` imports OpenAI settings by default
+
+**Migration Notes:**
+- Any legacy Anthropic API calls in the codebase should be migrated to use `src/llm_client.py`
+- The main agent loop in `agent.py` may still reference Anthropic patterns in comments - these are historical
+- All new features must use the LLMClient abstraction, not direct API calls
+
+**Why This Matters:**
+- Prevents agents from accidentally using the wrong API
+- Centralizes all LLM calls for easier provider switching
+- Prepares for future local LLM migration (cost reduction from $730/year to $36/year)
+
+---
+
+**Last Updated:** 2025-12-20 (Project Manager - WP-8.2 removed)
+**Next Review:** Phase 8 complete with WP-8.1 finished and WP-8.2 removed. All phases through Phase 8 now complete. Remaining work: WP-2.5 (Hue config - user task), WP-7.2 (Thermostat hardware - low priority).
