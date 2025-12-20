@@ -2,9 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Smart Home Assistant - Control your home with natural language commands">
     <title>Smart Home Assistant</title>
+
+    <!-- Mobile Web App Configuration -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Smart Home">
+    <meta name="theme-color" content="#0f0f0f">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Favicons and Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/apple-touch-icon-152.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/icons/apple-touch-icon-120.png">
+
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -13,6 +31,10 @@
         <!-- Header with system status -->
         <header role="banner">
             <h1>Smart Home</h1>
+            <nav>
+                <a href="/" class="active">Home</a>
+                <a href="/zones">Zones</a>
+            </nav>
             <div
                 id="status-indicator"
                 class="status-badge status-unknown"
@@ -112,6 +134,71 @@
                 </ul>
             </section>
 
+            <!-- Todo List Section (WP-4.1) -->
+            <section
+                class="todo-section"
+                aria-label="Todo list"
+                data-section="todos"
+            >
+                <h2 id="todos-heading">Todo Lists</h2>
+
+                <!-- List Selector Tabs -->
+                <div class="todo-tabs" role="tablist" aria-label="Todo lists">
+                    <button
+                        class="todo-tab active"
+                        role="tab"
+                        aria-selected="true"
+                        data-list="default"
+                    >
+                        Default
+                    </button>
+                    <button
+                        class="todo-tab"
+                        role="tab"
+                        aria-selected="false"
+                        data-list="shopping"
+                    >
+                        Shopping
+                    </button>
+                    <button
+                        class="todo-tab"
+                        role="tab"
+                        aria-selected="false"
+                        data-list="work"
+                    >
+                        Work
+                    </button>
+                </div>
+
+                <!-- Quick Add Form -->
+                <form id="todo-add-form" class="todo-add-form">
+                    <input
+                        type="text"
+                        id="todo-input"
+                        placeholder="Add a new item..."
+                        autocomplete="off"
+                        aria-label="New todo item"
+                    >
+                    <button type="submit" aria-label="Add todo">+</button>
+                </form>
+
+                <!-- Todo Items List -->
+                <ul
+                    id="todo-list"
+                    class="todo-list"
+                    role="list"
+                    aria-labelledby="todos-heading"
+                >
+                    <li class="placeholder-text" data-placeholder="true">Loading...</li>
+                </ul>
+
+                <!-- Show Completed Toggle -->
+                <label class="todo-toggle">
+                    <input type="checkbox" id="show-completed">
+                    Show completed items
+                </label>
+            </section>
+
             <!-- Device Status Dashboard -->
             <section
                 class="devices-section"
@@ -126,6 +213,126 @@
                     aria-labelledby="devices-heading"
                 >
                     <p class="placeholder-text" data-placeholder="true">No devices connected</p>
+                </div>
+            </section>
+
+            <!-- System Logs Section (WP-6.1) -->
+            <section
+                class="logs-section"
+                aria-label="System logs"
+                data-section="logs"
+            >
+                <h2 id="logs-heading">
+                    System Logs
+                    <button
+                        class="logs-toggle-btn"
+                        id="logs-toggle"
+                        aria-expanded="false"
+                        aria-controls="logs-panel"
+                        title="Toggle logs panel"
+                    >
+                        ▼
+                    </button>
+                </h2>
+
+                <div id="logs-panel" class="logs-panel collapsed">
+                    <!-- Log Type Tabs -->
+                    <div class="logs-tabs" role="tablist" aria-label="Log types">
+                        <button
+                            class="logs-tab active"
+                            role="tab"
+                            aria-selected="true"
+                            data-log-type="main"
+                        >
+                            Main
+                        </button>
+                        <button
+                            class="logs-tab"
+                            role="tab"
+                            aria-selected="false"
+                            data-log-type="error"
+                        >
+                            Errors
+                        </button>
+                        <button
+                            class="logs-tab"
+                            role="tab"
+                            aria-selected="false"
+                            data-log-type="api"
+                        >
+                            API
+                        </button>
+                    </div>
+
+                    <!-- Log Filters -->
+                    <div class="logs-filters">
+                        <select id="log-level-filter" aria-label="Filter by log level">
+                            <option value="">All Levels</option>
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                            <option value="CRITICAL">CRITICAL</option>
+                        </select>
+
+                        <input
+                            type="text"
+                            id="log-search"
+                            placeholder="Search logs..."
+                            aria-label="Search log messages"
+                        >
+
+                        <div class="logs-actions">
+                            <button
+                                id="logs-refresh-btn"
+                                class="logs-action-btn"
+                                title="Refresh logs"
+                                aria-label="Refresh logs"
+                            >
+                                ↻
+                            </button>
+                            <button
+                                id="logs-tail-btn"
+                                class="logs-action-btn"
+                                title="Toggle real-time updates"
+                                aria-label="Toggle real-time log updates"
+                                aria-pressed="false"
+                            >
+                                ▶
+                            </button>
+                            <button
+                                id="logs-export-btn"
+                                class="logs-action-btn"
+                                title="Export logs"
+                                aria-label="Export logs to file"
+                            >
+                                ↓
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Log Stats -->
+                    <div id="log-stats" class="log-stats">
+                        <span id="log-count">-</span> entries
+                    </div>
+
+                    <!-- Log Entries -->
+                    <div
+                        id="logs-container"
+                        class="logs-container"
+                        role="log"
+                        aria-live="polite"
+                        aria-label="Log entries"
+                    >
+                        <p class="placeholder-text" data-placeholder="true">Click to load logs...</p>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="logs-pagination">
+                        <button id="logs-prev" class="logs-page-btn" disabled>← Prev</button>
+                        <span id="logs-page-info">Page 1</span>
+                        <button id="logs-next" class="logs-page-btn">Next →</button>
+                    </div>
                 </div>
             </section>
 
