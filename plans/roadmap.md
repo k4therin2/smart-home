@@ -936,6 +936,7 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 
 ### Work Packages (Not Yet Detailed)
 - [ ] WP-2.8: LLM-Generated Dynamic Scenes (NEW)
+- [ ] WP-9.1: Conversational Automation Setup via Voice (NEW - 2025-12-21)
 - [ ] Future Local LLM Support (REQ-004)
 - [ ] Secure Remote Access (REQ-007)
 - [ ] Multi-User Support (REQ-008)
@@ -943,6 +944,45 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 - [ ] Pattern Learning & Routine Discovery (REQ-020)
 - [ ] Music Discovery Agent (REQ-026)
 - [ ] Proactive Todo Assistance (REQ-031)
+
+#### WP-9.1: Conversational Automation Setup via Voice
+- **Status:** Backlog
+- **Priority:** P2 (suggested - enhancement to existing automation feature)
+- **Effort:** M-L
+- **Source:** Slack #ideas-inbox (2025-12-21)
+- **Original Request:** "Can you add to the smarthome project backlog, the idea of having me be able to talk to the system (via HA voice puck or app) to just verbally ask for a new automation to be set up? it should be able to go back and forth with me if it gets confused or runs into issues. e.g. 'Can you make a new automation that turns off lights at 10am each day?'"
+- **Description:** Extend the existing automation creation capability (WP-4.2) to support fully conversational, voice-driven automation setup with back-and-forth clarification.
+- **Builds On:** WP-4.2 (Simple Automation Creation - complete), WP-3.1a/b (Voice Control - complete)
+- **Key Features:**
+  - User speaks automation request via voice puck or HA app
+  - System parses intent and asks clarifying questions if needed
+  - Multi-turn conversation until automation is fully specified
+  - Confirmation before saving automation
+  - Error handling with helpful suggestions
+- **Example Flow:**
+  ```
+  User: "Can you make a new automation that turns off lights at 10am each day?"
+  System: "Sure! Which lights should I turn off at 10am? You have Living Room, Bedroom, and Kitchen lights."
+  User: "All of them"
+  System: "Got it. I'll turn off all lights at 10am every day. Should I also turn them on at a specific time, or just the off automation?"
+  User: "Just the off one"
+  System: "Perfect! I've created an automation to turn off all lights at 10am daily. Would you like me to enable it now?"
+  ```
+- **Tasks:**
+  - [ ] Design conversation state machine for automation clarification
+  - [ ] Extend voice handler to support multi-turn automation dialogs
+  - [ ] Integrate with existing AutomationManager from WP-4.2
+  - [ ] Handle ambiguous device names (ask for clarification)
+  - [ ] Handle ambiguous times/triggers (ask for clarification)
+  - [ ] Error recovery with helpful suggestions
+  - [ ] TTS-friendly response formatting
+  - [ ] Unit and integration tests
+- **Acceptance Criteria:**
+  - [ ] User can create automations entirely by voice
+  - [ ] System asks clarifying questions for ambiguous inputs
+  - [ ] Automations are correctly saved to AutomationManager
+  - [ ] Works with both voice puck and HA app
+  - [ ] Graceful error handling with voice feedback
 
 #### WP-2.8: LLM-Generated Dynamic Scenes
 - **Status:** ⚪ Not Started (Backlog)
