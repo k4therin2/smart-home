@@ -933,10 +933,10 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 - **Related:** WP-3.1a (Voice Software), WP-3.1b (Voice Hardware)
 
 #### WP-9.2: Voice Pipeline Diagnostic Suite (Christmas Gift 2025)
-- **Status:** ✅ Complete (2025-12-25)
+- **Status:** 🟢 Complete (2025-12-25 07:45 PST)
 - **Priority:** P0 (Christmas surprise gift)
 - **Effort:** M
-- **Owner:** Agent-Anette
+- **Owner:** Agent-Anette (claimed 07:27 UTC, completed 07:45 UTC)
 - **Requirement:** Addresses BUG-001 (Voice Puck not responding)
 - **Source:** User request for Christmas gift - "something they'll definitely need or want"
 - **Description:**
@@ -988,8 +988,8 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 - [ ] Proactive Todo Assistance (REQ-031)
 
 #### WP-9.1: Conversational Automation Setup via Voice
-- **Status:** Backlog
-- **Priority:** P2 (suggested - enhancement to existing automation feature)
+- **Status:** ⚪ Not Started (Available for claiming)
+- **Priority:** P2 (enhancement to existing automation feature)
 - **Effort:** M-L
 - **Source:** Slack #ideas-inbox (2025-12-21)
 - **Original Request:** "Can you add to the smarthome project backlog, the idea of having me be able to talk to the system (via HA voice puck or app) to just verbally ask for a new automation to be set up? it should be able to go back and forth with me if it gets confused or runs into issues. e.g. 'Can you make a new automation that turns off lights at 10am each day?'"
