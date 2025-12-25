@@ -932,6 +932,48 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
   ```
 - **Related:** WP-3.1a (Voice Software), WP-3.1b (Voice Hardware)
 
+#### WP-9.2: Voice Pipeline Diagnostic Suite (Christmas Gift 2025)
+- **Status:** ✅ Complete (2025-12-25)
+- **Priority:** P0 (Christmas surprise gift)
+- **Effort:** M
+- **Owner:** Agent-Anette
+- **Requirement:** Addresses BUG-001 (Voice Puck not responding)
+- **Source:** User request for Christmas gift - "something they'll definitely need or want"
+- **Description:**
+  Comprehensive diagnostic tool to test the entire voice pipeline from puck to TTS response, identify failures, and suggest fixes. Directly addresses the user's #1 pain point.
+- **Components:**
+  1. **Diagnostic Dashboard** (Web UI page at /diagnostics)
+     - Visual pipeline diagram showing each step
+     - One-click 'Run Full Diagnostic' button
+     - Real-time status indicators (green/yellow/red)
+  2. **Pipeline Test Suite** (API endpoint /api/diagnostics/voice)
+     - Test 1: Voice Puck connectivity (ping, ESPHome status)
+     - Test 2: HA Assist pipeline check (STT, TTS, conversation agent config)
+     - Test 3: SmartHome webhook reachability from HA
+     - Test 4: SmartHome voice endpoint functionality
+     - Test 5: TTS output verification
+  3. **Auto-Fix Suggestions**
+     - For each failing test, provide specific fix instructions
+     - Common issues: webhook URL wrong, STT not configured, TTS entity missing
+  4. **Devlog with Fix Guide**
+     - Document the investigation process
+     - Provide manual testing commands
+     - Include HA configuration snippets
+- **Tasks:**
+  - [x] Create src/voice_diagnostics.py (diagnostic logic) - ~550 lines
+  - [x] Create templates/diagnostics.html (dashboard page) - ~230 lines
+  - [x] Create static/diagnostics.js (frontend logic) - ~150 lines
+  - [x] Add routes to src/server.py - 2 routes added
+  - [x] Create tests/test_voice_diagnostics.py - 27 tests, all passing
+  - [x] Create devlog/voice-diagnostics/DEVLOG.md
+- **Acceptance Criteria:**
+  - [x] User can access /diagnostics page
+  - [x] One-click runs all 5 tests with clear pass/fail
+  - [x] Each failure includes actionable fix suggestion
+  - [x] Devlog documents the tool and common fixes
+- **Completed:** 2025-12-25 07:45 PST (Christmas morning!)
+- **Related:** BUG-001, WP-3.1a (Voice Software), WP-3.1b (Voice Hardware)
+
 ---
 
 ### Work Packages (Not Yet Detailed)

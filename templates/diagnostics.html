@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Pipeline Diagnostics - SmartHome</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Diagnostics-specific styles */
+        .diagnostics-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .diagnostics-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .diagnostics-header h1 {
+            color: var(--primary-color, #4a90d9);
+            margin-bottom: 10px;
+        }
+
+        .diagnostics-header p {
+            color: var(--text-secondary, #6c757d);
+        }
+
+        .run-button {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #4a90d9, #357abd);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .run-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 144, 217, 0.4);
+        }
+
+        .run-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .run-button.running {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+        }
+
+        /* Pipeline visualization */
+        .pipeline-visual {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--bg-secondary, #f8f9fa);
+            border-radius: 15px;
+            overflow-x: auto;
+        }
+
+        .pipeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .pipeline-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: var(--bg-tertiary, #e9ecef);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .pipeline-icon.passed {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+        }
+
+        .pipeline-icon.failed {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .pipeline-icon.warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #212529;
+        }
+
+        .pipeline-icon.running {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .pipeline-arrow {
+            font-size: 24px;
+            color: var(--text-secondary, #6c757d);
+            margin: 0 10px;
+        }
+
+        /* Results section */
+        .results-container {
+            margin-top: 30px;
+        }
+
+        .overall-status {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .overall-status.passed {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(33, 136, 56, 0.1));
+            border: 2px solid #28a745;
+        }
+
+        .overall-status.failed {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(200, 35, 51, 0.1));
+            border: 2px solid #dc3545;
+        }
+
+        .overall-status.warning {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(224, 168, 0, 0.1));
+            border: 2px solid #ffc107;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .status-badge.passed { background: #28a745; color: white; }
+        .status-badge.failed { background: #dc3545; color: white; }
+        .status-badge.warning { background: #ffc107; color: #212529; }
+
+        /* Individual test results */
+        .test-result {
+            background: var(--bg-secondary, #ffffff);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .test-header:hover {
+            background: var(--bg-tertiary, #f8f9fa);
+        }
+
+        .test-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .test-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+        }
+
+        .test-status-icon.passed { background: #28a745; }
+        .test-status-icon.failed { background: #dc3545; }
+        .test-status-icon.warning { background: #ffc107; color: #212529; }
+
+        .test-details {
+            display: none;
+            padding: 0 20px 20px;
+            border-top: 1px solid var(--border-color, #e9ecef);
+        }
+
+        .test-details.expanded {
+            display: block;
+        }
+
+        .test-message {
+            padding: 15px;
+            margin: 10px 0;
+            background: var(--bg-tertiary, #f8f9fa);
+            border-radius: 8px;
+        }
+
+        .fix-suggestions {
+            margin-top: 15px;
+        }
+
+        .fix-suggestions h4 {
+            color: var(--primary-color, #4a90d9);
+            margin-bottom: 10px;
+        }
+
+        .fix-suggestions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .fix-suggestions li {
+            padding: 8px 0 8px 25px;
+            position: relative;
+        }
+
+        .fix-suggestions li::before {
+            content: ">";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .details-json {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        /* Summary stats */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--text-secondary, #6c757d);
+        }
+
+        /* Loading state */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .pipeline-visual {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+                margin: 10px 0;
+            }
+
+            .stats-bar {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostics-container">
+        <header class="diagnostics-header">
+            <h1>Voice Pipeline Diagnostics</h1>
+            <p>Test your voice pipeline from puck to TTS response</p>
+        </header>
+
+        <button id="runDiagnostics" class="run-button">
+            Run Full Diagnostic
+        </button>
+
+        <!-- Pipeline Visualization -->
+        <div class="pipeline-visual">
+            <div class="pipeline-step" data-test="Voice Puck Connectivity">
+                <div class="pipeline-icon" id="step-1">
+                    <span>1</span>
+                </div>
+                <span>Voice Puck</span>
+            </div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step" data-test="HA Assist Pipeline">
+                <div class="pipeline-icon" id="step-2">
+                    <span>2</span>
+                </div>
+                <span>HA Assist</span>
+            </div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step" data-test="SmartHome Webhook">
+                <div class="pipeline-icon" id="step-3">
+                    <span>3</span>
+                </div>
+                <span>Webhook</span>
+            </div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step" data-test="SmartHome Voice Endpoint">
+                <div class="pipeline-icon" id="step-4">
+                    <span>4</span>
+                </div>
+                <span>Voice API</span>
+            </div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step" data-test="TTS Output">
+                <div class="pipeline-icon" id="step-5">
+                    <span>5</span>
+                </div>
+                <span>TTS Output</span>
+            </div>
+        </div>
+
+        <!-- Results Container (hidden until diagnostics run) -->
+        <div id="results" class="results-container" style="display: none;">
+            <div id="overallStatus" class="overall-status">
+                <span id="statusBadge" class="status-badge"></span>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value" id="passedCount">0</div>
+                        <div class="stat-label">Passed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="failedCount">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="warningCount">0</div>
+                        <div class="stat-label">Warnings</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="durationValue">0</div>
+                        <div class="stat-label">ms</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="testResults"></div>
+        </div>
+
+        <!-- Back to home link -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" style="color: var(--primary-color, #4a90d9);">&#8592; Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="/static/diagnostics.js"></script>
+</body>
+</html>
