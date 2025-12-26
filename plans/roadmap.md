@@ -982,7 +982,7 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
 - [ ] Future Local LLM Support (REQ-004)
 - [ ] Secure Remote Access (REQ-007)
 - [ ] Multi-User Support (REQ-008)
-- [ ] Ring Camera Integration (REQ-014)
+- [ ] WP-9.2: Ring Camera Integration (REQ-014)
 - [ ] Pattern Learning & Routine Discovery (REQ-020)
 - [ ] Music Discovery Agent (REQ-026)
 - [ ] Proactive Todo Assistance (REQ-031)
@@ -1054,6 +1054,46 @@ All Phase 3 work packages completed. Voice control critical path delivered - sof
   - [ ] LLM generates appropriate colors/brightness
   - [ ] Works with multi-room setups
   - [ ] Graceful fallback to presets if generation fails
+
+#### WP-9.2: Ring Camera Integration
+- **Status:** ⚪ Not Started (Backlog)
+- **Priority:** P2 (user-requested feature)
+- **Effort:** L (large - new integration domain)
+- **Owner:** Unassigned
+- **Source:** Slack #colby-agent-work (2025-12-26)
+- **Original Request:** "can we add ring camera integration to roadmap for smarthome project? i have both a ring doorbell with camera on my front door and cameras within my house. i would like to use it for the system to have an understanding of layout + help me monitor the house for issues while i'm out of town (note i often move these cameras around for different reasons - eg like when leaving for a trip i set more up insdie) (but i think this could also be used for scene/etc. testing for smarthome - for the agents to see response off cameras while im out of the house)"
+- **Description:** Integrate Ring cameras (doorbell + indoor cameras) into the SmartHome system for:
+  1. **Layout understanding** - Agent can reference camera feeds to understand home layout
+  2. **Remote monitoring** - Check house status while user is traveling
+  3. **Scene testing** - Agents can verify lighting/device changes via camera feeds
+- **User's Setup:**
+  - Ring doorbell with camera (front door)
+  - Multiple indoor Ring cameras (repositioned based on need)
+  - Cameras moved around for different use cases (e.g., extra coverage when traveling)
+- **Key Features to Implement:**
+  - Connect Ring cameras via Home Assistant integration
+  - Agent tools to list available cameras
+  - Agent tools to take snapshots from cameras
+  - Agent tools to describe what's visible in camera view
+  - Support for camera position changes (dynamic registry)
+- **Tasks:**
+  - [ ] Research Ring HA integration (ring_doorbell component)
+  - [ ] Design camera registry for dynamic camera positions
+  - [ ] Implement agent tool: list_cameras
+  - [ ] Implement agent tool: get_camera_snapshot
+  - [ ] Implement agent tool: describe_camera_view (uses LLM vision)
+  - [ ] Implement agent tool: check_house_status (multi-camera summary)
+  - [ ] Write unit and integration tests
+  - [ ] Create devlog entry
+- **Acceptance Criteria:**
+  - [ ] User can ask "what do you see on the front door camera?"
+  - [ ] System can provide multi-camera status summary
+  - [ ] Cameras can be repositioned without breaking integration
+  - [ ] Privacy controls for camera access logging
+- **Notes:**
+  - May require Ring account credentials or HA Cloud subscription
+  - Consider rate limits on Ring API
+  - LLM vision capability needed for scene understanding
 
 ---
 
