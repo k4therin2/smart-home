@@ -18,11 +18,11 @@ import argparse
 from datetime import datetime
 from typing import Any, Dict, List
 
-import anthropic
+import openai
 
 from src.config import (
-    ANTHROPIC_API_KEY,
-    CLAUDE_MODEL,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
     MAX_AGENT_ITERATIONS,
 )
 from src.utils import (
@@ -38,6 +38,15 @@ from src.ha_client import get_ha_client
 from tools.lights import LIGHT_TOOLS, execute_light_tool
 from tools.vacuum import VACUUM_TOOLS, execute_vacuum_tool
 from tools.blinds import BLINDS_TOOLS, execute_blinds_tool
+from tools.plugs import PLUGS_TOOLS, execute_plug_tool
+from tools.spotify import SPOTIFY_TOOLS, execute_spotify_tool
+from tools.productivity import PRODUCTIVITY_TOOLS, execute_productivity_tool
+from tools.automation import AUTOMATION_TOOLS, execute_automation_tool
+from tools.timers import TIMER_TOOLS, execute_timer_tool
+from tools.location import LOCATION_TOOLS, execute_location_tool
+from tools.improvements import IMPROVEMENT_TOOLS, handle_improvement_tool
+from tools.presence import PRESENCE_TOOLS, execute_presence_tool
+from tools.ember_mug import EMBER_MUG_TOOLS, execute_ember_mug_tool
 from tools.system import get_current_time, get_current_date, get_datetime_info
 
 logger = setup_logging("agent")
@@ -89,7 +98,7 @@ SYSTEM_TOOLS = [
 ]
 
 # Combine all tools - device tools come from tools/*.py modules
-TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS + BLINDS_TOOLS
+TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS + BLINDS_TOOLS + PLUGS_TOOLS + SPOTIFY_TOOLS + PRODUCTIVITY_TOOLS + AUTOMATION_TOOLS + TIMER_TOOLS + LOCATION_TOOLS + IMPROVEMENT_TOOLS + PRESENCE_TOOLS + EMBER_MUG_TOOLS
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> str:
@@ -155,15 +164,93 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
         log_tool_call(tool_name, tool_input, result)
         return json.dumps(result) if isinstance(result, dict) else str(result)
 
+    # Smart plug tools - delegate to tools/plugs.py
+    plug_tool_names = [tool["name"] for tool in PLUGS_TOOLS]
+    if tool_name in plug_tool_names:
+        result = execute_plug_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Spotify tools - delegate to tools/spotify.py
+    spotify_tool_names = [tool["name"] for tool in SPOTIFY_TOOLS]
+    if tool_name in spotify_tool_names:
+        result = execute_spotify_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Productivity tools - delegate to tools/productivity.py
+    productivity_tool_names = [tool["name"] for tool in PRODUCTIVITY_TOOLS]
+    if tool_name in productivity_tool_names:
+        result = execute_productivity_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Automation tools - delegate to tools/automation.py
+    automation_tool_names = [tool["name"] for tool in AUTOMATION_TOOLS]
+    if tool_name in automation_tool_names:
+        result = execute_automation_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Timer/alarm tools - delegate to tools/timers.py
+    timer_tool_names = [tool["name"] for tool in TIMER_TOOLS]
+    if tool_name in timer_tool_names:
+        result = execute_timer_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Location tools - delegate to tools/location.py
+    location_tool_names = [tool["name"] for tool in LOCATION_TOOLS]
+    if tool_name in location_tool_names:
+        result = execute_location_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Improvement tools - delegate to tools/improvements.py
+    improvement_tool_names = [tool["name"] for tool in IMPROVEMENT_TOOLS]
+    if tool_name in improvement_tool_names:
+        result = handle_improvement_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Presence tools - delegate to tools/presence.py
+    presence_tool_names = [tool["name"] for tool in PRESENCE_TOOLS]
+    if tool_name in presence_tool_names:
+        result = execute_presence_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Ember Mug tools - delegate to tools/ember_mug.py
+    ember_mug_tool_names = [tool["name"] for tool in EMBER_MUG_TOOLS]
+    if tool_name in ember_mug_tool_names:
+        result = execute_ember_mug_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
     # Unknown tool
     result = f"Unknown tool: {tool_name}"
     log_tool_call(tool_name, tool_input, result)
     return result
 
 
+def convert_tools_to_openai_format(tools: List[Dict]) -> List[Dict]:
+    """Convert Anthropic-style tool definitions to OpenAI function format."""
+    openai_tools = []
+    for tool in tools:
+        openai_tools.append({
+            "type": "function",
+            "function": {
+                "name": tool["name"],
+                "description": tool["description"],
+                "parameters": tool["input_schema"]
+            }
+        })
+    return openai_tools
+
+
 def run_agent(user_message: str) -> str:
     """
-    Run the agentic loop with Claude.
+    Run the agentic loop with OpenAI.
 
     Args:
         user_message: User's natural language command
@@ -171,14 +258,19 @@ def run_agent(user_message: str) -> str:
     Returns:
         Final response from the agent
     """
-    if not ANTHROPIC_API_KEY:
-        return "Error: ANTHROPIC_API_KEY not configured. Please set it in .env file."
+    if not OPENAI_API_KEY:
+        return "Error: OPENAI_API_KEY not configured. Please set it in .env file."
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
     prompts = load_prompts()
     system_prompt = prompts.get("main_agent", {}).get("system", "You are a helpful smart home assistant.")
 
-    messages = [{"role": "user", "content": user_message}]
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_message}
+    ]
+
+    openai_tools = convert_tools_to_openai_format(TOOLS)
 
     log_command(user_message)
 
@@ -186,61 +278,56 @@ def run_agent(user_message: str) -> str:
         logger.debug(f"Agent iteration {iteration + 1}/{MAX_AGENT_ITERATIONS}")
 
         try:
-            response = client.messages.create(
-                model=CLAUDE_MODEL,
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
                 max_tokens=1024,
-                system=system_prompt,
-                tools=TOOLS,
-                messages=messages
+                messages=messages,
+                tools=openai_tools,
+                tool_choice="auto"
             )
-        except anthropic.APIError as error:
-            logger.error(f"Anthropic API error: {error}")
+        except openai.APIError as error:
+            logger.error(f"OpenAI API error: {error}")
             return f"API Error: {error}"
+
+        message = response.choices[0].message
 
         # Track usage
         track_api_usage(
-            model=CLAUDE_MODEL,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
+            model=OPENAI_MODEL,
+            input_tokens=response.usage.prompt_tokens,
+            output_tokens=response.usage.completion_tokens,
             command=user_message[:100]
         )
 
-        logger.debug(f"Stop reason: {response.stop_reason}")
+        logger.debug(f"Finish reason: {response.choices[0].finish_reason}")
 
-        # Check if we're done (no more tool use)
-        if response.stop_reason == "end_turn":
-            # Extract text response
-            for block in response.content:
-                if hasattr(block, "text"):
-                    return block.text
-            return "Done."
+        # Check if we're done (no tool calls)
+        if response.choices[0].finish_reason == "stop":
+            return message.content or "Done."
 
-        # Process tool use
-        tool_results = []
-        text_response = None
+        # Process tool calls
+        if message.tool_calls:
+            # Add assistant message with tool calls
+            messages.append(message)
 
-        for block in response.content:
-            if block.type == "text":
-                text_response = block.text
-            elif block.type == "tool_use":
-                tool_name = block.name
-                tool_input = block.input
-                tool_use_id = block.id
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_input = json.loads(tool_call.function.arguments)
 
                 logger.info(f"Tool use: {tool_name} with {tool_input}")
 
                 # Execute tool
                 result = execute_tool(tool_name, tool_input)
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_use_id,
+                # Add tool result
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
                     "content": result
                 })
-
-        # Add assistant message and tool results to conversation
-        messages.append({"role": "assistant", "content": response.content})
-        messages.append({"role": "user", "content": tool_results})
+        else:
+            # No tool calls and not stopped - return content
+            return message.content or "Done."
 
     # Max iterations reached
     logger.warning("Max agent iterations reached")
