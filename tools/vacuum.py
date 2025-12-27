@@ -14,7 +14,8 @@ from typing import Any
 
 from src.config import get_vacuum_entity
 from src.ha_client import get_ha_client
-from src.utils import setup_logging, send_health_alert
+from src.utils import send_health_alert, setup_logging
+
 
 logger = setup_logging("tools.vacuum")
 
@@ -97,11 +98,11 @@ Examples:
                 "action": {
                     "type": "string",
                     "enum": ["start", "stop", "pause", "resume", "return_home", "locate"],
-                    "description": "The vacuum control action"
+                    "description": "The vacuum control action",
                 }
             },
-            "required": ["action"]
-        }
+            "required": ["action"],
+        },
     },
     {
         "name": "get_vacuum_status",
@@ -113,11 +114,7 @@ Examples:
 - Error state if any
 
 Use this to check if the vacuum is busy, charging, or available.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "set_vacuum_fan_speed",
@@ -136,11 +133,11 @@ Higher power uses more battery but cleans more thoroughly.""",
                 "speed": {
                     "type": "string",
                     "enum": ["quiet", "standard", "strong", "turbo"],
-                    "description": "Fan speed / suction power level"
+                    "description": "Fan speed / suction power level",
                 }
             },
-            "required": ["speed"]
-        }
+            "required": ["speed"],
+        },
     },
     {
         "name": "clean_rooms",
@@ -159,18 +156,18 @@ Examples:
                 "rooms": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of room names to clean"
+                    "description": "List of room names to clean",
                 },
                 "repeat": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 3,
-                    "description": "Number of cleaning passes (default: 1)"
-                }
+                    "description": "Number of cleaning passes (default: 1)",
+                },
             },
-            "required": ["rooms"]
-        }
-    }
+            "required": ["rooms"],
+        },
+    },
 ]
 
 
@@ -188,7 +185,7 @@ def control_vacuum(action: str) -> dict[str, Any]:
     if not entity_id:
         return {
             "success": False,
-            "error": "Vacuum entity not configured. Add VACUUM_ENTITY_ID to config."
+            "error": "Vacuum entity not configured. Add VACUUM_ENTITY_ID to config.",
         }
 
     ha_client = get_ha_client()
@@ -207,7 +204,7 @@ def control_vacuum(action: str) -> dict[str, Any]:
         return {
             "success": False,
             "error": f"Unknown action: {action}",
-            "available_actions": list(service_map.keys())
+            "available_actions": list(service_map.keys()),
         }
 
     domain, service = service_map[action]
@@ -221,7 +218,7 @@ def control_vacuum(action: str) -> dict[str, Any]:
             "success": success,
             "action": action,
             "entity_id": entity_id,
-            "message": f"Vacuum {action} command sent" if success else f"Failed to {action} vacuum"
+            "message": f"Vacuum {action} command sent" if success else f"Failed to {action} vacuum",
         }
 
     except Exception as error:
@@ -238,20 +235,14 @@ def get_vacuum_status() -> dict[str, Any]:
     """
     entity_id = get_vacuum_entity()
     if not entity_id:
-        return {
-            "success": False,
-            "error": "Vacuum entity not configured"
-        }
+        return {"success": False, "error": "Vacuum entity not configured"}
 
     ha_client = get_ha_client()
 
     try:
         state = ha_client.get_state(entity_id)
         if not state:
-            return {
-                "success": False,
-                "error": f"Could not get state for {entity_id}"
-            }
+            return {"success": False, "error": f"Could not get state for {entity_id}"}
 
         attributes = state.get("attributes", {})
 
@@ -291,7 +282,7 @@ def get_vacuum_status() -> dict[str, Any]:
             "paused": "paused",
             "idle": "idle and ready",
             "returning": "returning to dock",
-            "error": "in error state"
+            "error": "in error state",
         }
         result["state_description"] = state_descriptions.get(current_state, current_state)
 
@@ -318,10 +309,7 @@ def set_vacuum_fan_speed(speed: str) -> dict[str, Any]:
     """
     entity_id = get_vacuum_entity()
     if not entity_id:
-        return {
-            "success": False,
-            "error": "Vacuum entity not configured"
-        }
+        return {"success": False, "error": "Vacuum entity not configured"}
 
     # Dreame vacuum fan speed values
     # These may need adjustment based on the specific model
@@ -337,24 +325,17 @@ def set_vacuum_fan_speed(speed: str) -> dict[str, Any]:
         return {
             "success": False,
             "error": f"Unknown speed: {speed}",
-            "available_speeds": list(speed_map.keys())
+            "available_speeds": list(speed_map.keys()),
         }
 
     ha_client = get_ha_client()
-    service_data = {
-        "entity_id": entity_id,
-        "fan_speed": fan_speed_value
-    }
+    service_data = {"entity_id": entity_id, "fan_speed": fan_speed_value}
 
     try:
         logger.info(f"Setting vacuum fan speed to {fan_speed_value}")
         success = ha_client.call_service("vacuum", "set_fan_speed", service_data)
 
-        return {
-            "success": success,
-            "fan_speed": speed,
-            "entity_id": entity_id
-        }
+        return {"success": success, "fan_speed": speed, "entity_id": entity_id}
 
     except Exception as error:
         logger.error(f"Error setting vacuum fan speed: {error}")
@@ -374,16 +355,10 @@ def clean_rooms(rooms: list[str], repeat: int = 1) -> dict[str, Any]:
     """
     entity_id = get_vacuum_entity()
     if not entity_id:
-        return {
-            "success": False,
-            "error": "Vacuum entity not configured"
-        }
+        return {"success": False, "error": "Vacuum entity not configured"}
 
     if not rooms:
-        return {
-            "success": False,
-            "error": "No rooms specified"
-        }
+        return {"success": False, "error": "No rooms specified"}
 
     ha_client = get_ha_client()
 
@@ -396,18 +371,14 @@ def clean_rooms(rooms: list[str], repeat: int = 1) -> dict[str, Any]:
     service_data = {
         "entity_id": entity_id,
         "segments": rooms,  # Try room names first
-        "repeats": max(1, min(3, repeat))
+        "repeats": max(1, min(3, repeat)),
     }
 
     try:
         logger.info(f"Cleaning rooms: {rooms} with {repeat} pass(es)")
 
         # Try dreame-specific service first
-        success = ha_client.call_service(
-            "dreame_vacuum",
-            "vacuum_clean_segment",
-            service_data
-        )
+        success = ha_client.call_service("dreame_vacuum", "vacuum_clean_segment", service_data)
 
         if success:
             return {
@@ -415,7 +386,7 @@ def clean_rooms(rooms: list[str], repeat: int = 1) -> dict[str, Any]:
                 "rooms": rooms,
                 "repeat": repeat,
                 "entity_id": entity_id,
-                "message": f"Started cleaning {', '.join(rooms)}"
+                "message": f"Started cleaning {', '.join(rooms)}",
             }
 
         # Fall back to standard vacuum.send_command if dreame service fails
@@ -423,7 +394,7 @@ def clean_rooms(rooms: list[str], repeat: int = 1) -> dict[str, Any]:
         fallback_data = {
             "entity_id": entity_id,
             "command": "app_segment_clean",
-            "params": {"segments": rooms, "repeat": repeat}
+            "params": {"segments": rooms, "repeat": repeat},
         }
         success = ha_client.call_service("vacuum", "send_command", fallback_data)
 
@@ -432,7 +403,9 @@ def clean_rooms(rooms: list[str], repeat: int = 1) -> dict[str, Any]:
             "rooms": rooms,
             "repeat": repeat,
             "entity_id": entity_id,
-            "message": f"Started cleaning {', '.join(rooms)}" if success else "Failed to start room cleaning"
+            "message": f"Started cleaning {', '.join(rooms)}"
+            if success
+            else "Failed to start room cleaning",
         }
 
     except Exception as error:
@@ -463,10 +436,7 @@ def execute_vacuum_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
         return set_vacuum_fan_speed(speed=tool_input.get("speed", ""))
 
     elif tool_name == "clean_rooms":
-        return clean_rooms(
-            rooms=tool_input.get("rooms", []),
-            repeat=tool_input.get("repeat", 1)
-        )
+        return clean_rooms(rooms=tool_input.get("rooms", []), repeat=tool_input.get("repeat", 1))
 
     else:
         return {"success": False, "error": f"Unknown tool: {tool_name}"}

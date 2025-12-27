@@ -9,11 +9,12 @@ import logging
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
 
 from src.security.config import ALERT_HISTORY_FILE, STATE_DIR
+from src.security.monitors import APICostMonitor, ServiceMonitor, SSHMonitor
 from src.security.slack_client import SlackNotifier
-from src.security.monitors import SSHMonitor, APICostMonitor, ServiceMonitor
+
 
 logger = logging.getLogger("security.weekly_report")
 
@@ -21,34 +22,31 @@ logger = logging.getLogger("security.weekly_report")
 class WeeklySecurityReport:
     """Generate and send weekly security reports."""
 
-    def __init__(self, webhook_url: Optional[str] = None):
+    def __init__(self, webhook_url: str | None = None):
         self.notifier = SlackNotifier(webhook_url)
         self.ssh_monitor = SSHMonitor(self.notifier)
         self.cost_monitor = APICostMonitor(self.notifier)
         self.service_monitor = ServiceMonitor(self.notifier)
 
-    def _load_alert_history(self) -> List[Dict[str, Any]]:
+    def _load_alert_history(self) -> list[dict[str, Any]]:
         """Load alert history from file."""
         if ALERT_HISTORY_FILE.exists():
             try:
-                with open(ALERT_HISTORY_FILE, "r") as file:
+                with open(ALERT_HISTORY_FILE) as file:
                     data = json.load(file)
                     return data.get("alerts", [])
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
         return []
 
-    def _get_alerts_in_period(self, days: int = 7) -> List[Dict[str, Any]]:
+    def _get_alerts_in_period(self, days: int = 7) -> list[dict[str, Any]]:
         """Get alerts from the past N days."""
         alerts = self._load_alert_history()
         cutoff = datetime.now() - timedelta(days=days)
 
-        return [
-            alert for alert in alerts
-            if datetime.fromisoformat(alert["timestamp"]) > cutoff
-        ]
+        return [alert for alert in alerts if datetime.fromisoformat(alert["timestamp"]) > cutoff]
 
-    def _count_alerts_by_type(self, alerts: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _count_alerts_by_type(self, alerts: list[dict[str, Any]]) -> dict[str, int]:
         """Count alerts by type."""
         counts = {}
         for alert in alerts:
@@ -56,7 +54,7 @@ class WeeklySecurityReport:
             counts[alert_type] = counts.get(alert_type, 0) + 1
         return counts
 
-    def _run_security_scans(self) -> Dict[str, Any]:
+    def _run_security_scans(self) -> dict[str, Any]:
         """Run security scans and return results."""
         results = {
             "bandit": {"status": "not_run", "issues": []},
@@ -67,14 +65,15 @@ class WeeklySecurityReport:
         # Check for available system updates
         try:
             result = subprocess.run(
-                ["apt", "list", "--upgradable"],
-                capture_output=True,
-                text=True,
-                timeout=30
+                ["apt", "list", "--upgradable"], capture_output=True, text=True, timeout=30
             )
             if result.returncode == 0:
                 # Count lines (excluding header)
-                lines = [line for line in result.stdout.strip().split("\n") if line and "Listing" not in line]
+                lines = [
+                    line
+                    for line in result.stdout.strip().split("\n")
+                    if line and "Listing" not in line
+                ]
                 results["system_updates"] = {
                     "status": "success",
                     "updates_available": len(lines),
@@ -90,7 +89,7 @@ class WeeklySecurityReport:
                 capture_output=True,
                 text=True,
                 timeout=60,
-                cwd=Path(__file__).parent.parent.parent
+                cwd=Path(__file__).parent.parent.parent,
             )
             if result.returncode == 0:
                 vulnerabilities = json.loads(result.stdout) if result.stdout else []
@@ -110,11 +109,8 @@ class WeeklySecurityReport:
         return results
 
     def _generate_recommendations(
-        self,
-        alerts: List[Dict[str, Any]],
-        scans: Dict[str, Any],
-        services: Dict[str, str]
-    ) -> List[str]:
+        self, alerts: list[dict[str, Any]], scans: dict[str, Any], services: dict[str, str]
+    ) -> list[str]:
         """Generate security recommendations based on data."""
         recommendations = []
 
@@ -125,7 +121,9 @@ class WeeklySecurityReport:
             recommendations.append("Consider adding fail2ban rules or geo-blocking for SSH")
 
         if alert_counts.get("api_cost", 0) > 3:
-            recommendations.append("Review API usage patterns - costs exceeded threshold multiple times")
+            recommendations.append(
+                "Review API usage patterns - costs exceeded threshold multiple times"
+            )
 
         if alert_counts.get("service_down", 0) > 0:
             recommendations.append("Review service stability - services went down this week")
@@ -150,7 +148,7 @@ class WeeklySecurityReport:
 
         return recommendations
 
-    def generate_report(self, days: int = 7) -> Dict[str, Any]:
+    def generate_report(self, days: int = 7) -> dict[str, Any]:
         """
         Generate a comprehensive weekly security report.
 
@@ -189,7 +187,8 @@ class WeeklySecurityReport:
                 "total_alerts": total_alerts,
                 "critical_alerts": critical_alerts,
                 "total_api_cost": total_api_cost,
-                "failed_ssh_attempts": ssh_stats.get("recent_failed_attempts", 0) + ssh_stats.get("historical_alerts", 0),
+                "failed_ssh_attempts": ssh_stats.get("recent_failed_attempts", 0)
+                + ssh_stats.get("historical_alerts", 0),
             },
             "alerts_by_type": alert_counts,
             "services": services,
@@ -198,7 +197,7 @@ class WeeklySecurityReport:
             "details": {
                 "ssh_stats": ssh_stats,
                 "cost_stats": cost_stats,
-            }
+            },
         }
 
         # Save report to file
@@ -235,8 +234,7 @@ def main():
 
     # Set up logging
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+        level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     )
 
     reporter = WeeklySecurityReport(webhook_url=args.webhook)

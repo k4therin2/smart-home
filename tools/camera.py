@@ -22,11 +22,12 @@ import base64
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from src.config import DATA_DIR
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
+
 
 logger = setup_logging("tools.camera")
 
@@ -34,6 +35,7 @@ logger = setup_logging("tools.camera")
 # =============================================================================
 # Camera Registry - Tracks camera locations (user moves cameras around)
 # =============================================================================
+
 
 class CameraRegistry:
     """
@@ -54,7 +56,7 @@ class CameraRegistry:
             return self._cache
 
         if self.registry_file.exists():
-            with open(self.registry_file, "r") as f:
+            with open(self.registry_file) as f:
                 self._cache = json.load(f)
         else:
             self._cache = {}
@@ -68,10 +70,7 @@ class CameraRegistry:
             json.dump(self._cache, f, indent=2)
 
     def set_camera_location(
-        self,
-        entity_id: str,
-        location: str,
-        description: Optional[str] = None
+        self, entity_id: str, location: str, description: str | None = None
     ) -> dict[str, Any]:
         """
         Register or update a camera's location.
@@ -100,10 +99,10 @@ class CameraRegistry:
             "success": True,
             "entity_id": entity_id,
             "location": location,
-            "message": f"Camera registered at {location}"
+            "message": f"Camera registered at {location}",
         }
 
-    def get_camera_location(self, entity_id: str) -> Optional[dict]:
+    def get_camera_location(self, entity_id: str) -> dict | None:
         """
         Get a camera's registered location.
 
@@ -124,10 +123,7 @@ class CameraRegistry:
             List of camera registration dicts
         """
         registry = self._load()
-        return [
-            {"entity_id": entity_id, **data}
-            for entity_id, data in registry.items()
-        ]
+        return [{"entity_id": entity_id, **data} for entity_id, data in registry.items()]
 
     def remove_camera(self, entity_id: str) -> dict[str, Any]:
         """
@@ -183,11 +179,11 @@ Examples:
             "properties": {
                 "live_view_only": {
                     "type": "boolean",
-                    "description": "If true, only return live view cameras (not last_recording)"
+                    "description": "If true, only return live view cameras (not last_recording)",
                 }
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "get_camera_status",
@@ -205,15 +201,15 @@ Examples:
             "properties": {
                 "entity_id": {
                     "type": "string",
-                    "description": "Camera entity ID (e.g., camera.front_door_live_view)"
+                    "description": "Camera entity ID (e.g., camera.front_door_live_view)",
                 },
                 "include_sensors": {
                     "type": "boolean",
-                    "description": "Include related sensors (motion, battery, WiFi)"
-                }
+                    "description": "Include related sensors (motion, battery, WiFi)",
+                },
             },
-            "required": ["entity_id"]
-        }
+            "required": ["entity_id"],
+        },
     },
     {
         "name": "get_camera_snapshot",
@@ -234,15 +230,15 @@ Examples:
             "properties": {
                 "entity_id": {
                     "type": "string",
-                    "description": "Camera entity ID (e.g., camera.front_door_live_view)"
+                    "description": "Camera entity ID (e.g., camera.front_door_live_view)",
                 },
                 "save_to": {
                     "type": "string",
-                    "description": "Optional file path to save the snapshot"
-                }
+                    "description": "Optional file path to save the snapshot",
+                },
             },
-            "required": ["entity_id"]
-        }
+            "required": ["entity_id"],
+        },
     },
     {
         "name": "check_house_status",
@@ -260,11 +256,7 @@ Examples:
 - "is everything okay at home?" -> check_house_status
 - "check the security cameras" -> check_house_status
 - "are there any problems with the cameras?" -> check_house_status""",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "register_camera_location",
@@ -280,28 +272,26 @@ Examples:
         "input_schema": {
             "type": "object",
             "properties": {
-                "entity_id": {
-                    "type": "string",
-                    "description": "Camera entity ID"
-                },
+                "entity_id": {"type": "string", "description": "Camera entity ID"},
                 "location": {
                     "type": "string",
-                    "description": "Room or area name (e.g., 'living room', 'front porch')"
+                    "description": "Room or area name (e.g., 'living room', 'front porch')",
                 },
                 "description": {
                     "type": "string",
-                    "description": "Optional description (e.g., 'Corner by the TV')"
-                }
+                    "description": "Optional description (e.g., 'Corner by the TV')",
+                },
             },
-            "required": ["entity_id", "location"]
-        }
-    }
+            "required": ["entity_id", "location"],
+        },
+    },
 ]
 
 
 # =============================================================================
 # Camera Functions
 # =============================================================================
+
 
 def list_cameras(live_view_only: bool = False) -> dict[str, Any]:
     """
@@ -347,28 +337,17 @@ def list_cameras(live_view_only: bool = False) -> dict[str, Any]:
             cameras.append(camera_info)
 
         if not cameras:
-            return {
-                "success": True,
-                "cameras": [],
-                "message": "No cameras found in Home Assistant"
-            }
+            return {"success": True, "cameras": [], "message": "No cameras found in Home Assistant"}
 
         logger.info(f"Found {len(cameras)} cameras")
-        return {
-            "success": True,
-            "cameras": cameras,
-            "count": len(cameras)
-        }
+        return {"success": True, "cameras": cameras, "count": len(cameras)}
 
     except Exception as error:
         logger.error(f"Error listing cameras: {error}")
         return {"success": False, "error": str(error)}
 
 
-def get_camera_status(
-    entity_id: str,
-    include_sensors: bool = False
-) -> dict[str, Any]:
+def get_camera_status(entity_id: str, include_sensors: bool = False) -> dict[str, Any]:
     """
     Get detailed status of a specific camera.
 
@@ -385,10 +364,7 @@ def get_camera_status(
         state = ha_client.get_state(entity_id)
 
         if not state:
-            return {
-                "success": False,
-                "error": f"Camera not found: {entity_id}"
-            }
+            return {"success": False, "error": f"Camera not found: {entity_id}"}
 
         attributes = state.get("attributes", {})
 
@@ -443,10 +419,7 @@ def get_camera_status(
         return {"success": False, "error": str(error)}
 
 
-def get_camera_snapshot(
-    entity_id: str,
-    save_to: Optional[str] = None
-) -> dict[str, Any]:
+def get_camera_snapshot(entity_id: str, save_to: str | None = None) -> dict[str, Any]:
     """
     Take a snapshot from a camera.
 
@@ -464,26 +437,17 @@ def get_camera_snapshot(
         state = ha_client.get_state(entity_id)
 
         if not state:
-            return {
-                "success": False,
-                "error": f"Camera not found: {entity_id}"
-            }
+            return {"success": False, "error": f"Camera not found: {entity_id}"}
 
         if state.get("state") == "unavailable":
-            return {
-                "success": False,
-                "error": f"Camera is unavailable: {entity_id}"
-            }
+            return {"success": False, "error": f"Camera is unavailable: {entity_id}"}
 
         # Get snapshot from HA
         # The ha_client should have a get_camera_snapshot method
         image_bytes = ha_client.get_camera_snapshot(entity_id)
 
         if not image_bytes:
-            return {
-                "success": False,
-                "error": "Failed to get camera snapshot"
-            }
+            return {"success": False, "error": "Failed to get camera snapshot"}
 
         # Encode as base64
         image_base64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -614,9 +578,7 @@ def check_house_status() -> dict[str, Any]:
 
 
 def register_camera_location(
-    entity_id: str,
-    location: str,
-    description: Optional[str] = None
+    entity_id: str, location: str, description: str | None = None
 ) -> dict[str, Any]:
     """
     Register or update a camera's physical location.
@@ -637,6 +599,7 @@ def register_camera_location(
 # Tool Execution Entry Point
 # =============================================================================
 
+
 def execute_camera_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
     """
     Execute a camera tool by name.
@@ -651,20 +614,17 @@ def execute_camera_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
     logger.info(f"Executing camera tool: {tool_name}")
 
     if tool_name == "list_cameras":
-        return list_cameras(
-            live_view_only=tool_input.get("live_view_only", False)
-        )
+        return list_cameras(live_view_only=tool_input.get("live_view_only", False))
 
     elif tool_name == "get_camera_status":
         return get_camera_status(
             entity_id=tool_input.get("entity_id", ""),
-            include_sensors=tool_input.get("include_sensors", False)
+            include_sensors=tool_input.get("include_sensors", False),
         )
 
     elif tool_name == "get_camera_snapshot":
         return get_camera_snapshot(
-            entity_id=tool_input.get("entity_id", ""),
-            save_to=tool_input.get("save_to")
+            entity_id=tool_input.get("entity_id", ""), save_to=tool_input.get("save_to")
         )
 
     elif tool_name == "check_house_status":
@@ -674,7 +634,7 @@ def execute_camera_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
         return register_camera_location(
             entity_id=tool_input.get("entity_id", ""),
             location=tool_input.get("location", ""),
-            description=tool_input.get("description")
+            description=tool_input.get("description"),
         )
 
     else:

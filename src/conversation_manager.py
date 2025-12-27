@@ -11,10 +11,11 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from src.utils import setup_logging
-from tools.automation import create_automation, _parse_time, _parse_days, VALID_DAYS
+from tools.automation import VALID_DAYS, _parse_time, create_automation
+
 
 logger = setup_logging("conversation_manager")
 
@@ -40,10 +41,10 @@ class ConversationState(Enum):
 class AutomationDraft:
     """Draft automation being built through conversation."""
 
-    name: Optional[str] = None
-    trigger_type: Optional[str] = None
+    name: str | None = None
+    trigger_type: str | None = None
     trigger_config: dict = field(default_factory=dict)
-    action_command: Optional[str] = None
+    action_command: str | None = None
 
     def is_complete(self) -> bool:
         """Check if draft has all required fields."""
@@ -124,9 +125,9 @@ class ConversationContext:
     """Context for an active conversation."""
 
     state: ConversationState = ConversationState.IDLE
-    draft: Optional[AutomationDraft] = None
+    draft: AutomationDraft | None = None
     last_activity: datetime = field(default_factory=datetime.now)
-    last_question: Optional[str] = None
+    last_question: str | None = None
 
 
 class ConversationManager:
@@ -156,7 +157,7 @@ class ConversationManager:
         elapsed = self._get_now() - context.last_activity
         return elapsed > timedelta(minutes=self.timeout_minutes)
 
-    def _get_context(self, conversation_id: str) -> Optional[ConversationContext]:
+    def _get_context(self, conversation_id: str) -> ConversationContext | None:
         """Get conversation context, returning None if expired."""
         context = self._conversations.get(conversation_id)
         if context and self._is_expired(context):
@@ -170,7 +171,7 @@ class ConversationManager:
         context = self._get_context(conversation_id)
         return context.state if context else ConversationState.IDLE
 
-    def get_draft(self, conversation_id: str) -> Optional[AutomationDraft]:
+    def get_draft(self, conversation_id: str) -> AutomationDraft | None:
         """Get current draft for a conversation."""
         context = self._get_context(conversation_id)
         return context.draft if context else None
@@ -210,7 +211,7 @@ class ConversationManager:
 
         context.last_activity = self._get_now()
 
-    def get_next_question(self, conversation_id: str) -> Optional[str]:
+    def get_next_question(self, conversation_id: str) -> str | None:
         """
         Get the next clarifying question based on missing fields.
 
@@ -419,8 +420,13 @@ class ConversationManager:
                 if room not in ["all", "the", "some", "my"]:
                     if draft and draft.action_command:
                         # Update action with specific room
-                        if "lights" in draft.action_command.lower() and room not in draft.action_command.lower():
-                            updates["action_command"] = draft.action_command.replace("lights", f"{room} lights")
+                        if (
+                            "lights" in draft.action_command.lower()
+                            and room not in draft.action_command.lower()
+                        ):
+                            updates["action_command"] = draft.action_command.replace(
+                                "lights", f"{room} lights"
+                            )
                     else:
                         # Build action from room
                         if "turn on" in response_lower:
@@ -438,9 +444,22 @@ class ConversationManager:
         """Check if response is a confirmation."""
         response_lower = response.lower().strip()
         confirmation_words = [
-            "yes", "yep", "yeah", "yup", "sure", "ok", "okay", "confirm",
-            "sounds good", "that's right", "correct", "go ahead", "do it",
-            "create it", "make it", "enable it"
+            "yes",
+            "yep",
+            "yeah",
+            "yup",
+            "sure",
+            "ok",
+            "okay",
+            "confirm",
+            "sounds good",
+            "that's right",
+            "correct",
+            "go ahead",
+            "do it",
+            "create it",
+            "make it",
+            "enable it",
         ]
         return any(word in response_lower for word in confirmation_words)
 
@@ -448,16 +467,20 @@ class ConversationManager:
         """Check if response is a cancellation."""
         response_lower = response.lower().strip()
         cancel_words = [
-            "no", "nope", "cancel", "stop", "never mind", "forget it",
-            "don't", "nevermind", "abort", "quit"
+            "no",
+            "nope",
+            "cancel",
+            "stop",
+            "never mind",
+            "forget it",
+            "don't",
+            "nevermind",
+            "abort",
+            "quit",
         ]
         return any(word in response_lower for word in cancel_words)
 
-    def process_message(
-        self,
-        conversation_id: str,
-        message: str
-    ) -> dict[str, Any]:
+    def process_message(self, conversation_id: str, message: str) -> dict[str, Any]:
         """
         Process a voice message in conversation context.
 
@@ -478,9 +501,15 @@ class ConversationManager:
         # Check for automation creation intent in IDLE state
         if state == ConversationState.IDLE:
             automation_intents = [
-                "create automation", "make automation", "new automation",
-                "set up automation", "create a new automation", "add automation",
-                "make a new automation", "automation that", "automation to"
+                "create automation",
+                "make automation",
+                "new automation",
+                "set up automation",
+                "create a new automation",
+                "add automation",
+                "make a new automation",
+                "automation that",
+                "automation to",
             ]
             if any(intent in message_lower for intent in automation_intents):
                 self.start_automation(conversation_id)
@@ -495,20 +524,14 @@ class ConversationManager:
                     self.transition_to_confirming(conversation_id)
                     return {
                         "type": "confirm",
-                        "confirmation": self.get_confirmation_text(conversation_id)
+                        "confirmation": self.get_confirmation_text(conversation_id),
                     }
 
                 question = self.get_next_question(conversation_id)
-                return {
-                    "type": "clarify",
-                    "question": question
-                }
+                return {"type": "clarify", "question": question}
 
             # Not an automation request
-            return {
-                "type": "passthrough",
-                "message": message
-            }
+            return {"type": "passthrough", "message": message}
 
         # Handle CONFIRMING state
         elif state == ConversationState.CONFIRMING:
@@ -517,20 +540,17 @@ class ConversationManager:
                 if result.get("success"):
                     return {
                         "type": "success",
-                        "message": result.get("message", "Automation created.")
+                        "message": result.get("message", "Automation created."),
                     }
                 else:
                     return {
                         "type": "error",
-                        "message": result.get("error", "Failed to create automation.")
+                        "message": result.get("error", "Failed to create automation."),
                     }
 
             elif self.is_cancel_response(message):
                 self.cancel(conversation_id)
-                return {
-                    "type": "cancel",
-                    "message": "Okay, cancelled the automation."
-                }
+                return {"type": "cancel", "message": "Okay, cancelled the automation."}
 
             else:
                 # User wants to modify something
@@ -543,24 +563,18 @@ class ConversationManager:
                     self.transition_to_confirming(conversation_id)
                     return {
                         "type": "confirm",
-                        "confirmation": self.get_confirmation_text(conversation_id)
+                        "confirmation": self.get_confirmation_text(conversation_id),
                     }
 
                 question = self.get_next_question(conversation_id)
-                return {
-                    "type": "clarify",
-                    "question": question
-                }
+                return {"type": "clarify", "question": question}
 
         # Handle COLLECTING state
         elif state == ConversationState.COLLECTING:
             # Check for cancel
             if self.is_cancel_response(message):
                 self.cancel(conversation_id)
-                return {
-                    "type": "cancel",
-                    "message": "Okay, cancelled."
-                }
+                return {"type": "cancel", "message": "Okay, cancelled."}
 
             # Parse response for updates
             updates = self.parse_response(conversation_id, message)
@@ -572,7 +586,7 @@ class ConversationManager:
                 self.transition_to_confirming(conversation_id)
                 return {
                     "type": "confirm",
-                    "confirmation": self.get_confirmation_text(conversation_id)
+                    "confirmation": self.get_confirmation_text(conversation_id),
                 }
 
             # Need more info
@@ -581,21 +595,15 @@ class ConversationManager:
                 context = self._get_context(conversation_id)
                 if context:
                     context.last_question = question
-                return {
-                    "type": "clarify",
-                    "question": question
-                }
+                return {"type": "clarify", "question": question}
 
             # Something went wrong
             return {
                 "type": "error",
-                "message": "I'm having trouble understanding. Let's start over."
+                "message": "I'm having trouble understanding. Let's start over.",
             }
 
-        return {
-            "type": "error",
-            "message": "Unexpected conversation state."
-        }
+        return {"type": "error", "message": "Unexpected conversation state."}
 
 
 # Placeholder for device discovery - will be integrated with HA client
@@ -606,7 +614,7 @@ def get_device_names() -> list[str]:
 
 
 # Singleton instance
-_conversation_manager: Optional[ConversationManager] = None
+_conversation_manager: ConversationManager | None = None
 
 
 def get_conversation_manager() -> ConversationManager:

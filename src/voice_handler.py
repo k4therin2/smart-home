@@ -13,13 +13,14 @@ WP-9.1: Conversational Automation Setup via Voice
 """
 
 import concurrent.futures
-import logging
 import uuid
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
-from src.voice_response import ResponseFormatter
-from src.conversation_manager import get_conversation_manager, ConversationState
+from src.conversation_manager import get_conversation_manager
 from src.utils import setup_logging
+from src.voice_response import ResponseFormatter
+
 
 logger = setup_logging("voice_handler")
 
@@ -36,7 +37,7 @@ class VoiceHandler:
         self,
         agent_callback: Callable[[str], str],
         timeout_seconds: int = 30,
-        response_formatter: Optional[ResponseFormatter] = None
+        response_formatter: ResponseFormatter | None = None,
     ):
         """
         Initialize the VoiceHandler.
@@ -51,11 +52,7 @@ class VoiceHandler:
         self.timeout_seconds = timeout_seconds
         self.formatter = response_formatter or ResponseFormatter()
 
-    def process_command(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def process_command(self, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Process a voice command and return formatted response.
 
@@ -69,10 +66,7 @@ class VoiceHandler:
         # Validate input
         if not text or not text.strip():
             logger.warning("Empty voice command received")
-            return {
-                "success": False,
-                "error": self.formatter.error_not_understood()
-            }
+            return {"success": False, "error": self.formatter.error_not_understood()}
 
         clean_text = text.strip()
         logger.info(f"Processing voice command: {clean_text[:100]}...")
@@ -85,10 +79,7 @@ class VoiceHandler:
             conversation_result = self._handle_conversation(clean_text, conversation_id)
             if conversation_result is not None:
                 # Handled by conversation manager
-                result = {
-                    "success": True,
-                    "response": conversation_result
-                }
+                result = {"success": True, "response": conversation_result}
                 if context:
                     result["context"] = context
                 logger.info(f"Conversation response: {conversation_result[:50]}...")
@@ -100,10 +91,7 @@ class VoiceHandler:
             # Format response for TTS
             formatted_response = self.formatter.format(response)
 
-            result = {
-                "success": True,
-                "response": formatted_response
-            }
+            result = {"success": True, "response": formatted_response}
 
             # Include context if provided (for multi-room tracking)
             if context:
@@ -114,18 +102,12 @@ class VoiceHandler:
 
         except TimeoutError:
             logger.warning(f"Voice command timeout: {clean_text[:50]}...")
-            return {
-                "success": False,
-                "error": self.formatter.error_timeout()
-            }
+            return {"success": False, "error": self.formatter.error_timeout()}
         except Exception as error:
             logger.error(f"Voice command error: {error}")
-            return {
-                "success": False,
-                "error": self.formatter.error(str(error))
-            }
+            return {"success": False, "error": self.formatter.error(str(error))}
 
-    def _get_conversation_id(self, context: Optional[Dict[str, Any]]) -> str:
+    def _get_conversation_id(self, context: dict[str, Any] | None) -> str:
         """
         Get conversation ID from context or generate one.
 
@@ -140,11 +122,7 @@ class VoiceHandler:
         # Generate a new ID for this session
         return f"voice-{uuid.uuid4().hex[:8]}"
 
-    def _handle_conversation(
-        self,
-        text: str,
-        conversation_id: str
-    ) -> Optional[str]:
+    def _handle_conversation(self, text: str, conversation_id: str) -> str | None:
         """
         Handle multi-turn conversation for automation creation.
 
@@ -215,10 +193,7 @@ class VoiceHandler:
                 logger.warning(f"Agent timeout after {self.timeout_seconds}s")
                 raise TimeoutError(f"Agent did not respond within {self.timeout_seconds} seconds")
 
-    def parse_request(
-        self,
-        payload: Dict[str, Any]
-    ) -> Tuple[str, Dict[str, Any]]:
+    def parse_request(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """
         Parse Home Assistant conversation webhook payload.
 
@@ -253,7 +228,7 @@ class VoiceHandler:
 
         return text, context
 
-    def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_webhook(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Handle a complete webhook request from HA.
 
@@ -270,7 +245,4 @@ class VoiceHandler:
             return self.process_command(text, context)
         except ValueError as error:
             logger.warning(f"Invalid webhook request: {error}")
-            return {
-                "success": False,
-                "error": str(error)
-            }
+            return {"success": False, "error": str(error)}

@@ -6,28 +6,31 @@ Handles authentication, service calls, and device state queries.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 
 import requests
 
-from src.config import HA_URL, HA_TOKEN
+from src.config import HA_TOKEN, HA_URL
+
 
 logger = logging.getLogger(__name__)
 
 
 class HomeAssistantError(Exception):
     """Base exception for Home Assistant errors."""
+
     pass
 
 
 class HomeAssistantConnectionError(HomeAssistantError):
     """Raised when connection to Home Assistant fails."""
+
     pass
 
 
 class HomeAssistantAuthError(HomeAssistantError):
     """Raised when authentication with Home Assistant fails."""
+
     pass
 
 
@@ -38,7 +41,7 @@ class HomeAssistantClient:
     Handles authentication, service calls, and state queries.
     """
 
-    def __init__(self, base_url: Optional[str] = None, token: Optional[str] = None):
+    def __init__(self, base_url: str | None = None, token: str | None = None):
         """
         Initialize Home Assistant client.
 
@@ -55,18 +58,15 @@ class HomeAssistantClient:
             raise HomeAssistantAuthError("Home Assistant token not configured")
 
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json",
-        })
+        self._session.headers.update(
+            {
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json",
+            }
+        )
         self._timeout = 10  # seconds
 
-    def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        data: Optional[Dict] = None
-    ) -> Union[Dict, List]:
+    def _make_request(self, method: str, endpoint: str, data: dict | None = None) -> dict | list:
         """
         Make HTTP request to Home Assistant API.
 
@@ -114,9 +114,7 @@ class HomeAssistantClient:
             ) from error
         except requests.exceptions.Timeout as error:
             logger.error(f"Request to Home Assistant timed out: {error}")
-            raise HomeAssistantConnectionError(
-                "Request to Home Assistant timed out"
-            ) from error
+            raise HomeAssistantConnectionError("Request to Home Assistant timed out") from error
         except requests.exceptions.RequestException as error:
             logger.error(f"Home Assistant API error: {error}")
             raise HomeAssistantError(f"API request failed: {error}") from error
@@ -169,7 +167,7 @@ class HomeAssistantClient:
     # State Queries
     # -------------------------------------------------------------------------
 
-    def get_states(self) -> List[Dict]:
+    def get_states(self) -> list[dict]:
         """
         Get states of all entities.
 
@@ -203,7 +201,7 @@ class HomeAssistantClient:
         state = self.get_state(entity_id)
         return state.get("state", "unknown")
 
-    def get_entities_by_domain(self, domain: str) -> List[Dict]:
+    def get_entities_by_domain(self, domain: str) -> list[dict]:
         """
         Get all entities for a specific domain.
 
@@ -215,19 +213,18 @@ class HomeAssistantClient:
         """
         all_states = self.get_states()
         return [
-            state for state in all_states
-            if state.get("entity_id", "").startswith(f"{domain}.")
+            state for state in all_states if state.get("entity_id", "").startswith(f"{domain}.")
         ]
 
-    def get_lights(self) -> List[Dict]:
+    def get_lights(self) -> list[dict]:
         """Get all light entities."""
         return self.get_entities_by_domain("light")
 
-    def get_switches(self) -> List[Dict]:
+    def get_switches(self) -> list[dict]:
         """Get all switch entities."""
         return self.get_entities_by_domain("switch")
 
-    def get_sensors(self) -> List[Dict]:
+    def get_sensors(self) -> list[dict]:
         """Get all sensor entities."""
         return self.get_entities_by_domain("sensor")
 
@@ -239,9 +236,9 @@ class HomeAssistantClient:
         self,
         domain: str,
         service: str,
-        data: Optional[Dict] = None,
-        target: Optional[Dict] = None,
-    ) -> List[Dict]:
+        data: dict | None = None,
+        target: dict | None = None,
+    ) -> list[dict]:
         """
         Call a Home Assistant service.
 
@@ -284,11 +281,11 @@ class HomeAssistantClient:
     def turn_on_light(
         self,
         entity_id: str,
-        brightness_pct: Optional[int] = None,
-        color_temp_kelvin: Optional[int] = None,
-        rgb_color: Optional[Tuple[int, int, int]] = None,
-        transition: Optional[float] = None,
-    ) -> List[Dict]:
+        brightness_pct: int | None = None,
+        color_temp_kelvin: int | None = None,
+        rgb_color: tuple[int, int, int] | None = None,
+        transition: float | None = None,
+    ) -> list[dict]:
         """
         Turn on a light with optional settings.
 
@@ -324,11 +321,7 @@ class HomeAssistantClient:
             data=data if data else None,
         )
 
-    def turn_off_light(
-        self,
-        entity_id: str,
-        transition: Optional[float] = None
-    ) -> List[Dict]:
+    def turn_off_light(self, entity_id: str, transition: float | None = None) -> list[dict]:
         """
         Turn off a light.
 
@@ -350,7 +343,7 @@ class HomeAssistantClient:
             data=data if data else None,
         )
 
-    def toggle_light(self, entity_id: str) -> List[Dict]:
+    def toggle_light(self, entity_id: str) -> list[dict]:
         """
         Toggle a light on/off.
 
@@ -370,7 +363,7 @@ class HomeAssistantClient:
     # Switch Control Helpers
     # -------------------------------------------------------------------------
 
-    def turn_on_switch(self, entity_id: str) -> List[Dict]:
+    def turn_on_switch(self, entity_id: str) -> list[dict]:
         """Turn on a switch."""
         return self.call_service(
             domain="switch",
@@ -378,7 +371,7 @@ class HomeAssistantClient:
             target={"entity_id": entity_id},
         )
 
-    def turn_off_switch(self, entity_id: str) -> List[Dict]:
+    def turn_off_switch(self, entity_id: str) -> list[dict]:
         """Turn off a switch."""
         return self.call_service(
             domain="switch",
@@ -386,7 +379,7 @@ class HomeAssistantClient:
             target={"entity_id": entity_id},
         )
 
-    def toggle_switch(self, entity_id: str) -> List[Dict]:
+    def toggle_switch(self, entity_id: str) -> list[dict]:
         """Toggle a switch."""
         return self.call_service(
             domain="switch",
@@ -398,7 +391,7 @@ class HomeAssistantClient:
     # Scene Control
     # -------------------------------------------------------------------------
 
-    def activate_scene(self, entity_id: str) -> List[Dict]:
+    def activate_scene(self, entity_id: str) -> list[dict]:
         """
         Activate a scene.
 
@@ -418,9 +411,9 @@ class HomeAssistantClient:
         self,
         entity_id: str,
         dynamic: bool = False,
-        speed: Optional[int] = None,
-        brightness: Optional[int] = None,
-    ) -> List[Dict]:
+        speed: int | None = None,
+        brightness: int | None = None,
+    ) -> list[dict]:
         """
         Activate a Philips Hue scene with optional dynamic mode.
 
@@ -466,10 +459,10 @@ class HomeAssistantClient:
 
     def get_history(
         self,
-        entity_id: Optional[str] = None,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
-    ) -> List:
+        entity_id: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+    ) -> list:
         """
         Get entity history.
 
@@ -510,7 +503,7 @@ class HomeAssistantClient:
 
 # Module-level convenience functions using default configuration
 
-_default_client: Optional[HomeAssistantClient] = None
+_default_client: HomeAssistantClient | None = None
 
 
 def get_client() -> HomeAssistantClient:
@@ -539,18 +532,18 @@ def get_state(entity_id: str) -> dict:
 def call_service(
     domain: str,
     service: str,
-    data: Optional[Dict] = None,
-    target: Optional[Dict] = None,
-) -> List[Dict]:
+    data: dict | None = None,
+    target: dict | None = None,
+) -> list[dict]:
     """Call a service using default client."""
     return get_client().call_service(domain, service, data, target)
 
 
-def turn_on_light(entity_id: str, **kwargs) -> List[Dict]:
+def turn_on_light(entity_id: str, **kwargs) -> list[dict]:
     """Turn on a light using default client."""
     return get_client().turn_on_light(entity_id, **kwargs)
 
 
-def turn_off_light(entity_id: str, **kwargs) -> List[Dict]:
+def turn_off_light(entity_id: str, **kwargs) -> list[dict]:
     """Turn off a light using default client."""
     return get_client().turn_off_light(entity_id, **kwargs)

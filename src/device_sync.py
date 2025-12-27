@@ -5,20 +5,19 @@ Synchronizes devices between Home Assistant and local registry.
 Handles discovery, registration, and state tracking.
 """
 
-from typing import Dict, List, Optional
-
-from src.logging_config import get_logger, LogContext
+from src.database import (
+    delete_device,
+    get_all_devices,
+    record_device_state,
+    register_device,
+)
 from src.homeassistant import (
     HomeAssistantClient,
     HomeAssistantError,
     get_client,
 )
-from src.database import (
-    register_device,
-    get_all_devices,
-    delete_device,
-    record_device_state,
-)
+from src.logging_config import LogContext, get_logger
+
 
 logger = get_logger(__name__)
 
@@ -29,7 +28,7 @@ SUPPORTED_DOMAINS = [
     "sensor",
     "binary_sensor",
     "climate",
-    "cover",      # blinds, shades
+    "cover",  # blinds, shades
     "vacuum",
     "media_player",
     "scene",
@@ -123,7 +122,7 @@ def extract_capabilities(domain: str, attributes: dict) -> list[str]:
     return capabilities
 
 
-def infer_room_from_entity(entity_id: str, friendly_name: Optional[str]) -> Optional[str]:
+def infer_room_from_entity(entity_id: str, friendly_name: str | None) -> str | None:
     """
     Attempt to infer room from entity ID or friendly name.
 
@@ -134,18 +133,30 @@ def infer_room_from_entity(entity_id: str, friendly_name: Optional[str]) -> Opti
     Returns:
         Inferred room name or None
     """
-    # Common room patterns
+    # Common room patterns - ordered longer/more specific patterns first
+    # so "dining_room" matches before "dining"
     room_patterns = [
-        "living_room", "living room", "lounge",
-        "bedroom", "bed room", "master",
+        "living_room",
+        "living room",
+        "lounge",
+        "bedroom",
+        "bed room",
+        "master",
         "kitchen",
-        "bathroom", "bath room", "restroom",
-        "office", "study",
-        "dining", "dining_room",
+        "bathroom",
+        "bath room",
+        "restroom",
+        "office",
+        "study",
+        "dining_room",
+        "dining room",
+        "dining",
         "garage",
         "basement",
-        "hallway", "hall",
-        "porch", "patio",
+        "hallway",
+        "hall",
+        "porch",
+        "patio",
         "guest",
     ]
 
@@ -166,10 +177,10 @@ def infer_room_from_entity(entity_id: str, friendly_name: Optional[str]) -> Opti
 
 
 def sync_devices_from_ha(
-    client: Optional[HomeAssistantClient] = None,
-    domains: Optional[List[str]] = None,
+    client: HomeAssistantClient | None = None,
+    domains: list[str] | None = None,
     infer_rooms: bool = True,
-) -> Dict:
+) -> dict:
     """
     Sync devices from Home Assistant to local registry.
 
@@ -220,8 +231,7 @@ def sync_devices_from_ha(
             # Infer room if requested
             if infer_rooms and not device_info.get("room"):
                 device_info["room"] = infer_room_from_entity(
-                    entity_id,
-                    device_info.get("friendly_name")
+                    entity_id, device_info.get("friendly_name")
                 )
 
             # Register device
@@ -249,7 +259,7 @@ def sync_devices_from_ha(
     return stats
 
 
-def sync_single_device(entity_id: str, client: Optional[HomeAssistantClient] = None) -> Optional[Dict]:
+def sync_single_device(entity_id: str, client: HomeAssistantClient | None = None) -> dict | None:
     """
     Sync a single device from Home Assistant.
 
@@ -270,10 +280,7 @@ def sync_single_device(entity_id: str, client: Optional[HomeAssistantClient] = N
         return None
 
     device_info = extract_device_info(state)
-    device_info["room"] = infer_room_from_entity(
-        entity_id,
-        device_info.get("friendly_name")
-    )
+    device_info["room"] = infer_room_from_entity(entity_id, device_info.get("friendly_name"))
 
     register_device(**device_info)
 
@@ -287,7 +294,7 @@ def sync_single_device(entity_id: str, client: Optional[HomeAssistantClient] = N
     return device_info
 
 
-def remove_stale_devices(client: Optional[HomeAssistantClient] = None) -> List[str]:
+def remove_stale_devices(client: HomeAssistantClient | None = None) -> list[str]:
     """
     Remove devices from local registry that no longer exist in HA.
 
@@ -337,7 +344,7 @@ def get_device_summary() -> dict:
 
     for device in devices:
         device_type = device.get("device_type", "unknown")
-        room = device.get("room", "unassigned")
+        room = device.get("room") or "unassigned"  # Handle None and missing
 
         summary["by_type"][device_type] = summary["by_type"].get(device_type, 0) + 1
         summary["by_room"][room] = summary["by_room"].get(room, 0) + 1

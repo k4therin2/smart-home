@@ -5,24 +5,25 @@ Core modules for the smart home system.
 """
 
 from src.config import (
-    HA_URL,
     HA_TOKEN,
-    ANTHROPIC_API_KEY,
-    CLAUDE_MODEL,
+    HA_URL,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
     ROOM_ENTITY_MAP,
     validate_config,
 )
-from src.logging_config import get_logger, setup_logging
 from src.database import initialize_database
+from src.logging_config import get_logger, setup_logging
+
 
 __all__ = [
-    "HA_URL",
     "HA_TOKEN",
-    "ANTHROPIC_API_KEY",
-    "CLAUDE_MODEL",
+    "HA_URL",
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
     "ROOM_ENTITY_MAP",
-    "validate_config",
     "get_logger",
-    "setup_logging",
     "initialize_database",
+    "setup_logging",
+    "validate_config",
 ]

@@ -9,23 +9,23 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, date
-from pathlib import Path
-from typing import Any, Optional, Dict, List, Tuple
+from datetime import date, datetime
+from typing import Any
 
 from src.config import (
-    LOGS_DIR,
+    DAILY_COST_ALERT,
+    DAILY_COST_TARGET,
     DATA_DIR,
-    PROMPTS_DIR,
     LOG_LEVEL,
+    LOGS_DIR,
     OPENAI_INPUT_COST_PER_MILLION,
     OPENAI_OUTPUT_COST_PER_MILLION,
-    DAILY_COST_TARGET,
-    DAILY_COST_ALERT,
+    PROMPTS_DIR,
     validate_config,
 )
-from src.security.slack_client import SlackNotifier
 from src.security.config import SLACK_COST_WEBHOOK_URL, SLACK_HEALTH_WEBHOOK_URL
+from src.security.slack_client import SlackNotifier
+
 
 # Database path for usage tracking
 USAGE_DB_PATH = DATA_DIR / "usage.db"
@@ -55,8 +55,8 @@ def send_health_alert(
     title: str,
     message: str,
     severity: str = "warning",
-    component: Optional[str] = None,
-    details: Optional[Dict[str, Any]] = None,
+    component: str | None = None,
+    details: dict[str, Any] | None = None,
 ) -> bool:
     """
     Send a health alert to the #smarthome-health Slack channel.
@@ -95,8 +95,10 @@ def send_health_alert(
             fields.append({"title": key.replace("_", " ").title(), "value": str(value)})
 
     # Log the alert
-    log_level = logging.CRITICAL if severity == "critical" else (
-        logging.WARNING if severity == "warning" else logging.INFO
+    log_level = (
+        logging.CRITICAL
+        if severity == "critical"
+        else (logging.WARNING if severity == "warning" else logging.INFO)
     )
     logger.log(log_level, f"Health Alert [{severity}] {title}: {message}")
 
@@ -131,8 +133,7 @@ def setup_logging(name: str = "smarthome") -> logging.Logger:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
     console_format = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
     console_handler.setFormatter(console_format)
     logger.addHandler(console_handler)
@@ -161,7 +162,7 @@ def setup_logging(name: str = "smarthome") -> logging.Logger:
 logger = setup_logging()
 
 
-def load_prompts() -> Dict[str, Any]:
+def load_prompts() -> dict[str, Any]:
     """
     Load system prompts from prompts/config.json.
 
@@ -175,7 +176,7 @@ def load_prompts() -> Dict[str, Any]:
         return get_default_prompts()
 
     try:
-        with open(config_path, "r") as file:
+        with open(config_path) as file:
             prompts = json.load(file)
             logger.debug(f"Loaded prompts from {config_path}")
             return prompts
@@ -184,7 +185,7 @@ def load_prompts() -> Dict[str, Any]:
         return get_default_prompts()
 
 
-def get_default_prompts() -> Dict[str, Any]:
+def get_default_prompts() -> dict[str, Any]:
     """Return default system prompts."""
     return {
         "main_agent": {
@@ -215,7 +216,7 @@ Given a vibe description (e.g., "cozy evening", "focus mode", "romantic dinner")
 4. Return specific settings
 
 Use color theory and lighting design principles."""
-        }
+        },
     }
 
 
@@ -240,10 +241,7 @@ def init_usage_db() -> None:
 
 
 def track_api_usage(
-    model: str,
-    input_tokens: int,
-    output_tokens: int,
-    command: Optional[str] = None
+    model: str, input_tokens: int, output_tokens: int, command: str | None = None
 ) -> float:
     """
     Track API usage and cost.
@@ -270,28 +268,31 @@ def track_api_usage(
     now = datetime.now()
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO api_usage (timestamp, date, model, input_tokens, output_tokens, cost_usd, command)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            now.isoformat(),
-            now.date().isoformat(),
-            model,
-            input_tokens,
-            output_tokens,
-            total_cost,
-            command
-        ))
+        """,
+            (
+                now.isoformat(),
+                now.date().isoformat(),
+                model,
+                input_tokens,
+                output_tokens,
+                total_cost,
+                command,
+            ),
+        )
         conn.commit()
 
-    logger.info(
-        f"API usage: {input_tokens} in / {output_tokens} out = ${total_cost:.4f}"
-    )
+    logger.info(f"API usage: {input_tokens} in / {output_tokens} out = ${total_cost:.4f}")
 
     # Check daily limit and send Slack alert if threshold exceeded
     daily_cost = get_daily_usage()
     if daily_cost >= DAILY_COST_ALERT:
-        logger.warning(f"COST ALERT: Daily spend ${daily_cost:.2f} exceeds ${DAILY_COST_ALERT:.2f} threshold!")
+        logger.warning(
+            f"COST ALERT: Daily spend ${daily_cost:.2f} exceeds ${DAILY_COST_ALERT:.2f} threshold!"
+        )
         _get_cost_notifier().send_alert(
             title="API Cost Alert",
             message=f"Daily API spend has reached *${daily_cost:.2f}* (threshold: ${DAILY_COST_ALERT:.2f})",
@@ -300,7 +301,7 @@ def track_api_usage(
                 {"title": "Today's Cost", "value": f"${daily_cost:.2f}"},
                 {"title": "Threshold", "value": f"${DAILY_COST_ALERT:.2f}"},
                 {"title": "Last Request", "value": f"${total_cost:.4f}"},
-            ]
+            ],
         )
     elif daily_cost >= DAILY_COST_TARGET:
         logger.info(f"Daily spend ${daily_cost:.2f} exceeds target ${DAILY_COST_TARGET:.2f}")
@@ -308,7 +309,7 @@ def track_api_usage(
     return total_cost
 
 
-def get_daily_usage(target_date: Optional[date] = None) -> float:
+def get_daily_usage(target_date: date | None = None) -> float:
     """
     Get total API cost for a specific date.
 
@@ -326,16 +327,19 @@ def get_daily_usage(target_date: Optional[date] = None) -> float:
 
     with sqlite3.connect(USAGE_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COALESCE(SUM(cost_usd), 0)
             FROM api_usage
             WHERE date = ?
-        """, (target_date.isoformat(),))
+        """,
+            (target_date.isoformat(),),
+        )
         result = cursor.fetchone()
         return result[0] if result else 0.0
 
 
-def get_usage_stats(days: int = 7) -> Dict[str, Any]:
+def get_usage_stats(days: int = 7) -> dict[str, Any]:
     """
     Get usage statistics for the past N days.
 
@@ -352,32 +356,38 @@ def get_usage_stats(days: int = 7) -> Dict[str, Any]:
         cursor = conn.cursor()
 
         # Get daily breakdown
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT date, COUNT(*) as requests, SUM(cost_usd) as cost
             FROM api_usage
             WHERE date >= date('now', ?)
             GROUP BY date
             ORDER BY date DESC
-        """, (f"-{days} days",))
+        """,
+            (f"-{days} days",),
+        )
         daily = [{"date": row[0], "requests": row[1], "cost": row[2]} for row in cursor.fetchall()]
 
         # Get totals
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), COALESCE(SUM(cost_usd), 0)
             FROM api_usage
             WHERE date >= date('now', ?)
-        """, (f"-{days} days",))
+        """,
+            (f"-{days} days",),
+        )
         totals = cursor.fetchone()
 
         return {
             "total_requests": totals[0],
             "total_cost": totals[1],
             "daily_breakdown": daily,
-            "average_daily_cost": totals[1] / days if days > 0 else 0
+            "average_daily_cost": totals[1] / days if days > 0 else 0,
         }
 
 
-def check_setup() -> Tuple[bool, List[str]]:
+def check_setup() -> tuple[bool, list[str]]:
     """
     Verify system setup and configuration.
 

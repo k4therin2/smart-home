@@ -12,15 +12,17 @@ All time operations respect the configured timezone.
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional, Dict, Any
-import pytz
 import logging
+from datetime import datetime
+from typing import Any
+
+import pytz
+
 
 logger = logging.getLogger(__name__)
 
 # Global timezone configuration
-_timezone: Optional[pytz.timezone] = None
+_timezone: pytz.timezone | None = None
 
 
 def set_timezone(timezone_input: str | pytz.timezone) -> None:
@@ -72,7 +74,7 @@ def _get_local_now() -> datetime:
         return datetime.now(timezone_obj)
 
 
-def format_time_12h(dt: Optional[datetime] = None) -> str:
+def format_time_12h(dt: datetime | None = None) -> str:
     """
     Format time in 12-hour format with AM/PM.
 
@@ -85,10 +87,14 @@ def format_time_12h(dt: Optional[datetime] = None) -> str:
     if dt is None:
         dt = _get_local_now()
 
-    return dt.strftime("%-I:%M %p") if hasattr(dt, 'strftime') else f"{dt.hour % 12 or 12}:{dt.minute:02d} {'AM' if dt.hour < 12 else 'PM'}"
+    return (
+        dt.strftime("%-I:%M %p")
+        if hasattr(dt, "strftime")
+        else f"{dt.hour % 12 or 12}:{dt.minute:02d} {'AM' if dt.hour < 12 else 'PM'}"
+    )
 
 
-def format_time_24h(dt: Optional[datetime] = None) -> str:
+def format_time_24h(dt: datetime | None = None) -> str:
     """
     Format time in 24-hour format.
 
@@ -133,7 +139,7 @@ def get_current_date() -> str:
     return now.strftime("%A, %B %d, %Y")
 
 
-def get_datetime_info() -> Dict[str, Any]:
+def get_datetime_info() -> dict[str, Any]:
     """
     Get comprehensive datetime information in the configured timezone.
 

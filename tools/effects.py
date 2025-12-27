@@ -7,19 +7,16 @@ and the Hue specialist for abstract vibe requests.
 
 from typing import Any
 
-from src.config import VIBE_PRESETS, get_room_entity, ROOM_ENTITY_MAP
+from src.config import ROOM_ENTITY_MAP, VIBE_PRESETS, get_room_entity
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
-from tools.hue_specialist import interpret_vibe_request, HUE_SCENE_MAPPINGS
+from tools.hue_specialist import HUE_SCENE_MAPPINGS, interpret_vibe_request
+
 
 logger = setup_logging("tools.effects")
 
 
-def apply_vibe(
-    room: str,
-    vibe_description: str,
-    transition: float = 1.0
-) -> dict[str, Any]:
+def apply_vibe(room: str, vibe_description: str, transition: float = 1.0) -> dict[str, Any]:
     """
     Apply a vibe to a room based on an abstract description.
 
@@ -42,7 +39,7 @@ def apply_vibe(
         return {
             "success": False,
             "error": f"Unknown room: {room}",
-            "available_rooms": list(ROOM_ENTITY_MAP.keys())
+            "available_rooms": list(ROOM_ENTITY_MAP.keys()),
         }
 
     # Interpret the vibe description
@@ -63,10 +60,10 @@ def apply_vibe(
                 scene_entity_id=scene_entity_id,
                 dynamic=settings.get("dynamic", True),
                 speed=settings.get("speed", 50),
-                brightness=settings.get("brightness")
+                brightness=settings.get("brightness"),
             )
 
-            return {
+            result = {
                 "success": success,
                 "room": room,
                 "vibe": vibe_description,
@@ -76,8 +73,11 @@ def apply_vibe(
                 "dynamic": settings.get("dynamic"),
                 "speed": settings.get("speed"),
                 "brightness": settings.get("brightness"),
-                "source": settings.get("source")
+                "source": settings.get("source"),
             }
+            if not success:
+                result["error"] = f"Failed to activate scene {scene_entity_id}"
+            return result
 
         else:
             # Apply basic light settings
@@ -88,10 +88,10 @@ def apply_vibe(
                 entity_id=entity_id,
                 brightness_pct=brightness,
                 color_temp_kelvin=color_temp,
-                transition=transition
+                transition=transition,
             )
 
-            return {
+            result = {
                 "success": success,
                 "room": room,
                 "entity_id": entity_id,
@@ -99,17 +99,15 @@ def apply_vibe(
                 "type": "basic",
                 "brightness": brightness,
                 "color_temp_kelvin": color_temp,
-                "source": settings.get("source")
+                "source": settings.get("source"),
             }
+            if not success:
+                result["error"] = f"Failed to apply vibe to {entity_id}"
+            return result
 
     except Exception as error:
         logger.error(f"Error applying vibe: {error}")
-        return {
-            "success": False,
-            "error": str(error),
-            "room": room,
-            "vibe": vibe_description
-        }
+        return {"success": False, "error": str(error), "room": room, "vibe": vibe_description}
 
 
 def get_vibe_preview(vibe_description: str) -> dict[str, Any]:
@@ -127,7 +125,7 @@ def get_vibe_preview(vibe_description: str) -> dict[str, Any]:
     preview = {
         "vibe": vibe_description,
         "type": settings.get("type"),
-        "source": settings.get("source")
+        "source": settings.get("source"),
     }
 
     if settings.get("type") == "scene":
@@ -153,7 +151,7 @@ def list_vibes() -> dict[str, Any]:
         "preset_vibes": {
             name: {
                 "brightness": settings["brightness"],
-                "color_temp_kelvin": settings["color_temp_kelvin"]
+                "color_temp_kelvin": settings["color_temp_kelvin"],
             }
             for name, settings in VIBE_PRESETS.items()
         },
@@ -166,15 +164,13 @@ def list_vibes() -> dict[str, Any]:
             "under the sea",
             "northern lights",
             "fire",
-            "party"
-        ]
+            "party",
+        ],
     }
 
 
 def create_light_sequence(
-    room: str,
-    sequence: list[dict[str, Any]],
-    loop: bool = False
+    room: str, sequence: list[dict[str, Any]], loop: bool = False
 ) -> dict[str, Any]:
     """
     Create a sequence of light changes (for future implementation).
@@ -194,5 +190,5 @@ def create_light_sequence(
     return {
         "success": False,
         "error": "Light sequences not yet implemented",
-        "note": "This feature is planned for future development"
+        "note": "This feature is planned for future development",
     }

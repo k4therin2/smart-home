@@ -8,14 +8,14 @@ The Hue API v2 uses HTTPS and requires an application key for authentication.
 See: https://developers.meethue.com/new-hue-api/
 """
 
+import json
 import logging
 import os
 import ssl
-import json
-from typing import Optional, Dict, List, Any
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 from dataclasses import dataclass
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 
@@ -58,10 +58,11 @@ HUE_ROOM_ARCHETYPES = {
 @dataclass
 class HueRoom:
     """Represents a room on the Hue bridge."""
+
     id: str
     name: str
     archetype: str
-    children: List[str]  # Device/light resource IDs
+    children: list[str]  # Device/light resource IDs
 
 
 class HueBridgeClient:
@@ -78,8 +79,8 @@ class HueBridgeClient:
 
     def __init__(
         self,
-        bridge_ip: Optional[str] = None,
-        application_key: Optional[str] = None,
+        bridge_ip: str | None = None,
+        application_key: str | None = None,
     ):
         """
         Initialize the Hue Bridge client.
@@ -120,8 +121,8 @@ class HueBridgeClient:
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Make an authenticated request to the Hue bridge.
 
@@ -165,7 +166,7 @@ class HueBridgeClient:
 
     # ========== Device Discovery ==========
 
-    def get_devices(self) -> List[Dict[str, Any]]:
+    def get_devices(self) -> list[dict[str, Any]]:
         """
         Get all devices from the Hue bridge.
 
@@ -175,7 +176,7 @@ class HueBridgeClient:
         response = self._make_request("GET", "/resource/device")
         return response.get("data", [])
 
-    def get_lights(self) -> List[Dict[str, Any]]:
+    def get_lights(self) -> list[dict[str, Any]]:
         """
         Get all light resources from the Hue bridge.
 
@@ -185,7 +186,7 @@ class HueBridgeClient:
         response = self._make_request("GET", "/resource/light")
         return response.get("data", [])
 
-    def find_device_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+    def find_device_by_name(self, name: str) -> dict[str, Any] | None:
         """
         Find a device by its friendly name.
 
@@ -205,7 +206,7 @@ class HueBridgeClient:
 
         return None
 
-    def get_device_id_from_ha_entity(self, entity_id: str) -> Optional[str]:
+    def get_device_id_from_ha_entity(self, entity_id: str) -> str | None:
         """
         Map a Home Assistant entity ID to a Hue device resource ID.
 
@@ -227,7 +228,7 @@ class HueBridgeClient:
 
     # ========== Room Management ==========
 
-    def get_rooms(self) -> List[HueRoom]:
+    def get_rooms(self) -> list[HueRoom]:
         """
         Get all rooms from the Hue bridge.
 
@@ -248,7 +249,7 @@ class HueBridgeClient:
 
         return rooms
 
-    def find_room_by_name(self, name: str) -> Optional[HueRoom]:
+    def find_room_by_name(self, name: str) -> HueRoom | None:
         """
         Find a room by name.
 
@@ -271,9 +272,9 @@ class HueBridgeClient:
     def create_room(
         self,
         name: str,
-        device_ids: List[str],
-        archetype: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        device_ids: list[str],
+        archetype: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new room on the Hue bridge.
 
@@ -291,10 +292,7 @@ class HueBridgeClient:
             archetype = HUE_ROOM_ARCHETYPES.get(name_normalized, "other")
 
         # Build children array
-        children = [
-            {"rid": device_id, "rtype": "device"}
-            for device_id in device_ids
-        ]
+        children = [{"rid": device_id, "rtype": "device"} for device_id in device_ids]
 
         data = {
             "metadata": {
@@ -312,9 +310,9 @@ class HueBridgeClient:
     def update_room(
         self,
         room_id: str,
-        device_ids: Optional[List[str]] = None,
-        name: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        device_ids: list[str] | None = None,
+        name: str | None = None,
+    ) -> dict[str, Any]:
         """
         Update an existing room.
 
@@ -332,10 +330,7 @@ class HueBridgeClient:
             data["metadata"] = {"name": name.replace("_", " ").title()}
 
         if device_ids is not None:
-            data["children"] = [
-                {"rid": device_id, "rtype": "device"}
-                for device_id in device_ids
-            ]
+            data["children"] = [{"rid": device_id, "rtype": "device"} for device_id in device_ids]
 
         response = self._make_request("PUT", f"/resource/room/{room_id}", data)
 
@@ -345,8 +340,8 @@ class HueBridgeClient:
     def add_devices_to_room(
         self,
         room_id: str,
-        device_ids: List[str],
-    ) -> Dict[str, Any]:
+        device_ids: list[str],
+    ) -> dict[str, Any]:
         """
         Add devices to an existing room.
 
@@ -372,7 +367,7 @@ class HueBridgeClient:
 
         return self.update_room(room_id, device_ids=all_devices)
 
-    def delete_room(self, room_id: str) -> Dict[str, Any]:
+    def delete_room(self, room_id: str) -> dict[str, Any]:
         """
         Delete a room from the Hue bridge.
 
@@ -391,8 +386,8 @@ class HueBridgeClient:
 
     def sync_rooms_from_mappings(
         self,
-        mappings: List[Dict[str, str]],
-    ) -> Dict[str, Any]:
+        mappings: list[dict[str, str]],
+    ) -> dict[str, Any]:
         """
         Sync room assignments to the Hue bridge.
 
@@ -412,8 +407,8 @@ class HueBridgeClient:
             }
 
         # Group mappings by room
-        rooms_to_sync: Dict[str, List[str]] = {}
-        unmapped_entities: List[str] = []
+        rooms_to_sync: dict[str, list[str]] = {}
+        unmapped_entities: list[str] = []
 
         for mapping in mappings:
             entity_id = mapping.get("entity_id", "")
@@ -464,11 +459,12 @@ class HueBridgeClient:
 
 class HueBridgeError(Exception):
     """Exception raised for Hue bridge errors."""
+
     pass
 
 
 # Singleton instance
-_hue_bridge_client: Optional[HueBridgeClient] = None
+_hue_bridge_client: HueBridgeClient | None = None
 
 
 def get_hue_bridge_client() -> HueBridgeClient:

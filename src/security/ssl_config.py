@@ -9,9 +9,9 @@ import os
 import ssl
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Tuple
 
 from src.config import DATA_DIR
+
 
 # Certificate storage directory
 SSL_DIR = DATA_DIR / "ssl"
@@ -30,11 +30,11 @@ CERT_ORGANIZATION = os.getenv("SSL_ORGANIZATION", "Smart Home Assistant")
 
 
 def generate_self_signed_cert(
-    common_name: Optional[str] = None,
-    organization: Optional[str] = None,
+    common_name: str | None = None,
+    organization: str | None = None,
     validity_days: int = CERT_VALIDITY_DAYS,
-    force: bool = False
-) -> Tuple[Path, Path]:
+    force: bool = False,
+) -> tuple[Path, Path]:
     """
     Generate a self-signed SSL certificate for local HTTPS.
 
@@ -97,7 +97,7 @@ def generate_self_signed_cert(
     san_extension = crypto.X509Extension(
         b"subjectAltName",
         False,
-        ", ".join(san_list[:100]).encode()  # Limit to first 100 SANs
+        ", ".join(san_list[:100]).encode(),  # Limit to first 100 SANs
     )
     cert.add_extensions([san_extension])
 
@@ -118,7 +118,7 @@ def generate_self_signed_cert(
     return CERT_FILE, KEY_FILE
 
 
-def get_ssl_context() -> Optional[ssl.SSLContext]:
+def get_ssl_context() -> ssl.SSLContext | None:
     """
     Get SSL context for Flask if certificates exist.
 
@@ -133,12 +133,12 @@ def get_ssl_context() -> Optional[ssl.SSLContext]:
 
     # Modern TLS settings
     context.minimum_version = ssl.TLSVersion.TLSv1_2
-    context.set_ciphers('ECDHE+AESGCM:DHE+AESGCM:ECDHE+CHACHA20:DHE+CHACHA20')
+    context.set_ciphers("ECDHE+AESGCM:DHE+AESGCM:ECDHE+CHACHA20:DHE+CHACHA20")
 
     return context
 
 
-def check_cert_expiry() -> Optional[datetime]:
+def check_cert_expiry() -> datetime | None:
     """
     Check when the current certificate expires.
 
@@ -157,7 +157,7 @@ def check_cert_expiry() -> Optional[datetime]:
     expiry_str = cert.get_notAfter()
 
     if expiry_str:
-        return datetime.strptime(expiry_str.decode('ascii'), '%Y%m%d%H%M%SZ')
+        return datetime.strptime(expiry_str.decode("ascii"), "%Y%m%d%H%M%SZ")
 
     return None
 

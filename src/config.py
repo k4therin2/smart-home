@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional, List
 
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
@@ -26,41 +26,54 @@ LOGS_DIR = DATA_DIR / "logs"
 DATA_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
 
-# Anthropic Configuration
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+# OpenAI Configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = "gpt-4o-mini"
 MAX_AGENT_ITERATIONS = 5
 
 # Home Assistant Configuration
 HA_URL = os.getenv("HA_URL", "http://localhost:8123")
 HA_TOKEN = os.getenv("HA_TOKEN")
 
+# Spotify Configuration
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback")
+
 # Cost Tracking
 DAILY_COST_TARGET = float(os.getenv("DAILY_COST_TARGET", "2.00"))
 DAILY_COST_ALERT = float(os.getenv("DAILY_COST_ALERT", "5.00"))
 
 # Vacuum Configuration
-# Entity ID for the Dreame L10s vacuum (set via env or use default)
-# The Dreame integration typically creates vacuum.dreame_<model> entities
-VACUUM_ENTITY_ID = os.getenv("VACUUM_ENTITY_ID", "vacuum.dreame_l10s")
+# Entity ID for the Dreame L10s Ultra vacuum (model r2228o)
+# The Dreame HACS integration uses the model number in the entity ID
+VACUUM_ENTITY_ID = os.getenv("VACUUM_ENTITY_ID", "vacuum.dreame_r2228o_ce6c_robot_cleaner")
 
-# Claude Sonnet 4 Pricing (per 1M tokens as of 2025)
-CLAUDE_INPUT_COST_PER_MILLION = 3.00   # $3 per 1M input tokens
-CLAUDE_OUTPUT_COST_PER_MILLION = 15.00  # $15 per 1M output tokens
+# GPT-4o-mini Pricing (per 1M tokens as of 2025)
+OPENAI_INPUT_COST_PER_MILLION = 0.15  # $0.15 per 1M input tokens
+OPENAI_OUTPUT_COST_PER_MILLION = 0.60  # $0.60 per 1M output tokens
 
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+# Cache Configuration
+CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+HA_STATE_CACHE_TTL = int(os.getenv("HA_STATE_CACHE_TTL", "10"))  # seconds
+CACHE_MAX_SIZE = int(os.getenv("CACHE_MAX_SIZE", "1000"))  # entries
+
 # Room Entity Mappings
 # Maps room names to Home Assistant entity IDs
+# Blinds use the Tuya integration via Hapadif Smart Bridge Hub
 ROOM_ENTITY_MAP = {
     "living_room": {
         "lights": ["light.living_room", "light.living_room_2"],
         "default_light": "light.living_room_2",  # Has color support
+        "blinds": "cover.living_room_blinds",  # Hapadif via Tuya
     },
     "bedroom": {
         "lights": ["light.bedroom", "light.bedroom_2", "light.bed_north", "light.bed_south"],
         "default_light": "light.bedroom_2",  # Has color support
+        "blinds": "cover.bedroom_blinds",  # Hapadif via Tuya
     },
     "kitchen": {
         "lights": ["light.kitchen", "light.kitchen_2"],
@@ -69,6 +82,7 @@ ROOM_ENTITY_MAP = {
     "office": {
         "lights": ["light.office_pendant", "light.office_2"],
         "default_light": "light.office_pendant",  # Has color support, is available
+        "blinds": "cover.office_blinds",  # Hapadif via Tuya
     },
     "upstairs": {
         "lights": ["light.upstairs", "light.top_of_stairs"],
@@ -144,7 +158,7 @@ def mireds_to_kelvin(mireds: int) -> int:
     return int(1000000 / mireds)
 
 
-def get_vacuum_entity() -> Optional[str]:
+def get_vacuum_entity() -> str | None:
     """
     Get the vacuum entity ID.
 
@@ -154,7 +168,34 @@ def get_vacuum_entity() -> Optional[str]:
     return VACUUM_ENTITY_ID if VACUUM_ENTITY_ID else None
 
 
-def get_room_entity(room_name: str, device_type: str = "lights") -> Optional[str]:
+def get_blinds_entities(room_name: str) -> str | None:
+    """
+    Get the blinds entity ID for a room.
+
+    Args:
+        room_name: Natural language room name
+
+    Returns:
+        Blinds entity ID string or None if not found
+    """
+    # Normalize room name
+    normalized = room_name.lower().strip()
+
+    # Check aliases first
+    if normalized in ROOM_ALIASES:
+        normalized = ROOM_ALIASES[normalized]
+
+    # Replace spaces with underscores
+    normalized = normalized.replace(" ", "_")
+
+    # Look up in mapping
+    if normalized in ROOM_ENTITY_MAP:
+        return ROOM_ENTITY_MAP[normalized].get("blinds")
+
+    return None
+
+
+def get_room_entity(room_name: str, device_type: str = "lights") -> str | None:
     """
     Get the primary entity ID for a room and device type.
 
@@ -185,7 +226,7 @@ def get_room_entity(room_name: str, device_type: str = "lights") -> Optional[str
     return None
 
 
-def validate_config() -> List[str]:
+def validate_config() -> list[str]:
     """
     Validate that required configuration is present.
 
@@ -194,8 +235,8 @@ def validate_config() -> List[str]:
     """
     errors = []
 
-    if not ANTHROPIC_API_KEY:
-        errors.append("ANTHROPIC_API_KEY is not set")
+    if not OPENAI_API_KEY:
+        errors.append("OPENAI_API_KEY is not set")
 
     if not HA_TOKEN:
         errors.append("HA_TOKEN is not set")

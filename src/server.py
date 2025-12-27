@@ -13,22 +13,23 @@ import sqlite3
 import threading
 from datetime import date, datetime
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_login import login_required, current_user
-from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask import Flask, jsonify, redirect, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import current_user, login_required
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from pydantic import BaseModel, Field, ValidationError
 
 from src.config import DATA_DIR, ROOM_ENTITY_MAP
-from src.utils import setup_logging, log_command, get_daily_usage
 from src.ha_client import get_ha_client
+from src.health_monitor import get_health_monitor
 from src.security.auth import auth_bp, setup_login_manager
-from src.security.ssl_config import get_ssl_context, certificates_exist
+from src.security.ssl_config import certificates_exist, get_ssl_context
+from src.self_healer import get_self_healer
+from src.utils import get_daily_usage, log_command, setup_logging
 from src.voice_handler import VoiceHandler
 from src.voice_response import ResponseFormatter
-from src.health_monitor import get_health_monitor
-from src.self_healer import get_self_healer
+
 
 # Initialize logging
 logger = setup_logging("server")
@@ -37,38 +38,30 @@ logger = setup_logging("server")
 # Pydantic models for input validation
 class CommandRequest(BaseModel):
     """Validation schema for command API requests."""
+
     command: str = Field(
-        min_length=1,
-        max_length=1000,
-        description="Natural language command to execute"
+        min_length=1, max_length=1000, description="Natural language command to execute"
     )
 
 
 class VoiceCommandRequest(BaseModel):
     """Validation schema for voice command API requests (HA format)."""
-    text: str = Field(
-        min_length=1,
-        max_length=1000,
-        description="Voice command text from STT"
-    )
+
+    text: str = Field(min_length=1, max_length=1000, description="Voice command text from STT")
     language: str = Field(default="en", description="Language code")
     conversation_id: str = Field(default=None, description="HA conversation ID")
     device_id: str = Field(default=None, description="Source voice device ID")
 
 
 # Initialize Flask app
-app = Flask(
-    __name__,
-    template_folder="../templates",
-    static_folder="../static"
-)
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 # Security configuration
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour CSRF token expiry
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", secrets.token_hex(32))
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour CSRF token expiry
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -101,11 +94,11 @@ def add_security_headers(response):
     - Content-Security-Policy: Restricts resource loading
     - Strict-Transport-Security: Enforces HTTPS (HSTS)
     """
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Content-Security-Policy'] = (
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; "
@@ -115,9 +108,9 @@ def add_security_headers(response):
     )
 
     # HSTS - only add when running over HTTPS
-    if request.is_secure or os.getenv('FLASK_ENV') == 'production':
+    if request.is_secure or os.getenv("FLASK_ENV") == "production":
         # max-age=31536000 (1 year), includeSubDomains for additional security
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     return response
 
@@ -126,20 +119,18 @@ def add_security_headers(response):
 def handle_csrf_error(error):
     """Handle CSRF validation errors."""
     logger.warning(f"CSRF error from {request.remote_addr}: {error.description}")
-    return jsonify({
-        "success": False,
-        "error": "Invalid or expired security token. Please refresh the page."
-    }), 400
+    return jsonify(
+        {"success": False, "error": "Invalid or expired security token. Please refresh the page."}
+    ), 400
 
 
 @app.errorhandler(429)
 def handle_rate_limit_error(error):
     """Handle rate limit exceeded errors."""
     logger.warning(f"Rate limit exceeded for {request.remote_addr}")
-    return jsonify({
-        "success": False,
-        "error": "Too many requests. Please wait a moment before trying again."
-    }), 429
+    return jsonify(
+        {"success": False, "error": "Too many requests. Please wait a moment before trying again."}
+    ), 429
 
 
 def process_command(command: str) -> dict:
@@ -161,16 +152,12 @@ def process_command(command: str) -> dict:
 
         response_text = run_agent(command)
 
-        return {
-            "success": True,
-            "response": response_text,
-            "command": command
-        }
+        return {"success": True, "response": response_text, "command": command}
     except Exception as error:
         logger.error(f"Agent error: {error}")
         # In production, don't leak error details to client
         if app.debug:
-            error_message = f"Error processing command: {str(error)}"
+            error_message = f"Error processing command: {error!s}"
             error_detail = str(error)
         else:
             error_message = "Error processing command. Please try again."
@@ -180,7 +167,7 @@ def process_command(command: str) -> dict:
             "success": False,
             "response": error_message,
             "command": command,
-            "error": error_detail
+            "error": error_detail,
         }
 
 
@@ -208,29 +195,20 @@ def handle_command():
         data = request.get_json()
 
         if not data:
-            return jsonify({
-                "success": False,
-                "error": "Request body must be JSON"
-            }), 400
+            return jsonify({"success": False, "error": "Request body must be JSON"}), 400
 
         # Validate with Pydantic
         try:
             validated = CommandRequest(**data)
         except ValidationError as validation_error:
             errors = validation_error.errors()
-            error_msg = errors[0].get('msg', 'Invalid input') if errors else 'Invalid input'
-            return jsonify({
-                "success": False,
-                "error": error_msg
-            }), 400
+            error_msg = errors[0].get("msg", "Invalid input") if errors else "Invalid input"
+            return jsonify({"success": False, "error": error_msg}), 400
 
         command = validated.command.strip()
 
         if not command:
-            return jsonify({
-                "success": False,
-                "error": "Command cannot be empty"
-            }), 400
+            return jsonify({"success": False, "error": "Command cannot be empty"}), 400
 
         result = process_command(command)
         return jsonify(result)
@@ -239,10 +217,7 @@ def handle_command():
         logger.error(f"Error processing command: {error}")
         # In production, don't leak error details to client
         error_detail = str(error) if app.debug else "Internal server error"
-        return jsonify({
-            "success": False,
-            "error": error_detail
-        }), 500
+        return jsonify({"success": False, "error": error_detail}), 500
 
 
 @app.route("/api/status")
@@ -266,38 +241,46 @@ def get_status():
                 if entity_id:
                     state = ha_client.get_light_state(entity_id)
                     if state:
-                        devices.append({
-                            "entity_id": entity_id,
-                            "name": state.get("friendly_name", room_name.replace("_", " ").title()),
-                            "type": "light",
-                            "state": state.get("state", "unknown"),
-                            "brightness": state.get("brightness"),
-                            "room": room_name
-                        })
+                        devices.append(
+                            {
+                                "entity_id": entity_id,
+                                "name": state.get(
+                                    "friendly_name", room_name.replace("_", " ").title()
+                                ),
+                                "type": "light",
+                                "state": state.get("state", "unknown"),
+                                "brightness": state.get("brightness"),
+                                "room": room_name,
+                            }
+                        )
         else:
             system_status = "warning"
 
         daily_cost = get_daily_usage()
 
-        return jsonify({
-            "system": system_status,
-            "agent": "ready",
-            "home_assistant": "connected" if ha_connected else "disconnected",
-            "daily_cost_usd": round(daily_cost, 4),
-            "devices": devices
-        })
+        return jsonify(
+            {
+                "system": system_status,
+                "agent": "ready",
+                "home_assistant": "connected" if ha_connected else "disconnected",
+                "daily_cost_usd": round(daily_cost, 4),
+                "devices": devices,
+            }
+        )
 
     except Exception as error:
         logger.error(f"Status check error: {error}")
         # In production, don't leak error details to client
         error_detail = str(error) if app.debug else "Status check failed"
-        return jsonify({
-            "system": "error",
-            "agent": "error",
-            "home_assistant": "error",
-            "error": error_detail,
-            "devices": []
-        })
+        return jsonify(
+            {
+                "system": "error",
+                "agent": "error",
+                "home_assistant": "error",
+                "error": error_detail,
+                "devices": [],
+            }
+        )
 
 
 @app.route("/api/health")
@@ -345,26 +328,32 @@ def get_health():
 
                 result = self_healer.attempt_healing(component["name"], component_health)
                 if result["attempted"]:
-                    healing_results.append({
-                        "component": component["name"],
-                        "success": result["success"],
-                        "actions": result.get("actions", []),
-                    })
+                    healing_results.append(
+                        {
+                            "component": component["name"],
+                            "success": result["success"],
+                            "actions": result.get("actions", []),
+                        }
+                    )
 
-        return jsonify({
-            **health_data,
-            "healing_attempted": len(healing_results) > 0,
-            "healing_results": healing_results,
-        })
+        return jsonify(
+            {
+                **health_data,
+                "healing_attempted": len(healing_results) > 0,
+                "healing_results": healing_results,
+            }
+        )
 
     except Exception as error:
         logger.error(f"Health check error: {error}")
         error_detail = str(error) if app.debug else "Health check failed"
-        return jsonify({
-            "status": "error",
-            "error": error_detail,
-            "components": [],
-        }), 500
+        return jsonify(
+            {
+                "status": "error",
+                "error": error_detail,
+                "components": [],
+            }
+        ), 500
 
 
 @app.route("/api/health/history")
@@ -459,12 +448,14 @@ def get_history():
 def get_csrf_token():
     """Return a CSRF token for API clients."""
     from flask_wtf.csrf import generate_csrf
+
     return jsonify({"csrf_token": generate_csrf()})
 
 
 # =============================================================================
 # Voice Pipeline Diagnostics Routes (WP-9.2: Christmas Gift 2025)
 # =============================================================================
+
 
 @app.route("/diagnostics")
 @login_required
@@ -514,28 +505,33 @@ def run_voice_diagnostics():
     except Exception as error:
         logger.error(f"Voice diagnostics error: {error}")
         error_detail = str(error) if app.debug else "Diagnostics failed"
-        return jsonify({
-            "overall_status": "failed",
-            "error": error_detail,
-            "summary": {"passed": 0, "failed": 1, "warnings": 0, "total": 1},
-            "results": [{
-                "name": "Diagnostic Suite",
-                "status": "failed",
-                "message": error_detail,
-                "details": {"exception": str(error)},
-                "fix_suggestions": [
-                    "Check server logs for detailed error",
-                    "Verify all dependencies are installed",
-                    "Ensure Home Assistant is reachable"
+        return jsonify(
+            {
+                "overall_status": "failed",
+                "error": error_detail,
+                "summary": {"passed": 0, "failed": 1, "warnings": 0, "total": 1},
+                "results": [
+                    {
+                        "name": "Diagnostic Suite",
+                        "status": "failed",
+                        "message": error_detail,
+                        "details": {"exception": str(error)},
+                        "fix_suggestions": [
+                            "Check server logs for detailed error",
+                            "Verify all dependencies are installed",
+                            "Ensure Home Assistant is reachable",
+                        ],
+                        "duration_ms": 0,
+                    }
                 ],
-                "duration_ms": 0
-            }]
-        }), 500
+            }
+        ), 500
 
 
 # =============================================================================
 # Voice Command Routes (REQ-016: Voice Control via HA Voice Puck)
 # =============================================================================
+
 
 def _verify_webhook_token() -> bool:
     """
@@ -565,6 +561,7 @@ def _get_voice_handler() -> VoiceHandler:
         Configured VoiceHandler instance
     """
     from agent import run_agent
+
     return VoiceHandler(agent_callback=run_agent)
 
 
@@ -585,38 +582,26 @@ def handle_voice_command():
     if not current_user.is_authenticated:
         if not _verify_webhook_token():
             logger.warning(f"Unauthorized voice command from {request.remote_addr}")
-            return jsonify({
-                "success": False,
-                "error": "Unauthorized"
-            }), 401
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
 
     try:
         data = request.get_json()
 
         if not data:
-            return jsonify({
-                "success": False,
-                "error": "Request body must be JSON"
-            }), 400
+            return jsonify({"success": False, "error": "Request body must be JSON"}), 400
 
         # Validate with Pydantic
         try:
             validated = VoiceCommandRequest(**data)
         except ValidationError as validation_error:
             errors = validation_error.errors()
-            error_msg = errors[0].get('msg', 'Invalid input') if errors else 'Invalid input'
-            return jsonify({
-                "success": False,
-                "error": error_msg
-            }), 400
+            error_msg = errors[0].get("msg", "Invalid input") if errors else "Invalid input"
+            return jsonify({"success": False, "error": error_msg}), 400
 
         text = validated.text.strip()
 
         if not text:
-            return jsonify({
-                "success": False,
-                "error": "Voice command text cannot be empty"
-            }), 400
+            return jsonify({"success": False, "error": "Voice command text cannot be empty"}), 400
 
         # Build context from validated data
         context = {}
@@ -637,15 +622,13 @@ def handle_voice_command():
     except Exception as error:
         logger.error(f"Voice command error: {error}")
         formatter = ResponseFormatter()
-        return jsonify({
-            "success": False,
-            "error": formatter.error(str(error))
-        }), 500
+        return jsonify({"success": False, "error": formatter.error(str(error))}), 500
 
 
 # =============================================================================
 # PWA Routes (REQ-017: Mobile-Optimized Web Interface)
 # =============================================================================
+
 
 @app.route("/manifest.json")
 def serve_manifest():
@@ -666,10 +649,10 @@ def serve_service_worker():
     Sets appropriate headers for service worker registration.
     """
     response = app.send_static_file("sw.js")
-    response.headers['Content-Type'] = 'application/javascript'
-    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
     # Prevent caching of service worker to ensure updates propagate
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
 
@@ -687,31 +670,23 @@ def subscribe_notifications():
     try:
         data = request.get_json()
 
-        if not data or 'endpoint' not in data:
-            return jsonify({
-                "success": False,
-                "error": "Missing subscription endpoint"
-            }), 400
+        if not data or "endpoint" not in data:
+            return jsonify({"success": False, "error": "Missing subscription endpoint"}), 400
 
         # Log the subscription (full implementation would store in database)
         logger.info(f"Notification subscription received: {data.get('endpoint', '')[:50]}...")
 
-        return jsonify({
-            "success": True,
-            "message": "Subscription registered"
-        }), 201
+        return jsonify({"success": True, "message": "Subscription registered"}), 201
 
     except Exception as error:
         logger.error(f"Notification subscription error: {error}")
-        return jsonify({
-            "success": False,
-            "error": "Subscription failed"
-        }), 500
+        return jsonify({"success": False, "error": "Subscription failed"}), 500
 
 
 # =============================================================================
 # TODO LIST & REMINDERS API ENDPOINTS (WP-4.1)
 # =============================================================================
+
 
 @app.route("/api/todos", methods=["GET"])
 @login_required
@@ -735,19 +710,15 @@ def get_todos():
         manager = get_todo_manager()
         todos = manager.get_todos(list_name=list_name, include_completed=show_completed)
 
-        return jsonify({
-            "success": True,
-            "todos": todos,
-            "count": len(todos),
-            "list_name": list_name
-        })
+        return jsonify(
+            {"success": True, "todos": todos, "count": len(todos), "list_name": list_name}
+        )
 
     except Exception as error:
         logger.error(f"Error getting todos: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error fetching todos"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error fetching todos"}
+        ), 500
 
 
 @app.route("/api/todos", methods=["POST"])
@@ -766,10 +737,7 @@ def add_todo():
         data = request.get_json()
 
         if not data or not data.get("content"):
-            return jsonify({
-                "success": False,
-                "error": "Content is required"
-            }), 400
+            return jsonify({"success": False, "error": "Content is required"}), 400
 
         content = data.get("content", "").strip()
         list_name = data.get("list_name", "default")
@@ -779,31 +747,20 @@ def add_todo():
         priority = priority_map.get(priority_str.lower(), 0)
 
         manager = get_todo_manager()
-        todo_id = manager.add_todo(
-            content=content,
-            list_name=list_name,
-            priority=priority
-        )
+        todo_id = manager.add_todo(content=content, list_name=list_name, priority=priority)
 
-        return jsonify({
-            "success": True,
-            "todo_id": todo_id,
-            "content": content,
-            "list_name": list_name
-        }), 201
+        return jsonify(
+            {"success": True, "todo_id": todo_id, "content": content, "list_name": list_name}
+        ), 201
 
     except ValueError as error:
-        return jsonify({
-            "success": False,
-            "error": str(error)
-        }), 400
+        return jsonify({"success": False, "error": str(error)}), 400
 
     except Exception as error:
         logger.error(f"Error adding todo: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error adding todo"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error adding todo"}
+        ), 500
 
 
 @app.route("/api/todos/<int:todo_id>/complete", methods=["POST"])
@@ -819,22 +776,15 @@ def complete_todo(todo_id):
         success = manager.complete_todo(todo_id)
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": f"Todo {todo_id} marked complete"
-            })
+            return jsonify({"success": True, "message": f"Todo {todo_id} marked complete"})
         else:
-            return jsonify({
-                "success": False,
-                "error": "Todo not found"
-            }), 404
+            return jsonify({"success": False, "error": "Todo not found"}), 404
 
     except Exception as error:
         logger.error(f"Error completing todo: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error completing todo"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error completing todo"}
+        ), 500
 
 
 @app.route("/api/todos/<int:todo_id>", methods=["DELETE"])
@@ -850,22 +800,15 @@ def delete_todo(todo_id):
         success = manager.delete_todo(todo_id)
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": f"Todo {todo_id} deleted"
-            })
+            return jsonify({"success": True, "message": f"Todo {todo_id} deleted"})
         else:
-            return jsonify({
-                "success": False,
-                "error": "Todo not found"
-            }), 404
+            return jsonify({"success": False, "error": "Todo not found"}), 404
 
     except Exception as error:
         logger.error(f"Error deleting todo: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error deleting todo"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error deleting todo"}
+        ), 500
 
 
 @app.route("/api/lists", methods=["GET"])
@@ -879,17 +822,13 @@ def get_todo_lists():
         manager = get_todo_manager()
         lists = manager.get_lists()
 
-        return jsonify({
-            "success": True,
-            "lists": lists
-        })
+        return jsonify({"success": True, "lists": lists})
 
     except Exception as error:
         logger.error(f"Error getting lists: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error fetching lists"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error fetching lists"}
+        ), 500
 
 
 @app.route("/api/reminders", methods=["GET"])
@@ -903,18 +842,13 @@ def get_reminders():
         manager = get_reminder_manager()
         reminders = manager.get_pending_reminders()
 
-        return jsonify({
-            "success": True,
-            "reminders": reminders,
-            "count": len(reminders)
-        })
+        return jsonify({"success": True, "reminders": reminders, "count": len(reminders)})
 
     except Exception as error:
         logger.error(f"Error getting reminders: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error fetching reminders"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error fetching reminders"}
+        ), 500
 
 
 @app.route("/api/reminders/<int:reminder_id>/dismiss", methods=["POST"])
@@ -930,27 +864,21 @@ def dismiss_reminder(reminder_id):
         success = manager.dismiss_reminder(reminder_id)
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": f"Reminder {reminder_id} dismissed"
-            })
+            return jsonify({"success": True, "message": f"Reminder {reminder_id} dismissed"})
         else:
-            return jsonify({
-                "success": False,
-                "error": "Reminder not found"
-            }), 404
+            return jsonify({"success": False, "error": "Reminder not found"}), 404
 
     except Exception as error:
         logger.error(f"Error dismissing reminder: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error dismissing reminder"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error dismissing reminder"}
+        ), 500
 
 
 # =============================================================================
 # AUTOMATION API ENDPOINTS (WP-4.2: Simple Automation Creation)
 # =============================================================================
+
 
 @app.route("/api/automations", methods=["GET"])
 @login_required
@@ -972,25 +900,18 @@ def get_automations():
         trigger_type = request.args.get("trigger_type")
 
         manager = get_automation_manager()
-        automations = manager.get_automations(
-            enabled_only=enabled_only,
-            trigger_type=trigger_type
-        )
+        automations = manager.get_automations(enabled_only=enabled_only, trigger_type=trigger_type)
         stats = manager.get_stats()
 
-        return jsonify({
-            "success": True,
-            "automations": automations,
-            "count": len(automations),
-            "stats": stats
-        })
+        return jsonify(
+            {"success": True, "automations": automations, "count": len(automations), "stats": stats}
+        )
 
     except Exception as error:
         logger.error(f"Error getting automations: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error fetching automations"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error fetching automations"}
+        ), 500
 
 
 @app.route("/api/automations", methods=["POST"])
@@ -1016,18 +937,12 @@ def create_automation():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({
-                "success": False,
-                "error": "Request body required"
-            }), 400
+            return jsonify({"success": False, "error": "Request body required"}), 400
 
         required = ["name", "trigger_type", "trigger_config", "action_type", "action_config"]
         for field in required:
             if field not in data:
-                return jsonify({
-                    "success": False,
-                    "error": f"Missing required field: {field}"
-                }), 400
+                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
 
         manager = get_automation_manager()
         automation_id = manager.create_automation(
@@ -1036,27 +951,25 @@ def create_automation():
             trigger_config=data["trigger_config"],
             action_type=data["action_type"],
             action_config=data["action_config"],
-            description=data.get("description")
+            description=data.get("description"),
         )
 
-        return jsonify({
-            "success": True,
-            "automation_id": automation_id,
-            "message": f"Created automation '{data['name']}'"
-        }), 201
+        return jsonify(
+            {
+                "success": True,
+                "automation_id": automation_id,
+                "message": f"Created automation '{data['name']}'",
+            }
+        ), 201
 
     except ValueError as error:
-        return jsonify({
-            "success": False,
-            "error": str(error)
-        }), 400
+        return jsonify({"success": False, "error": str(error)}), 400
 
     except Exception as error:
         logger.error(f"Error creating automation: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error creating automation"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error creating automation"}
+        ), 500
 
 
 @app.route("/api/automations/<int:automation_id>", methods=["PUT"])
@@ -1074,31 +987,21 @@ def update_automation(automation_id: int):
     try:
         data = request.get_json()
         if not data:
-            return jsonify({
-                "success": False,
-                "error": "Request body required"
-            }), 400
+            return jsonify({"success": False, "error": "Request body required"}), 400
 
         manager = get_automation_manager()
         success = manager.update_automation(automation_id, **data)
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": "Automation updated"
-            })
+            return jsonify({"success": True, "message": "Automation updated"})
         else:
-            return jsonify({
-                "success": False,
-                "error": "Automation not found"
-            }), 404
+            return jsonify({"success": False, "error": "Automation not found"}), 404
 
     except Exception as error:
         logger.error(f"Error updating automation: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error updating automation"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error updating automation"}
+        ), 500
 
 
 @app.route("/api/automations/<int:automation_id>", methods=["DELETE"])
@@ -1114,22 +1017,15 @@ def delete_automation(automation_id: int):
         success = manager.delete_automation(automation_id)
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": "Automation deleted"
-            })
+            return jsonify({"success": True, "message": "Automation deleted"})
         else:
-            return jsonify({
-                "success": False,
-                "error": "Automation not found"
-            }), 404
+            return jsonify({"success": False, "error": "Automation not found"}), 404
 
     except Exception as error:
         logger.error(f"Error deleting automation: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error deleting automation"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error deleting automation"}
+        ), 500
 
 
 @app.route("/api/automations/<int:automation_id>/toggle", methods=["POST"])
@@ -1146,37 +1042,33 @@ def toggle_automation(automation_id: int):
         # Get current state first
         automation = manager.get_automation(automation_id)
         if not automation:
-            return jsonify({
-                "success": False,
-                "error": "Automation not found"
-            }), 404
+            return jsonify({"success": False, "error": "Automation not found"}), 404
 
         success = manager.toggle_automation(automation_id)
 
         if success:
             new_state = "disabled" if automation["enabled"] else "enabled"
-            return jsonify({
-                "success": True,
-                "message": f"Automation {new_state}",
-                "enabled": not automation["enabled"]
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Automation {new_state}",
+                    "enabled": not automation["enabled"],
+                }
+            )
         else:
-            return jsonify({
-                "success": False,
-                "error": "Failed to toggle automation"
-            }), 500
+            return jsonify({"success": False, "error": "Failed to toggle automation"}), 500
 
     except Exception as error:
         logger.error(f"Error toggling automation: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error toggling automation"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error toggling automation"}
+        ), 500
 
 
 # =============================================================================
 # LOGS API ENDPOINTS (WP-6.1: Log Viewer UI)
 # =============================================================================
+
 
 @app.route("/api/logs/files", methods=["GET"])
 @login_required
@@ -1201,25 +1093,28 @@ def get_log_files():
         file_list = []
         for log_file in files:
             stat = log_file.stat()
-            file_list.append({
-                "name": log_file.name,
-                "path": str(log_file),
-                "size": stat.st_size,
-                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-            })
+            file_list.append(
+                {
+                    "name": log_file.name,
+                    "path": str(log_file),
+                    "size": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                }
+            )
 
-        return jsonify({
-            "success": True,
-            "files": file_list,
-            "count": len(file_list),
-        })
+        return jsonify(
+            {
+                "success": True,
+                "files": file_list,
+                "count": len(file_list),
+            }
+        )
 
     except Exception as error:
         logger.error(f"Error listing log files: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error listing log files"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error listing log files"}
+        ), 500
 
 
 @app.route("/api/logs", methods=["GET"])
@@ -1243,7 +1138,7 @@ def get_logs():
 
     Returns JSON with log entries and statistics.
     """
-    from src.log_reader import LogReader, LogLevel
+    from src.log_reader import LogLevel, LogReader
 
     try:
         reader = LogReader()
@@ -1252,12 +1147,14 @@ def get_logs():
         log_type = request.args.get("log_type")
         log_files = reader.list_log_files(log_type=log_type)
         if not log_files:
-            return jsonify({
-                "success": True,
-                "entries": [],
-                "total": 0,
-                "stats": {},
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "entries": [],
+                    "total": 0,
+                    "stats": {},
+                }
+            )
 
         file_path = log_files[0]
 
@@ -1323,19 +1220,20 @@ def get_logs():
         if stats.get("last_entry"):
             stats["last_entry"] = stats["last_entry"].isoformat()
 
-        return jsonify({
-            "success": True,
-            "entries": [entry.to_dict() for entry in entries],
-            "total": stats["total_entries"],
-            "stats": stats,
-        })
+        return jsonify(
+            {
+                "success": True,
+                "entries": [entry.to_dict() for entry in entries],
+                "total": stats["total_entries"],
+                "stats": stats,
+            }
+        )
 
     except Exception as error:
         logger.error(f"Error reading logs: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error reading logs"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error reading logs"}
+        ), 500
 
 
 @app.route("/api/logs/export", methods=["GET"])
@@ -1353,7 +1251,8 @@ def export_logs():
     Returns log data in requested format.
     """
     from flask import Response
-    from src.log_reader import LogReader, LogLevel
+
+    from src.log_reader import LogLevel, LogReader
 
     try:
         reader = LogReader()
@@ -1400,10 +1299,9 @@ def export_logs():
 
     except Exception as error:
         logger.error(f"Error exporting logs: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error exporting logs"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error exporting logs"}
+        ), 500
 
 
 @app.route("/api/logs/tail", methods=["GET"])
@@ -1427,11 +1325,13 @@ def tail_logs():
         # Get main log file
         log_files = reader.list_log_files(log_type="main")
         if not log_files:
-            return jsonify({
-                "success": True,
-                "entries": [],
-                "position": 0,
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "entries": [],
+                    "position": 0,
+                }
+            )
 
         file_path = log_files[0]
 
@@ -1445,23 +1345,21 @@ def tail_logs():
             new_position = file_path.stat().st_size
         else:
             # Initial tail
-            entries, new_position = reader.tail_with_position(
-                file_path=file_path,
-                lines=lines
-            )
+            entries, new_position = reader.tail_with_position(file_path=file_path, lines=lines)
 
-        return jsonify({
-            "success": True,
-            "entries": [entry.to_dict() for entry in entries],
-            "position": new_position,
-        })
+        return jsonify(
+            {
+                "success": True,
+                "entries": [entry.to_dict() for entry in entries],
+                "position": new_position,
+            }
+        )
 
     except Exception as error:
         logger.error(f"Error tailing logs: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error tailing logs"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error tailing logs"}
+        ), 500
 
 
 @app.route("/api/logs/stats", methods=["GET"])
@@ -1484,11 +1382,13 @@ def get_log_stats():
         log_type = request.args.get("log_type")
         log_files = reader.list_log_files(log_type=log_type)
         if not log_files:
-            return jsonify({
-                "success": True,
-                "total_entries": 0,
-                "level_counts": {},
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "total_entries": 0,
+                    "level_counts": {},
+                }
+            )
 
         file_path = log_files[0]
         stats = reader.get_stats(file_path=file_path)
@@ -1499,17 +1399,18 @@ def get_log_stats():
         if stats.get("last_entry"):
             stats["last_entry"] = stats["last_entry"].isoformat()
 
-        return jsonify({
-            "success": True,
-            **stats,
-        })
+        return jsonify(
+            {
+                "success": True,
+                **stats,
+            }
+        )
 
     except Exception as error:
         logger.error(f"Error getting log stats: {error}")
-        return jsonify({
-            "success": False,
-            "error": str(error) if app.debug else "Error getting log stats"
-        }), 500
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error getting log stats"}
+        ), 500
 
 
 def is_tailscale_ip(ip: str) -> bool:
@@ -1576,7 +1477,7 @@ def run_server(
     port: int = 5050,
     debug: bool = False,
     use_https: bool = True,
-    http_redirect: bool = True
+    http_redirect: bool = True,
 ):
     """
     Run the Flask server with optional HTTPS support.
@@ -1592,21 +1493,21 @@ def run_server(
 
     if use_https and certificates_exist():
         ssl_context = get_ssl_context()
-        logger.info(f"HTTPS enabled with SSL certificates")
+        logger.info("HTTPS enabled with SSL certificates")
 
         # Start HTTP server on port-1 (e.g., 5049) for Tailscale access
         # Tailscale encrypts traffic, so HTTP is fine - avoids cert warnings on mobile
         if http_redirect and not debug:
             http_port = port - 1
             http_thread = threading.Thread(
-                target=run_http_server,
-                args=(host, http_port),
-                daemon=True
+                target=run_http_server, args=(host, http_port), daemon=True
             )
             http_thread.start()
             logger.info(f"HTTP server for Tailscale: http://{host}:{http_port}")
     elif use_https:
-        logger.warning("HTTPS requested but no certificates found. Run: python scripts/generate_cert.py")
+        logger.warning(
+            "HTTPS requested but no certificates found. Run: python scripts/generate_cert.py"
+        )
         logger.info("Falling back to HTTP")
 
     if ssl_context:

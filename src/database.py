@@ -8,12 +8,13 @@ usage tracking, and other persistent data.
 import json
 import logging
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any
 
 from src.config import DATA_DIR
+
 
 logger = logging.getLogger(__name__)
 
@@ -164,15 +165,16 @@ def initialize_database():
 # Device Registry Functions
 # =============================================================================
 
+
 def register_device(
     entity_id: str,
     device_type: str,
-    friendly_name: Optional[str] = None,
-    room: Optional[str] = None,
-    manufacturer: Optional[str] = None,
-    model: Optional[str] = None,
-    capabilities: Optional[List[str]] = None,
-    metadata: Optional[Dict] = None,
+    friendly_name: str | None = None,
+    room: str | None = None,
+    manufacturer: str | None = None,
+    model: str | None = None,
+    capabilities: list[str] | None = None,
+    metadata: dict | None = None,
 ) -> bool:
     """
     Register or update a device in the registry.
@@ -191,7 +193,8 @@ def register_device(
         True if successful
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO devices (
                 entity_id, device_type, friendly_name, room,
                 manufacturer, model, capabilities, metadata
@@ -205,16 +208,18 @@ def register_device(
                 capabilities = excluded.capabilities,
                 metadata = excluded.metadata,
                 updated_at = CURRENT_TIMESTAMP
-        """, (
-            entity_id,
-            device_type,
-            friendly_name,
-            room,
-            manufacturer,
-            model,
-            json.dumps(capabilities) if capabilities else None,
-            json.dumps(metadata) if metadata else None,
-        ))
+        """,
+            (
+                entity_id,
+                device_type,
+                friendly_name,
+                room,
+                manufacturer,
+                model,
+                json.dumps(capabilities) if capabilities else None,
+                json.dumps(metadata) if metadata else None,
+            ),
+        )
 
     logger.debug(f"Registered device: {entity_id}")
     return True
@@ -282,8 +287,7 @@ def get_devices_by_room(room: str) -> list[dict]:
     """
     with get_cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM devices WHERE room = ? ORDER BY device_type, entity_id",
-            (room,)
+            "SELECT * FROM devices WHERE room = ? ORDER BY device_type, entity_id", (room,)
         )
         rows = cursor.fetchall()
 
@@ -311,8 +315,7 @@ def get_devices_by_type(device_type: str) -> list[dict]:
     """
     with get_cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM devices WHERE device_type = ? ORDER BY room, entity_id",
-            (device_type,)
+            "SELECT * FROM devices WHERE device_type = ? ORDER BY room, entity_id", (device_type,)
         )
         rows = cursor.fetchall()
 
@@ -347,17 +350,18 @@ def delete_device(entity_id: str) -> bool:
 # Command History Functions
 # =============================================================================
 
+
 def record_command(
     command_text: str,
     command_type: str = "text",
-    interpreted_action: Optional[Dict] = None,
+    interpreted_action: dict | None = None,
     result: str = "success",
-    error_message: Optional[str] = None,
-    response_text: Optional[str] = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
-    cost_usd: Optional[float] = None,
-    latency_ms: Optional[int] = None,
+    error_message: str | None = None,
+    response_text: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    cost_usd: float | None = None,
+    latency_ms: int | None = None,
 ) -> int:
     """
     Record a command in history.
@@ -378,24 +382,27 @@ def record_command(
         ID of the recorded command
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO command_history (
                 command_text, command_type, interpreted_action, result,
                 error_message, response_text, input_tokens, output_tokens,
                 cost_usd, latency_ms
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            command_text,
-            command_type,
-            json.dumps(interpreted_action) if interpreted_action else None,
-            result,
-            error_message,
-            response_text,
-            input_tokens,
-            output_tokens,
-            cost_usd,
-            latency_ms,
-        ))
+        """,
+            (
+                command_text,
+                command_type,
+                json.dumps(interpreted_action) if interpreted_action else None,
+                result,
+                error_message,
+                response_text,
+                input_tokens,
+                output_tokens,
+                cost_usd,
+                latency_ms,
+            ),
+        )
         return cursor.lastrowid
 
 
@@ -411,11 +418,14 @@ def get_command_history(limit: int = 100, offset: int = 0) -> list[dict]:
         List of command history dicts
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM command_history
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
-        """, (limit, offset))
+        """,
+            (limit, offset),
+        )
         rows = cursor.fetchall()
 
         history = []
@@ -431,6 +441,7 @@ def get_command_history(limit: int = 100, offset: int = 0) -> list[dict]:
 # =============================================================================
 # API Usage Tracking Functions
 # =============================================================================
+
 
 def track_api_usage(
     provider: str,
@@ -452,7 +463,8 @@ def track_api_usage(
     today = datetime.now().strftime("%Y-%m-%d")
 
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO api_usage (
                 date, provider, model, total_input_tokens,
                 total_output_tokens, total_requests, total_cost_usd
@@ -463,10 +475,12 @@ def track_api_usage(
                 total_requests = total_requests + 1,
                 total_cost_usd = total_cost_usd + excluded.total_cost_usd,
                 updated_at = CURRENT_TIMESTAMP
-        """, (today, provider, model, input_tokens, output_tokens, cost_usd))
+        """,
+            (today, provider, model, input_tokens, output_tokens, cost_usd),
+        )
 
 
-def get_daily_usage(date: Optional[str] = None) -> Dict:
+def get_daily_usage(date: str | None = None) -> dict:
     """
     Get API usage for a specific date.
 
@@ -480,7 +494,8 @@ def get_daily_usage(date: Optional[str] = None) -> Dict:
         date = datetime.now().strftime("%Y-%m-%d")
 
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 SUM(total_input_tokens) as input_tokens,
                 SUM(total_output_tokens) as output_tokens,
@@ -488,7 +503,9 @@ def get_daily_usage(date: Optional[str] = None) -> Dict:
                 SUM(total_cost_usd) as cost_usd
             FROM api_usage
             WHERE date = ?
-        """, (date,))
+        """,
+            (date,),
+        )
         row = cursor.fetchone()
 
         return {
@@ -512,7 +529,8 @@ def get_usage_for_period(start_date: str, end_date: str) -> list[dict]:
         List of daily usage dicts
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 date,
                 SUM(total_input_tokens) as input_tokens,
@@ -523,7 +541,9 @@ def get_usage_for_period(start_date: str, end_date: str) -> list[dict]:
             WHERE date BETWEEN ? AND ?
             GROUP BY date
             ORDER BY date
-        """, (start_date, end_date))
+        """,
+            (start_date, end_date),
+        )
 
         return [dict(row) for row in cursor.fetchall()]
 
@@ -532,7 +552,8 @@ def get_usage_for_period(start_date: str, end_date: str) -> list[dict]:
 # Settings Functions
 # =============================================================================
 
-def set_setting(key: str, value: Any, description: Optional[str] = None):
+
+def set_setting(key: str, value: Any, description: str | None = None):
     """
     Set a configuration setting.
 
@@ -542,14 +563,17 @@ def set_setting(key: str, value: Any, description: Optional[str] = None):
         description: Optional description
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO settings (key, value, description)
             VALUES (?, ?, ?)
             ON CONFLICT(key) DO UPDATE SET
                 value = excluded.value,
                 description = COALESCE(excluded.description, settings.description),
                 updated_at = CURRENT_TIMESTAMP
-        """, (key, json.dumps(value), description))
+        """,
+            (key, json.dumps(value), description),
+        )
 
 
 def get_setting(key: str, default: Any = None) -> Any:
@@ -591,10 +615,11 @@ def get_all_settings() -> dict[str, Any]:
 # Device State History Functions
 # =============================================================================
 
+
 def record_device_state(
     entity_id: str,
     state: str,
-    attributes: Optional[Dict] = None,
+    attributes: dict | None = None,
 ):
     """
     Record a device state snapshot.
@@ -605,14 +630,17 @@ def record_device_state(
         attributes: State attributes
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO device_state_history (entity_id, state, attributes)
             VALUES (?, ?, ?)
-        """, (
-            entity_id,
-            state,
-            json.dumps(attributes) if attributes else None,
-        ))
+        """,
+            (
+                entity_id,
+                state,
+                json.dumps(attributes) if attributes else None,
+            ),
+        )
 
 
 def get_device_state_history(
@@ -630,12 +658,15 @@ def get_device_state_history(
         List of state history dicts
     """
     with get_cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM device_state_history
             WHERE entity_id = ?
             ORDER BY recorded_at DESC
             LIMIT ?
-        """, (entity_id, limit))
+        """,
+            (entity_id, limit),
+        )
         rows = cursor.fetchall()
 
         history = []

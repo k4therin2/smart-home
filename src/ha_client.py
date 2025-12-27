@@ -6,11 +6,11 @@ Includes caching for state queries to reduce API calls and latency.
 """
 
 import requests
-from typing import Any
 
-from src.config import HA_URL, HA_TOKEN
-from src.utils import setup_logging
 from src.cache import get_cache
+from src.config import HA_TOKEN, HA_URL
+from src.utils import setup_logging
+
 
 logger = setup_logging("ha_client")
 
@@ -35,11 +35,7 @@ class HomeAssistantClient:
         self.cache = get_cache()
 
     def _request(
-        self,
-        method: str,
-        endpoint: str,
-        data: dict | None = None,
-        timeout: int = 10
+        self, method: str, endpoint: str, data: dict | None = None, timeout: int = 10
     ) -> dict | list | None:
         """
         Make a request to the Home Assistant API.
@@ -56,11 +52,7 @@ class HomeAssistantClient:
         url = f"{self.url}{endpoint}"
         try:
             response = requests.request(
-                method=method,
-                url=url,
-                headers=self.headers,
-                json=data,
-                timeout=timeout
+                method=method, url=url, headers=self.headers, json=data, timeout=timeout
             )
             response.raise_for_status()
             return response.json()
@@ -154,7 +146,7 @@ class HomeAssistantClient:
         domain: str,
         service: str,
         service_data: dict | None = None,
-        target: dict | None = None
+        target: dict | None = None,
     ) -> bool:
         """
         Call a Home Assistant service.
@@ -198,7 +190,7 @@ class HomeAssistantClient:
         brightness_pct: int | None = None,
         color_temp_kelvin: int | None = None,
         rgb_color: tuple[int, int, int] | None = None,
-        transition: float | None = None
+        transition: float | None = None,
     ) -> bool:
         """
         Turn on a light with optional settings.
@@ -266,7 +258,7 @@ class HomeAssistantClient:
         scene_entity_id: str,
         dynamic: bool = False,
         speed: int | None = None,
-        brightness: int | None = None
+        brightness: int | None = None,
     ) -> bool:
         """
         Activate a Philips Hue scene.
@@ -373,9 +365,7 @@ class HomeAssistantClient:
         url = f"{self.url}/api/camera_proxy/{entity_id}"
         try:
             response = requests.get(
-                url,
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=timeout
+                url, headers={"Authorization": f"Bearer {self.token}"}, timeout=timeout
             )
             response.raise_for_status()
 

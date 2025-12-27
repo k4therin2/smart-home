@@ -9,7 +9,6 @@ Addresses: BUG-001 (Voice Puck not responding)
 """
 
 import socket
-import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -17,15 +16,17 @@ from typing import Any
 
 import requests
 
-from src.config import HA_URL, HA_TOKEN
+from src.config import HA_TOKEN, HA_URL
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
+
 
 logger = setup_logging("voice_diagnostics")
 
 
 class TestStatus(Enum):
     """Status of a diagnostic test."""
+
     PASSED = "passed"
     FAILED = "failed"
     WARNING = "warning"
@@ -35,6 +36,7 @@ class TestStatus(Enum):
 @dataclass
 class DiagnosticResult:
     """Result of a single diagnostic test."""
+
     name: str
     status: TestStatus
     message: str
@@ -46,6 +48,7 @@ class DiagnosticResult:
 @dataclass
 class DiagnosticSummary:
     """Summary of all diagnostic tests."""
+
     overall_status: TestStatus
     results: list[DiagnosticResult]
     timestamp: str
@@ -78,7 +81,7 @@ class VoicePipelineDiagnostics:
         ha_url: str | None = None,
         ha_token: str | None = None,
         voice_puck_host: str | None = None,
-        smarthome_webhook_url: str | None = None
+        smarthome_webhook_url: str | None = None,
     ):
         """
         Initialize the diagnostic suite.
@@ -97,7 +100,9 @@ class VoicePipelineDiagnostics:
         }
 
         self.voice_puck_host = voice_puck_host or self.VOICE_PUCK_HOST
-        self.smarthome_webhook_url = smarthome_webhook_url or f"http://localhost:{self.SMARTHOME_WEBHOOK_PORT}"
+        self.smarthome_webhook_url = (
+            smarthome_webhook_url or f"http://localhost:{self.SMARTHOME_WEBHOOK_PORT}"
+        )
 
         self.ha_client = get_ha_client()
 
@@ -149,7 +154,7 @@ class VoicePipelineDiagnostics:
             total_duration_ms=total_duration,
             passed_count=passed,
             failed_count=failed,
-            warning_count=warnings
+            warning_count=warnings,
         )
 
     def test_voice_puck_connectivity(self) -> DiagnosticResult:
@@ -185,7 +190,7 @@ class VoicePipelineDiagnostics:
                         status=TestStatus.PASSED,
                         message=f"Voice puck is reachable at {ip_address}",
                         details=details,
-                        duration_ms=duration
+                        duration_ms=duration,
                     )
                 else:
                     details["esphome_api_status"] = "port_closed"
@@ -193,7 +198,7 @@ class VoicePipelineDiagnostics:
                         "Check if ESPHome is running on the voice puck",
                         "Verify the voice puck is powered on",
                         f"Ensure ESPHome API is enabled (port {self.VOICE_PUCK_API_PORT})",
-                        "Check firewall rules on the voice puck device"
+                        "Check firewall rules on the voice puck device",
                     ]
 
                     duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -203,14 +208,14 @@ class VoicePipelineDiagnostics:
                         message=f"Voice puck at {ip_address} has ESPHome API port closed",
                         details=details,
                         fix_suggestions=fix_suggestions,
-                        duration_ms=duration
+                        duration_ms=duration,
                     )
             else:
                 fix_suggestions = [
                     f"Verify the voice puck hostname '{self.voice_puck_host}' is correct",
                     "Check if mDNS/Avahi is running on your network",
                     "Try using the IP address directly instead of hostname",
-                    "Verify the voice puck is on the same network/VLAN"
+                    "Verify the voice puck is on the same network/VLAN",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -220,14 +225,14 @@ class VoicePipelineDiagnostics:
                     message=f"Cannot resolve hostname '{self.voice_puck_host}'",
                     details={"hostname": self.voice_puck_host, "error": "DNS resolution failed"},
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
         except Exception as error:
             fix_suggestions = [
                 "Check network connectivity",
                 "Verify the voice puck is powered on",
-                "Check if the voice puck is on the same network"
+                "Check if the voice puck is on the same network",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -237,7 +242,7 @@ class VoicePipelineDiagnostics:
                 message=f"Error checking voice puck: {error}",
                 details={"error": str(error)},
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def test_ha_assist_pipeline(self) -> DiagnosticResult:
@@ -265,7 +270,7 @@ class VoicePipelineDiagnostics:
                     "Verify Home Assistant is running",
                     f"Check HA_URL is correct: {self.ha_url}",
                     "Verify your HA access token is valid",
-                    "Check network connectivity to Home Assistant"
+                    "Check network connectivity to Home Assistant",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -275,7 +280,7 @@ class VoicePipelineDiagnostics:
                     message="Cannot connect to Home Assistant",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
             # Check for Assist pipelines via API
@@ -287,7 +292,7 @@ class VoicePipelineDiagnostics:
                     "Go to Home Assistant Settings > Voice assistants",
                     "Create a new Assist pipeline",
                     "Configure STT (e.g., Whisper) and TTS (e.g., Piper)",
-                    "Set up a conversation agent (e.g., Home Assistant default)"
+                    "Set up a conversation agent (e.g., Home Assistant default)",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -297,7 +302,7 @@ class VoicePipelineDiagnostics:
                     message="No Assist pipelines configured",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
             # Check STT and TTS configuration
@@ -310,10 +315,14 @@ class VoicePipelineDiagnostics:
             details["default_pipeline"] = default_pipeline
 
             if not has_stt:
-                fix_suggestions.append("Configure Speech-to-Text in your Assist pipeline (e.g., Whisper)")
+                fix_suggestions.append(
+                    "Configure Speech-to-Text in your Assist pipeline (e.g., Whisper)"
+                )
 
             if not has_tts:
-                fix_suggestions.append("Configure Text-to-Speech in your Assist pipeline (e.g., Piper)")
+                fix_suggestions.append(
+                    "Configure Text-to-Speech in your Assist pipeline (e.g., Piper)"
+                )
 
             if fix_suggestions:
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -323,7 +332,7 @@ class VoicePipelineDiagnostics:
                     message="Assist pipeline has incomplete configuration",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -332,14 +341,14 @@ class VoicePipelineDiagnostics:
                 status=TestStatus.PASSED,
                 message="HA Assist pipeline is properly configured",
                 details=details,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
         except Exception as error:
             fix_suggestions = [
                 "Verify Home Assistant is running",
                 "Check API connectivity",
-                "Review Home Assistant logs for errors"
+                "Review Home Assistant logs for errors",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -349,7 +358,7 @@ class VoicePipelineDiagnostics:
                 message=f"Error checking HA Assist pipeline: {error}",
                 details={"error": str(error)},
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def test_smarthome_webhook(self) -> DiagnosticResult:
@@ -365,13 +374,14 @@ class VoicePipelineDiagnostics:
 
         try:
             # Check if the SmartHome server is reachable
-            response = requests.get(
-                f"{self.smarthome_webhook_url}/api/health",
-                timeout=5
-            )
+            response = requests.get(f"{self.smarthome_webhook_url}/api/health", timeout=5)
 
             details["status_code"] = response.status_code
-            details["response"] = response.json() if response.headers.get("content-type", "").startswith("application/json") else response.text[:200]
+            details["response"] = (
+                response.json()
+                if response.headers.get("content-type", "").startswith("application/json")
+                else response.text[:200]
+            )
 
             if response.status_code == 200:
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -380,13 +390,13 @@ class VoicePipelineDiagnostics:
                     status=TestStatus.PASSED,
                     message="SmartHome webhook is reachable",
                     details=details,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
             else:
                 fix_suggestions = [
                     "Check if SmartHome server is running",
                     "Verify the webhook URL is correct",
-                    f"Check server logs at {self.smarthome_webhook_url}"
+                    f"Check server logs at {self.smarthome_webhook_url}",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -396,15 +406,15 @@ class VoicePipelineDiagnostics:
                     message=f"SmartHome webhook returned status {response.status_code}",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
         except requests.exceptions.ConnectionError:
             fix_suggestions = [
                 "Check if SmartHome server is running",
-                f"Start the server: python -m src.server",
+                "Start the server: python -m src.server",
                 "Verify the port number is correct",
-                "Check firewall rules"
+                "Check firewall rules",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -414,14 +424,11 @@ class VoicePipelineDiagnostics:
                 message=f"Cannot connect to SmartHome webhook at {self.smarthome_webhook_url}",
                 details=details,
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
         except Exception as error:
-            fix_suggestions = [
-                "Check server logs for errors",
-                "Verify network configuration"
-            ]
+            fix_suggestions = ["Check server logs for errors", "Verify network configuration"]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
             return DiagnosticResult(
@@ -430,7 +437,7 @@ class VoicePipelineDiagnostics:
                 message=f"Error checking SmartHome webhook: {error}",
                 details={"error": str(error)},
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def test_smarthome_voice_endpoint(self) -> DiagnosticResult:
@@ -448,13 +455,13 @@ class VoicePipelineDiagnostics:
             test_payload = {
                 "text": "what time is it",
                 "language": "en",
-                "device_id": "diagnostic_test"
+                "device_id": "diagnostic_test",
             }
 
             response = requests.post(
                 f"{self.smarthome_webhook_url}/api/voice",
                 json=test_payload,
-                timeout=30  # Voice processing can take time
+                timeout=30,  # Voice processing can take time
             )
 
             details["status_code"] = response.status_code
@@ -470,7 +477,7 @@ class VoicePipelineDiagnostics:
                         status=TestStatus.PASSED,
                         message="Voice endpoint is functional",
                         details=details,
-                        duration_ms=duration
+                        duration_ms=duration,
                     )
                 else:
                     error_msg = response_data.get("error", "Unknown error")
@@ -478,7 +485,7 @@ class VoicePipelineDiagnostics:
                         f"Voice endpoint error: {error_msg}",
                         "Check SmartHome server logs for details",
                         "Verify LLM API key is configured correctly",
-                        "Check agent initialization in server.py"
+                        "Check agent initialization in server.py",
                     ]
 
                     duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -488,14 +495,14 @@ class VoicePipelineDiagnostics:
                         message=f"Voice endpoint returned error: {error_msg}",
                         details=details,
                         fix_suggestions=fix_suggestions,
-                        duration_ms=duration
+                        duration_ms=duration,
                     )
             else:
                 details["response_text"] = response.text[:500]
                 fix_suggestions = [
                     "Voice endpoint returned non-JSON response",
                     "Check server logs for errors",
-                    "Verify endpoint route is correctly defined"
+                    "Verify endpoint route is correctly defined",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -505,7 +512,7 @@ class VoicePipelineDiagnostics:
                     message="Unexpected response format from voice endpoint",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
         except requests.exceptions.Timeout:
@@ -513,7 +520,7 @@ class VoicePipelineDiagnostics:
                 "Voice processing timed out",
                 "Check if LLM service is responding",
                 "Review agent timeout configuration",
-                "Check network connectivity to LLM provider"
+                "Check network connectivity to LLM provider",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -523,14 +530,14 @@ class VoicePipelineDiagnostics:
                 message="Voice endpoint request timed out",
                 details=details,
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
         except requests.exceptions.ConnectionError:
             fix_suggestions = [
                 "Cannot connect to SmartHome server",
                 "Check if server is running",
-                "Verify port and URL"
+                "Verify port and URL",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -540,14 +547,11 @@ class VoicePipelineDiagnostics:
                 message="Cannot connect to voice endpoint",
                 details=details,
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
         except Exception as error:
-            fix_suggestions = [
-                "Check server logs for errors",
-                "Verify endpoint configuration"
-            ]
+            fix_suggestions = ["Check server logs for errors", "Verify endpoint configuration"]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
             return DiagnosticResult(
@@ -556,7 +560,7 @@ class VoicePipelineDiagnostics:
                 message=f"Error testing voice endpoint: {error}",
                 details={"error": str(error)},
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def test_tts_output(self) -> DiagnosticResult:
@@ -574,14 +578,12 @@ class VoicePipelineDiagnostics:
             all_states = self.ha_client.get_all_states()
 
             # Find TTS entities
-            tts_entities = [
-                s for s in all_states
-                if s.get("entity_id", "").startswith("tts.")
-            ]
+            tts_entities = [s for s in all_states if s.get("entity_id", "").startswith("tts.")]
 
             # Find media players that could be TTS targets
             media_players = [
-                s for s in all_states
+                s
+                for s in all_states
                 if s.get("entity_id", "").startswith("media_player.")
                 and s.get("state") not in ["unavailable", "unknown"]
             ]
@@ -592,7 +594,7 @@ class VoicePipelineDiagnostics:
                 {
                     "entity_id": m.get("entity_id"),
                     "state": m.get("state"),
-                    "friendly_name": m.get("attributes", {}).get("friendly_name")
+                    "friendly_name": m.get("attributes", {}).get("friendly_name"),
                 }
                 for m in media_players[:5]  # Show first 5
             ]
@@ -602,7 +604,7 @@ class VoicePipelineDiagnostics:
                     "No TTS entities found in Home Assistant",
                     "Install a TTS integration (e.g., Piper, Google TTS)",
                     "Configure TTS in your Assist pipeline",
-                    "Check Settings > Devices & Services for TTS options"
+                    "Check Settings > Devices & Services for TTS options",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -612,14 +614,14 @@ class VoicePipelineDiagnostics:
                     message="No TTS entities configured",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
             if not media_players:
                 fix_suggestions = [
                     "No available media players found",
                     "Check voice puck is registered as a media player",
-                    "Verify speaker/media player is online"
+                    "Verify speaker/media player is online",
                 ]
 
                 duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -629,7 +631,7 @@ class VoicePipelineDiagnostics:
                     message="TTS configured but no available media players",
                     details=details,
                     fix_suggestions=fix_suggestions,
-                    duration_ms=duration
+                    duration_ms=duration,
                 )
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -638,13 +640,13 @@ class VoicePipelineDiagnostics:
                 status=TestStatus.PASSED,
                 message=f"TTS configured with {len(tts_entities)} engine(s) and {len(media_players)} media player(s)",
                 details=details,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
         except Exception as error:
             fix_suggestions = [
                 "Error checking TTS configuration",
-                "Verify Home Assistant connection"
+                "Verify Home Assistant connection",
             ]
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
@@ -654,7 +656,7 @@ class VoicePipelineDiagnostics:
                 message=f"Error checking TTS: {error}",
                 details={"error": str(error)},
                 fix_suggestions=fix_suggestions,
-                duration_ms=duration
+                duration_ms=duration,
             )
 
     def _resolve_host(self, hostname: str) -> str | None:
@@ -681,11 +683,7 @@ class VoicePipelineDiagnostics:
         """Get Assist pipelines from Home Assistant via WebSocket API fallback."""
         # Try REST API first (may not be available in all HA versions)
         try:
-            response = requests.get(
-                f"{self.ha_url}/api/config",
-                headers=self.ha_headers,
-                timeout=5
-            )
+            response = requests.get(f"{self.ha_url}/api/config", headers=self.ha_headers, timeout=5)
 
             if response.status_code == 200:
                 config = response.json()
@@ -696,19 +694,18 @@ class VoicePipelineDiagnostics:
 
                     # Look for assist_pipeline and conversation entities
                     assist_entities = [
-                        s for s in all_states
+                        s
+                        for s in all_states
                         if "assist" in s.get("entity_id", "").lower()
                         or s.get("entity_id", "").startswith("conversation.")
                     ]
 
                     stt_entities = [
-                        s for s in all_states
-                        if s.get("entity_id", "").startswith("stt.")
+                        s for s in all_states if s.get("entity_id", "").startswith("stt.")
                     ]
 
                     tts_entities = [
-                        s for s in all_states
-                        if s.get("entity_id", "").startswith("tts.")
+                        s for s in all_states if s.get("entity_id", "").startswith("tts.")
                     ]
 
                     # Build pipeline info from what we can discover
@@ -718,13 +715,15 @@ class VoicePipelineDiagnostics:
                                 "name": "discovered",
                                 "stt_engine": bool(stt_entities),
                                 "tts_engine": bool(tts_entities),
-                                "conversation": "conversation" in config.get("components", [])
+                                "conversation": "conversation" in config.get("components", []),
                             }
                         ],
-                        "preferred_pipeline": "discovered" if (stt_entities or tts_entities) else None,
+                        "preferred_pipeline": "discovered"
+                        if (stt_entities or tts_entities)
+                        else None,
                         "stt_entities": [s.get("entity_id") for s in stt_entities],
                         "tts_entities": [s.get("entity_id") for s in tts_entities],
-                        "assist_entities": [s.get("entity_id") for s in assist_entities]
+                        "assist_entities": [s.get("entity_id") for s in assist_entities],
                     }
 
         except Exception as error:
@@ -750,7 +749,7 @@ class VoicePipelineDiagnostics:
                 "passed": summary.passed_count,
                 "failed": summary.failed_count,
                 "warnings": summary.warning_count,
-                "total": len(summary.results)
+                "total": len(summary.results),
             },
             "results": [
                 {
@@ -759,10 +758,10 @@ class VoicePipelineDiagnostics:
                     "message": r.message,
                     "details": r.details,
                     "fix_suggestions": r.fix_suggestions,
-                    "duration_ms": round(r.duration_ms, 2)
+                    "duration_ms": round(r.duration_ms, 2),
                 }
                 for r in summary.results
-            ]
+            ],
         }
 
 

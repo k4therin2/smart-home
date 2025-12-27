@@ -25,15 +25,16 @@ References:
 - https://spotipy.readthedocs.io/
 """
 
-from typing import Any, Optional
 import os
+from typing import Any
 
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 from spotipy.exceptions import SpotifyException
+from spotipy.oauth2 import SpotifyOAuth
 
 from src.config import DATA_DIR
-from src.utils import setup_logging, send_health_alert
+from src.utils import send_health_alert, setup_logging
+
 
 logger = setup_logging("tools.spotify")
 
@@ -53,7 +54,7 @@ def _handle_spotify_error(error: Exception, operation: str) -> None:
     global _consecutive_spotify_errors
     _consecutive_spotify_errors += 1
 
-    error_msg = getattr(error, 'msg', str(error)) if hasattr(error, 'msg') else str(error)
+    error_msg = getattr(error, "msg", str(error)) if hasattr(error, "msg") else str(error)
     logger.error(f"Spotify API error during {operation}: {error_msg}")
 
     # Alert on threshold hit to avoid spam
@@ -85,11 +86,12 @@ def _reset_spotify_error_count() -> None:
             )
         _consecutive_spotify_errors = 0
 
+
 # Required OAuth scopes for playback control and device management
 SPOTIFY_SCOPES = [
     "user-modify-playback-state",  # Control playback
-    "user-read-playback-state",    # Read device and playback state
-    "user-read-currently-playing", # Read current track
+    "user-read-playback-state",  # Read device and playback state
+    "user-read-currently-playing",  # Read current track
 ]
 
 # Tool definitions for Claude
@@ -117,20 +119,20 @@ NOTE: Requires Spotify Premium account and active Spotify Connect device.""",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Song name, album, playlist, or artist to play"
+                    "description": "Song name, album, playlist, or artist to play",
                 },
                 "content_type": {
                     "type": "string",
                     "enum": ["track", "album", "playlist", "artist"],
-                    "description": "Type of content to play (default: track)"
+                    "description": "Type of content to play (default: track)",
                 },
                 "device_name": {
                     "type": "string",
-                    "description": "Device name to play on (e.g., 'living room', 'bedroom echo'). If not specified, plays on currently active device."
-                }
+                    "description": "Device name to play on (e.g., 'living room', 'bedroom echo'). If not specified, plays on currently active device.",
+                },
             },
-            "required": ["query"]
-        }
+            "required": ["query"],
+        },
     },
     {
         "name": "control_playback",
@@ -154,17 +156,17 @@ Examples:
                 "action": {
                     "type": "string",
                     "enum": ["pause", "resume", "next", "previous", "volume"],
-                    "description": "Playback control action"
+                    "description": "Playback control action",
                 },
                 "volume": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100,
-                    "description": "Volume level (0-100), required when action='volume'"
-                }
+                    "description": "Volume level (0-100), required when action='volume'",
+                },
             },
-            "required": ["action"]
-        }
+            "required": ["action"],
+        },
     },
     {
         "name": "search_spotify",
@@ -179,24 +181,21 @@ Examples:
         "input_schema": {
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search query"
-                },
+                "query": {"type": "string", "description": "Search query"},
                 "search_type": {
                     "type": "string",
                     "enum": ["track", "album", "playlist", "artist"],
-                    "description": "Type of content to search for"
+                    "description": "Type of content to search for",
                 },
                 "limit": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 50,
-                    "description": "Maximum number of results (default: 10)"
-                }
+                    "description": "Maximum number of results (default: 10)",
+                },
             },
-            "required": ["query", "search_type"]
-        }
+            "required": ["query", "search_type"],
+        },
     },
     {
         "name": "get_spotify_devices",
@@ -204,11 +203,7 @@ Examples:
 
 Returns a list of devices with their ID, name, type, and active status.
 Use this to see what devices can be targeted for playback.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "transfer_playback",
@@ -222,17 +217,14 @@ Examples:
         "input_schema": {
             "type": "object",
             "properties": {
-                "device_name": {
-                    "type": "string",
-                    "description": "Target device name"
-                },
+                "device_name": {"type": "string", "description": "Target device name"},
                 "force_play": {
                     "type": "boolean",
-                    "description": "Automatically resume playback on new device (default: False)"
-                }
+                    "description": "Automatically resume playback on new device (default: False)",
+                },
             },
-            "required": ["device_name"]
-        }
+            "required": ["device_name"],
+        },
     },
     {
         "name": "get_now_playing_context",
@@ -251,11 +243,7 @@ Use this when the user asks about:
 - "Who sings this song?"
 
 The returned context enables answering follow-up questions about the music.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "get_artist_info",
@@ -279,17 +267,14 @@ Examples:
         "input_schema": {
             "type": "object",
             "properties": {
-                "artist_name": {
-                    "type": "string",
-                    "description": "Name of the artist to look up"
-                },
+                "artist_name": {"type": "string", "description": "Name of the artist to look up"},
                 "artist_id": {
                     "type": "string",
-                    "description": "Spotify artist ID (optional, more precise than name)"
-                }
+                    "description": "Spotify artist ID (optional, more precise than name)",
+                },
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "get_album_info",
@@ -311,18 +296,15 @@ Examples:
         "input_schema": {
             "type": "object",
             "properties": {
-                "album_name": {
-                    "type": "string",
-                    "description": "Name of the album to look up"
-                },
+                "album_name": {"type": "string", "description": "Name of the album to look up"},
                 "album_id": {
                     "type": "string",
-                    "description": "Spotify album ID (optional, more precise than name)"
-                }
+                    "description": "Spotify album ID (optional, more precise than name)",
+                },
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 ]
 
 
@@ -333,9 +315,9 @@ class SpotifyClient:
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        redirect_uri: Optional[str] = None
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        redirect_uri: str | None = None,
     ):
         """
         Initialize Spotify client.
@@ -351,8 +333,7 @@ class SpotifyClient:
         self.client_id = client_id or os.getenv("SPOTIFY_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("SPOTIFY_CLIENT_SECRET")
         self.redirect_uri = redirect_uri or os.getenv(
-            "SPOTIFY_REDIRECT_URI",
-            "http://localhost:8888/callback"
+            "SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback"
         )
 
         if not self.client_id:
@@ -372,7 +353,7 @@ class SpotifyClient:
             redirect_uri=self.redirect_uri,
             scope=" ".join(SPOTIFY_SCOPES),
             cache_path=str(cache_path),
-            open_browser=False  # Don't auto-open browser in server environment
+            open_browser=False,  # Don't auto-open browser in server environment
         )
 
         # Initialize Spotify client
@@ -396,15 +377,13 @@ class SpotifyClient:
         # Check if token is expired and refresh if needed
         if self.auth_manager.is_token_expired(token_info):
             logger.info("Token expired, refreshing...")
-            token_info = self.auth_manager.refresh_access_token(
-                token_info['refresh_token']
-            )
+            token_info = self.auth_manager.refresh_access_token(token_info["refresh_token"])
 
-        return token_info['access_token']
+        return token_info["access_token"]
 
 
 # Singleton client instance
-_spotify_client: Optional[SpotifyClient] = None
+_spotify_client: SpotifyClient | None = None
 
 
 def get_spotify_client() -> SpotifyClient:
@@ -425,7 +404,7 @@ def get_spotify_client() -> SpotifyClient:
     return _spotify_client
 
 
-def find_device_by_name(devices: list[dict], device_name: str) -> Optional[dict]:
+def find_device_by_name(devices: list[dict], device_name: str) -> dict | None:
     """
     Find a Spotify device by name (case-insensitive, partial match).
 
@@ -440,21 +419,19 @@ def find_device_by_name(devices: list[dict], device_name: str) -> Optional[dict]
 
     # Try exact match first
     for device in devices:
-        if device['name'].lower() == device_name_lower:
+        if device["name"].lower() == device_name_lower:
             return device
 
     # Try partial match (e.g., "living room" matches "Living Room Echo Dot")
     for device in devices:
-        if device_name_lower in device['name'].lower():
+        if device_name_lower in device["name"].lower():
             return device
 
     return None
 
 
 def play_spotify(
-    query: str,
-    content_type: str = "track",
-    device_name: Optional[str] = None
+    query: str, content_type: str = "track", device_name: str | None = None
 ) -> dict[str, Any]:
     """
     Play music on Spotify via Spotify Connect.
@@ -477,33 +454,30 @@ def play_spotify(
 
         # Extract results based on content type
         items_key = f"{content_type}s"
-        items = search_results.get(items_key, {}).get('items', [])
+        items = search_results.get(items_key, {}).get("items", [])
 
         if not items:
-            return {
-                "success": False,
-                "error": f"No {content_type} found matching '{query}'"
-            }
+            return {"success": False, "error": f"No {content_type} found matching '{query}'"}
 
         item = items[0]
-        content_uri = item['uri']
-        content_name = item['name']
+        content_uri = item["uri"]
+        content_name = item["name"]
 
         # Get artist name for tracks/albums
         artist_name = None
-        if content_type in ('track', 'album'):
-            artists = item.get('artists', [])
+        if content_type in ("track", "album"):
+            artists = item.get("artists", [])
             if artists:
-                artist_name = artists[0]['name']
+                artist_name = artists[0]["name"]
 
         # Get available devices
         devices_result = spotify.devices()
-        devices = devices_result.get('devices', [])
+        devices = devices_result.get("devices", [])
 
         if not devices:
             return {
                 "success": False,
-                "error": "No Spotify devices available. Make sure a device is active."
+                "error": "No Spotify devices available. Make sure a device is active.",
             }
 
         # Find target device
@@ -511,28 +485,28 @@ def play_spotify(
         if device_name:
             target_device = find_device_by_name(devices, device_name)
             if not target_device:
-                available = [d['name'] for d in devices]
+                available = [d["name"] for d in devices]
                 return {
                     "success": False,
                     "error": f"Device '{device_name}' not found",
-                    "available_devices": available
+                    "available_devices": available,
                 }
         else:
             # Use currently active device or first available
             for device in devices:
-                if device.get('is_active'):
+                if device.get("is_active"):
                     target_device = device
                     break
             if not target_device:
                 target_device = devices[0]
 
-        device_id = target_device['id']
-        device_display_name = target_device['name']
+        device_id = target_device["id"]
+        device_display_name = target_device["name"]
 
         # Start playback
         logger.info(f"Starting playback: {content_name} on {device_display_name}")
 
-        if content_type == 'track':
+        if content_type == "track":
             # Play specific track
             spotify.start_playback(device_id=device_id, uris=[content_uri])
         else:
@@ -543,24 +517,24 @@ def play_spotify(
             "success": True,
             "content_type": content_type,
             "device": device_display_name,
-            "message": f"Now playing {content_name}"
+            "message": f"Now playing {content_name}",
         }
 
-        if content_type == 'track':
-            result['track_name'] = content_name
+        if content_type == "track":
+            result["track_name"] = content_name
             if artist_name:
-                result['artist'] = artist_name
-        elif content_type == 'album':
-            result['album_name'] = content_name
+                result["artist"] = artist_name
+        elif content_type == "album":
+            result["album_name"] = content_name
             if artist_name:
-                result['artist'] = artist_name
-        elif content_type == 'playlist':
-            result['playlist_name'] = content_name
-            owner = item.get('owner', {}).get('display_name')
+                result["artist"] = artist_name
+        elif content_type == "playlist":
+            result["playlist_name"] = content_name
+            owner = item.get("owner", {}).get("display_name")
             if owner:
-                result['owner'] = owner
-        elif content_type == 'artist':
-            result['artist_name'] = content_name
+                result["owner"] = owner
+        elif content_type == "artist":
+            result["artist_name"] = content_name
 
         _reset_spotify_error_count()
         return result
@@ -569,17 +543,14 @@ def play_spotify(
         _handle_spotify_error(error, f"play_spotify({content_type}: {query})")
         return {
             "success": False,
-            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}"
+            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}",
         }
     except Exception as error:
         logger.error(f"Error playing Spotify: {error}")
         return {"success": False, "error": str(error)}
 
 
-def control_playback(
-    action: str,
-    volume: Optional[int] = None
-) -> dict[str, Any]:
+def control_playback(action: str, volume: int | None = None) -> dict[str, Any]:
     """
     Control Spotify playback.
 
@@ -594,15 +565,9 @@ def control_playback(
         # Validate volume parameter
         if action == "volume":
             if volume is None:
-                return {
-                    "success": False,
-                    "error": "volume parameter required for volume action"
-                }
+                return {"success": False, "error": "volume parameter required for volume action"}
             if not 0 <= volume <= 100:
-                return {
-                    "success": False,
-                    "error": f"volume must be 0-100, got {volume}"
-                }
+                return {"success": False, "error": f"volume must be 0-100, got {volume}"}
 
         client = get_spotify_client()
         spotify = client.spotify
@@ -620,16 +585,9 @@ def control_playback(
         elif action == "volume":
             spotify.volume(volume_percent=volume)
         else:
-            return {
-                "success": False,
-                "error": f"Unknown action: {action}"
-            }
+            return {"success": False, "error": f"Unknown action: {action}"}
 
-        result = {
-            "success": True,
-            "action": action,
-            "message": f"Playback {action} executed"
-        }
+        result = {"success": True, "action": action, "message": f"Playback {action} executed"}
 
         if action == "volume":
             result["volume"] = volume
@@ -641,18 +599,14 @@ def control_playback(
         _handle_spotify_error(error, f"control_playback({action})")
         return {
             "success": False,
-            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}"
+            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}",
         }
     except Exception as error:
         logger.error(f"Error controlling playback: {error}")
         return {"success": False, "error": str(error)}
 
 
-def search_spotify(
-    query: str,
-    search_type: str,
-    limit: int = 10
-) -> dict[str, Any]:
+def search_spotify(query: str, search_type: str, limit: int = 10) -> dict[str, Any]:
     """
     Search Spotify for content.
 
@@ -674,47 +628,59 @@ def search_spotify(
 
         # Extract results based on search type
         items_key = f"{search_type}s"
-        items = search_results.get(items_key, {}).get('items', [])
+        items = search_results.get(items_key, {}).get("items", [])
 
         results = []
 
-        if search_type == 'track':
+        if search_type == "track":
             for track in items:
-                results.append({
-                    'name': track['name'],
-                    'artist': track['artists'][0]['name'] if track.get('artists') else 'Unknown',
-                    'album': track['album']['name'] if track.get('album') else 'Unknown',
-                    'uri': track['uri'],
-                    'duration_ms': track.get('duration_ms', 0)
-                })
+                results.append(
+                    {
+                        "name": track["name"],
+                        "artist": track["artists"][0]["name"]
+                        if track.get("artists")
+                        else "Unknown",
+                        "album": track["album"]["name"] if track.get("album") else "Unknown",
+                        "uri": track["uri"],
+                        "duration_ms": track.get("duration_ms", 0),
+                    }
+                )
 
-        elif search_type == 'album':
+        elif search_type == "album":
             for album in items:
-                results.append({
-                    'name': album['name'],
-                    'artist': album['artists'][0]['name'] if album.get('artists') else 'Unknown',
-                    'uri': album['uri'],
-                    'release_date': album.get('release_date'),
-                    'total_tracks': album.get('total_tracks', 0)
-                })
+                results.append(
+                    {
+                        "name": album["name"],
+                        "artist": album["artists"][0]["name"]
+                        if album.get("artists")
+                        else "Unknown",
+                        "uri": album["uri"],
+                        "release_date": album.get("release_date"),
+                        "total_tracks": album.get("total_tracks", 0),
+                    }
+                )
 
-        elif search_type == 'playlist':
+        elif search_type == "playlist":
             for playlist in items:
-                results.append({
-                    'name': playlist['name'],
-                    'uri': playlist['uri'],
-                    'owner': playlist.get('owner', {}).get('display_name', 'Unknown'),
-                    'track_count': playlist.get('tracks', {}).get('total', 0)
-                })
+                results.append(
+                    {
+                        "name": playlist["name"],
+                        "uri": playlist["uri"],
+                        "owner": playlist.get("owner", {}).get("display_name", "Unknown"),
+                        "track_count": playlist.get("tracks", {}).get("total", 0),
+                    }
+                )
 
-        elif search_type == 'artist':
+        elif search_type == "artist":
             for artist in items:
-                results.append({
-                    'name': artist['name'],
-                    'uri': artist['uri'],
-                    'genres': artist.get('genres', []),
-                    'followers': artist.get('followers', {}).get('total', 0)
-                })
+                results.append(
+                    {
+                        "name": artist["name"],
+                        "uri": artist["uri"],
+                        "genres": artist.get("genres", []),
+                        "followers": artist.get("followers", {}).get("total", 0),
+                    }
+                )
 
         message = f"Found {len(results)} {search_type}(s)"
         if len(results) == 0:
@@ -727,14 +693,14 @@ def search_spotify(
             "query": query,
             "results": results,
             "count": len(results),
-            "message": message
+            "message": message,
         }
 
     except SpotifyException as error:
         _handle_spotify_error(error, f"search_spotify({search_type}: {query})")
         return {
             "success": False,
-            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}"
+            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}",
         }
     except Exception as error:
         logger.error(f"Error searching Spotify: {error}")
@@ -755,41 +721,40 @@ def get_spotify_devices() -> dict[str, Any]:
         logger.info("Getting Spotify devices")
 
         devices_result = spotify.devices()
-        devices = devices_result.get('devices', [])
+        devices = devices_result.get("devices", [])
 
         device_list = []
         for device in devices:
-            device_list.append({
-                'id': device['id'],
-                'name': device['name'],
-                'type': device['type'],
-                'is_active': device.get('is_active', False),
-                'volume_percent': device.get('volume_percent', 0)
-            })
+            device_list.append(
+                {
+                    "id": device["id"],
+                    "name": device["name"],
+                    "type": device["type"],
+                    "is_active": device.get("is_active", False),
+                    "volume_percent": device.get("volume_percent", 0),
+                }
+            )
 
         _reset_spotify_error_count()
         return {
             "success": True,
             "devices": device_list,
             "count": len(device_list),
-            "message": f"Found {len(device_list)} device(s)"
+            "message": f"Found {len(device_list)} device(s)",
         }
 
     except SpotifyException as error:
         _handle_spotify_error(error, "get_spotify_devices")
         return {
             "success": False,
-            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}"
+            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}",
         }
     except Exception as error:
         logger.error(f"Error getting devices: {error}")
         return {"success": False, "error": str(error)}
 
 
-def transfer_playback(
-    device_name: str,
-    force_play: bool = False
-) -> dict[str, Any]:
+def transfer_playback(device_name: str, force_play: bool = False) -> dict[str, Any]:
     """
     Transfer Spotify playback to a different device.
 
@@ -808,27 +773,24 @@ def transfer_playback(
 
         # Get available devices
         devices_result = spotify.devices()
-        devices = devices_result.get('devices', [])
+        devices = devices_result.get("devices", [])
 
         if not devices:
-            return {
-                "success": False,
-                "error": "No Spotify devices available"
-            }
+            return {"success": False, "error": "No Spotify devices available"}
 
         # Find target device
         target_device = find_device_by_name(devices, device_name)
 
         if not target_device:
-            available = [d['name'] for d in devices]
+            available = [d["name"] for d in devices]
             return {
                 "success": False,
                 "error": f"Device '{device_name}' not found",
-                "available_devices": available
+                "available_devices": available,
             }
 
-        device_id = target_device['id']
-        device_display_name = target_device['name']
+        device_id = target_device["id"]
+        device_display_name = target_device["name"]
 
         # Transfer playback
         spotify.transfer_playback(device_id=device_id, force_play=force_play)
@@ -838,14 +800,14 @@ def transfer_playback(
             "success": True,
             "device": device_display_name,
             "force_play": force_play,
-            "message": f"Playback transferred to {device_display_name}"
+            "message": f"Playback transferred to {device_display_name}",
         }
 
     except SpotifyException as error:
         _handle_spotify_error(error, f"transfer_playback({device_name})")
         return {
             "success": False,
-            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}"
+            "error": f"Spotify API error: {error.msg if hasattr(error, 'msg') else str(error)}",
         }
     except Exception as error:
         logger.error(f"Error transferring playback: {error}")
@@ -876,10 +838,7 @@ def get_now_playing_context() -> dict[str, Any]:
         return {"success": False, "error": str(error)}
 
 
-def get_artist_info(
-    artist_name: Optional[str] = None,
-    artist_id: Optional[str] = None
-) -> dict[str, Any]:
+def get_artist_info(artist_name: str | None = None, artist_id: str | None = None) -> dict[str, Any]:
     """
     Get detailed information about a music artist.
 
@@ -892,18 +851,12 @@ def get_artist_info(
     """
     try:
         if not artist_name and not artist_id:
-            return {
-                "success": False,
-                "error": "Either artist_name or artist_id is required"
-            }
+            return {"success": False, "error": "Either artist_name or artist_id is required"}
 
         from src.music_context import get_music_context
 
         context = get_music_context()
-        result = context.get_artist_context(
-            artist_id=artist_id,
-            artist_name=artist_name
-        )
+        result = context.get_artist_context(artist_id=artist_id, artist_name=artist_name)
 
         logger.info(f"Got artist info: success={result.get('success')}")
         return result
@@ -913,10 +866,7 @@ def get_artist_info(
         return {"success": False, "error": str(error)}
 
 
-def get_album_info(
-    album_name: Optional[str] = None,
-    album_id: Optional[str] = None
-) -> dict[str, Any]:
+def get_album_info(album_name: str | None = None, album_id: str | None = None) -> dict[str, Any]:
     """
     Get detailed information about a music album.
 
@@ -929,18 +879,12 @@ def get_album_info(
     """
     try:
         if not album_name and not album_id:
-            return {
-                "success": False,
-                "error": "Either album_name or album_id is required"
-            }
+            return {"success": False, "error": "Either album_name or album_id is required"}
 
         from src.music_context import get_music_context
 
         context = get_music_context()
-        result = context.get_album_context(
-            album_id=album_id,
-            album_name=album_name
-        )
+        result = context.get_album_context(album_id=album_id, album_name=album_name)
 
         logger.info(f"Got album info: success={result.get('success')}")
         return result
@@ -967,20 +911,19 @@ def execute_spotify_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
         return play_spotify(
             query=tool_input.get("query", ""),
             content_type=tool_input.get("content_type", "track"),
-            device_name=tool_input.get("device_name")
+            device_name=tool_input.get("device_name"),
         )
 
     elif tool_name == "control_playback":
         return control_playback(
-            action=tool_input.get("action", ""),
-            volume=tool_input.get("volume")
+            action=tool_input.get("action", ""), volume=tool_input.get("volume")
         )
 
     elif tool_name == "search_spotify":
         return search_spotify(
             query=tool_input.get("query", ""),
             search_type=tool_input.get("search_type", "track"),
-            limit=tool_input.get("limit", 10)
+            limit=tool_input.get("limit", 10),
         )
 
     elif tool_name == "get_spotify_devices":
@@ -989,7 +932,7 @@ def execute_spotify_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
     elif tool_name == "transfer_playback":
         return transfer_playback(
             device_name=tool_input.get("device_name", ""),
-            force_play=tool_input.get("force_play", False)
+            force_play=tool_input.get("force_play", False),
         )
 
     elif tool_name == "get_now_playing_context":
@@ -997,14 +940,12 @@ def execute_spotify_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
 
     elif tool_name == "get_artist_info":
         return get_artist_info(
-            artist_name=tool_input.get("artist_name"),
-            artist_id=tool_input.get("artist_id")
+            artist_name=tool_input.get("artist_name"), artist_id=tool_input.get("artist_id")
         )
 
     elif tool_name == "get_album_info":
         return get_album_info(
-            album_name=tool_input.get("album_name"),
-            album_id=tool_input.get("album_id")
+            album_name=tool_input.get("album_name"), album_id=tool_input.get("album_id")
         )
 
     else:

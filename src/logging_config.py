@@ -9,10 +9,9 @@ import logging
 import sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Optional
 
-from src.config import LOGS_DIR, LOG_LEVEL
+from src.config import LOG_LEVEL, LOGS_DIR
+
 
 # Ensure logs directory exists
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,9 +22,7 @@ ERROR_LOG_FILE = LOGS_DIR / "errors.log"
 API_LOG_FILE = LOGS_DIR / "api_calls.log"
 
 # Log format strings
-DETAILED_FORMAT = (
-    "%(asctime)s | %(levelname)-8s | %(name)-25s | %(funcName)-20s | %(message)s"
-)
+DETAILED_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)-25s | %(funcName)-20s | %(message)s"
 SIMPLE_FORMAT = "%(asctime)s | %(levelname)-8s | %(message)s"
 CONSOLE_FORMAT = "%(levelname)-8s | %(name)-20s | %(message)s"
 
@@ -51,8 +48,8 @@ def get_log_level(level_name: str) -> int:
 
 
 def setup_logging(
-    name: Optional[str] = None,
-    level: Optional[str] = None,
+    name: str | None = None,
+    level: str | None = None,
     log_to_file: bool = True,
     log_to_console: bool = True,
 ) -> logging.Logger:
@@ -168,11 +165,11 @@ def log_api_call(
     provider: str,
     endpoint: str,
     method: str,
-    status_code: Optional[int] = None,
-    latency_ms: Optional[int] = None,
-    error: Optional[str] = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
+    status_code: int | None = None,
+    latency_ms: int | None = None,
+    error: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
 ):
     """
     Log an API call with structured data.
@@ -225,11 +222,7 @@ class LogContext:
     """
 
     def __init__(
-        self,
-        logger: logging.Logger,
-        operation: str,
-        level: int = logging.INFO,
-        **context
+        self, logger: logging.Logger, operation: str, level: int = logging.INFO, **context
     ):
         """
         Initialize log context.
@@ -244,7 +237,7 @@ class LogContext:
         self.operation = operation
         self.level = level
         self.context = context
-        self.start_time: Optional[datetime] = None
+        self.start_time: datetime | None = None
 
     def __enter__(self):
         self.start_time = datetime.now()
@@ -264,10 +257,7 @@ class LogContext:
                 f"error={exc_type.__name__}: {exc_val}"
             )
         else:
-            self.logger.log(
-                self.level,
-                f"Completed: {self.operation} | elapsed_ms={elapsed_ms}"
-            )
+            self.logger.log(self.level, f"Completed: {self.operation} | elapsed_ms={elapsed_ms}")
 
         # Don't suppress exceptions
         return False

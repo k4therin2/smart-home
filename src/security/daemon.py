@@ -11,21 +11,20 @@ import logging
 import signal
 import sys
 import time
-from datetime import datetime
-from typing import Optional
 
 from src.security.config import (
-    SSH_CHECK_INTERVAL,
     COST_CHECK_INTERVAL,
     SERVICE_CHECK_INTERVAL,
+    SSH_CHECK_INTERVAL,
 )
 from src.security.monitors import SecurityMonitor
+
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("security.daemon")
 
@@ -37,7 +36,7 @@ class SecurityDaemon:
     Runs continuous checks at configured intervals.
     """
 
-    def __init__(self, webhook_url: Optional[str] = None):
+    def __init__(self, webhook_url: str | None = None):
         self.monitor = SecurityMonitor(webhook_url)
         self.running = False
         self.last_ssh_check = 0
@@ -46,6 +45,7 @@ class SecurityDaemon:
 
     def _setup_signal_handlers(self):
         """Set up graceful shutdown handlers."""
+
         def handle_shutdown(signum, frame):
             logger.info(f"Received signal {signum}, shutting down...")
             self.running = False
@@ -73,7 +73,7 @@ class SecurityDaemon:
             self.monitor.notifier.send_alert(
                 title="Security Monitoring Started",
                 message="Security monitoring daemon is now running on colby.",
-                severity="info"
+                severity="info",
             )
 
         while self.running:
@@ -128,20 +128,10 @@ def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Security monitoring daemon")
     parser.add_argument(
-        "--once",
-        action="store_true",
-        help="Run checks once and exit (for testing)"
+        "--once", action="store_true", help="Run checks once and exit (for testing)"
     )
-    parser.add_argument(
-        "--webhook",
-        type=str,
-        help="Override Slack webhook URL"
-    )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Send a test alert and exit"
-    )
+    parser.add_argument("--webhook", type=str, help="Override Slack webhook URL")
+    parser.add_argument("--test", action="store_true", help="Send a test alert and exit")
     args = parser.parse_args()
 
     daemon = SecurityDaemon(webhook_url=args.webhook)

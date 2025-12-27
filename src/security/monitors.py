@@ -12,29 +12,29 @@ import logging
 import re
 import subprocess
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Any
 
 from src.security.config import (
-    SSH_FAILED_THRESHOLD,
+    ALERT_HISTORY_FILE,
     API_COST_ALERT_THRESHOLD,
     AUTH_LOG_PATH,
-    UFW_LOG_PATH,
+    COST_VELOCITY_THRESHOLD,
+    DISK_SPACE_THRESHOLD,
     MONITORED_SERVICES,
-    SSH_STATE_FILE,
-    ALERT_HISTORY_FILE,
-    SLACK_WEBHOOK_URL,
     SLACK_COST_WEBHOOK_URL,
     SLACK_HEALTH_WEBHOOK_URL,
     SLACK_SERVER_HEALTH_WEBHOOK,
-    UFW_BLOCK_THRESHOLD,
+    SLACK_WEBHOOK_URL,
+    SSH_FAILED_THRESHOLD,
+    SSH_STATE_FILE,
     SUDO_FAILED_THRESHOLD,
-    DISK_SPACE_THRESHOLD,
-    COST_VELOCITY_THRESHOLD,
+    UFW_BLOCK_THRESHOLD,
+    UFW_LOG_PATH,
     WEEKLY_REPORT_DAY,
     WEEKLY_REPORT_HOUR,
 )
 from src.security.slack_client import SlackNotifier
+
 
 logger = logging.getLogger("security.monitors")
 
@@ -42,17 +42,17 @@ logger = logging.getLogger("security.monitors")
 class BaseMonitor:
     """Base class for security monitors."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         self.notifier = notifier or SlackNotifier()
         self.alert_history = self._load_alert_history()
 
-    def _load_alert_history(self) -> Dict[str, Any]:
+    def _load_alert_history(self) -> dict[str, Any]:
         """Load alert history from file."""
         if ALERT_HISTORY_FILE.exists():
             try:
-                with open(ALERT_HISTORY_FILE, "r") as file:
+                with open(ALERT_HISTORY_FILE) as file:
                     return json.load(file)
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 return {"alerts": []}
         return {"alerts": []}
 
@@ -63,13 +63,15 @@ class BaseMonitor:
         with open(ALERT_HISTORY_FILE, "w") as file:
             json.dump(self.alert_history, file, indent=2)
 
-    def _record_alert(self, alert_type: str, details: Dict[str, Any]) -> None:
+    def _record_alert(self, alert_type: str, details: dict[str, Any]) -> None:
         """Record an alert in history."""
-        self.alert_history["alerts"].append({
-            "timestamp": datetime.now().isoformat(),
-            "type": alert_type,
-            "details": details,
-        })
+        self.alert_history["alerts"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "type": alert_type,
+                "details": details,
+            }
+        )
         self._save_alert_history()
 
     def _should_alert(self, alert_key: str, cooldown_minutes: int = 30) -> bool:
@@ -108,17 +110,17 @@ class SSHMonitor(BaseMonitor):
         r"(\w+\s+\d+\s+\d+:\d+:\d+).*sshd.*Invalid user (\S+) from (\S+)"
     )
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
         self.state = self._load_state()
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> dict[str, Any]:
         """Load monitor state from file."""
         if SSH_STATE_FILE.exists():
             try:
-                with open(SSH_STATE_FILE, "r") as file:
+                with open(SSH_STATE_FILE) as file:
                     return json.load(file)
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
         return {
             "last_position": 0,
@@ -131,7 +133,7 @@ class SSHMonitor(BaseMonitor):
         with open(SSH_STATE_FILE, "w") as file:
             json.dump(self.state, file, indent=2)
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """
         Check auth.log for new failed SSH attempts.
 
@@ -153,7 +155,7 @@ class SSHMonitor(BaseMonitor):
                 self.state["last_inode"] = current_inode
 
             # Read new lines from log
-            with open(AUTH_LOG_PATH, "r") as file:
+            with open(AUTH_LOG_PATH) as file:
                 file.seek(self.state["last_position"])
                 new_lines = file.readlines()
                 self.state["last_position"] = file.tell()
@@ -181,10 +183,7 @@ class SSHMonitor(BaseMonitor):
             # Clean old attempts and check thresholds
             for source_ip, timestamps in list(self.state["failed_attempts"].items()):
                 # Keep only recent attempts (last 10 minutes)
-                recent = [
-                    ts for ts in timestamps
-                    if datetime.fromisoformat(ts) > window_start
-                ]
+                recent = [ts for ts in timestamps if datetime.fromisoformat(ts) > window_start]
                 self.state["failed_attempts"][source_ip] = recent
 
                 # Check if threshold exceeded
@@ -209,7 +208,7 @@ class SSHMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_ssh_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_ssh_alert(self, alert: dict[str, Any]) -> None:
         """Send SSH failed login alert to Slack."""
         self.notifier.send_alert(
             title="SSH Brute Force Detected",
@@ -219,11 +218,11 @@ class SSHMonitor(BaseMonitor):
                 {"title": "Source IP", "value": alert["source_ip"]},
                 {"title": "Attempts", "value": str(alert["attempts"])},
                 {"title": "Threshold", "value": str(alert["threshold"])},
-            ]
+            ],
         )
         self._record_alert("ssh_failed", {"key": f"ssh_failed_{alert['source_ip']}", **alert})
 
-    def get_stats(self, days: int = 7) -> Dict[str, Any]:
+    def get_stats(self, days: int = 7) -> dict[str, Any]:
         """Get SSH attempt statistics for the past N days."""
         total_attempts = 0
         unique_ips = set()
@@ -252,10 +251,10 @@ class SSHMonitor(BaseMonitor):
 class APICostMonitor(BaseMonitor):
     """Monitor for API cost thresholds."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """
         Check current API costs against threshold.
 
@@ -266,7 +265,7 @@ class APICostMonitor(BaseMonitor):
 
         try:
             # Import here to avoid circular imports
-            from src.utils import get_daily_usage, get_usage_stats
+            from src.utils import get_daily_usage
 
             daily_cost = get_daily_usage()
 
@@ -288,7 +287,7 @@ class APICostMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_cost_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_cost_alert(self, alert: dict[str, Any]) -> None:
         """Send API cost alert to Slack."""
         self.notifier.send_alert(
             title="API Cost Alert",
@@ -297,14 +296,17 @@ class APICostMonitor(BaseMonitor):
             fields=[
                 {"title": "Current Cost", "value": f"${alert['daily_cost']:.2f}"},
                 {"title": "Threshold", "value": f"${alert['threshold']:.2f}"},
-            ]
+            ],
         )
-        self._record_alert("api_cost", {"key": f"api_cost_{datetime.now().date().isoformat()}", **alert})
+        self._record_alert(
+            "api_cost", {"key": f"api_cost_{datetime.now().date().isoformat()}", **alert}
+        )
 
-    def get_stats(self, days: int = 7) -> Dict[str, Any]:
+    def get_stats(self, days: int = 7) -> dict[str, Any]:
         """Get API cost statistics for the past N days."""
         try:
             from src.utils import get_usage_stats
+
             return get_usage_stats(days)
         except ImportError:
             return {"total_cost": 0, "total_requests": 0, "daily_breakdown": []}
@@ -313,19 +315,16 @@ class APICostMonitor(BaseMonitor):
 class ServiceMonitor(BaseMonitor):
     """Monitor for service health."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None, services: Optional[List[str]] = None):
+    def __init__(self, notifier: SlackNotifier | None = None, services: list[str] | None = None):
         super().__init__(notifier)
         self.services = services or MONITORED_SERVICES
-        self.last_status: Dict[str, str] = {}
+        self.last_status: dict[str, str] = {}
 
-    def _check_systemd_service(self, service_name: str) -> Tuple[bool, str]:
+    def _check_systemd_service(self, service_name: str) -> tuple[bool, str]:
         """Check if a systemd service is running."""
         try:
             result = subprocess.run(
-                ["systemctl", "is-active", service_name],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["systemctl", "is-active", service_name], capture_output=True, text=True, timeout=10
             )
             status = result.stdout.strip()
             return status == "active", status
@@ -336,14 +335,14 @@ class ServiceMonitor(BaseMonitor):
         except Exception as error:
             return False, str(error)
 
-    def _check_docker_container(self, container_name: str) -> Tuple[bool, str]:
+    def _check_docker_container(self, container_name: str) -> tuple[bool, str]:
         """Check if a Docker container is running."""
         try:
             result = subprocess.run(
                 ["docker", "inspect", "-f", "{{.State.Status}}", container_name],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode == 0:
                 status = result.stdout.strip()
@@ -356,7 +355,7 @@ class ServiceMonitor(BaseMonitor):
         except Exception as error:
             return False, str(error)
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """
         Check all monitored services.
 
@@ -390,12 +389,16 @@ class ServiceMonitor(BaseMonitor):
                     self._send_service_alert(alert)
 
             # Log status
-            if not is_running and status not in ("not found", "docker not found", "systemctl not found"):
+            if not is_running and status not in (
+                "not found",
+                "docker not found",
+                "systemctl not found",
+            ):
                 logger.warning(f"Service {service} is not running: {status}")
 
         return alerts
 
-    def _send_service_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_service_alert(self, alert: dict[str, Any]) -> None:
         """Send service down alert to Slack."""
         self.notifier.send_alert(
             title="Service Down",
@@ -405,11 +408,11 @@ class ServiceMonitor(BaseMonitor):
                 {"title": "Service", "value": alert["service"]},
                 {"title": "Current Status", "value": alert["status"]},
                 {"title": "Previous Status", "value": alert["previous_status"]},
-            ]
+            ],
         )
         self._record_alert("service_down", {"key": f"service_down_{alert['service']}", **alert})
 
-    def get_status(self) -> Dict[str, str]:
+    def get_status(self) -> dict[str, str]:
         """Get current status of all monitored services."""
         status = {}
         for service in self.services:
@@ -428,11 +431,11 @@ class UFWMonitor(BaseMonitor):
         r"(\w+\s+\d+\s+\d+:\d+:\d+).*\[UFW BLOCK\].*SRC=(\d+\.\d+\.\d+\.\d+).*DPT=(\d+)"
     )
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
-        self.blocked_ips: Dict[str, List[str]] = {}  # IP -> list of timestamps
+        self.blocked_ips: dict[str, list[str]] = {}  # IP -> list of timestamps
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Check UFW log for blocked connections."""
         alerts = []
 
@@ -445,7 +448,7 @@ class UFWMonitor(BaseMonitor):
             window_start = now - timedelta(minutes=5)
 
             # Read recent log entries (tail approach for efficiency)
-            with open(UFW_LOG_PATH, "r") as file:
+            with open(UFW_LOG_PATH) as file:
                 lines = file.readlines()[-500:]  # Last 500 lines
 
             for line in lines:
@@ -463,10 +466,7 @@ class UFWMonitor(BaseMonitor):
 
             # Check thresholds and clean old entries
             for source_ip, timestamps in list(self.blocked_ips.items()):
-                recent = [
-                    ts for ts in timestamps
-                    if datetime.fromisoformat(ts) > window_start
-                ]
+                recent = [ts for ts in timestamps if datetime.fromisoformat(ts) > window_start]
                 self.blocked_ips[source_ip] = recent
 
                 if len(recent) >= UFW_BLOCK_THRESHOLD:
@@ -488,7 +488,7 @@ class UFWMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_ufw_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_ufw_alert(self, alert: dict[str, Any]) -> None:
         """Send UFW block alert to Slack."""
         self.notifier.send_alert(
             title="Firewall Blocking IP",
@@ -497,7 +497,7 @@ class UFWMonitor(BaseMonitor):
             fields=[
                 {"title": "Source IP", "value": alert["source_ip"]},
                 {"title": "Blocked Attempts", "value": str(alert["block_count"])},
-            ]
+            ],
         )
         self._record_alert("ufw_block", {"key": f"ufw_block_{alert['source_ip']}", **alert})
 
@@ -509,11 +509,11 @@ class SudoMonitor(BaseMonitor):
         r"(\w+\s+\d+\s+\d+:\d+:\d+).*sudo.*(\S+).*authentication failure"
     )
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
-        self.failed_attempts: List[Dict[str, str]] = []
+        self.failed_attempts: list[dict[str, str]] = []
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Check auth.log for failed sudo attempts."""
         alerts = []
 
@@ -525,19 +525,21 @@ class SudoMonitor(BaseMonitor):
             now = datetime.now()
             window_start = now - timedelta(minutes=10)
 
-            with open(AUTH_LOG_PATH, "r") as file:
+            with open(AUTH_LOG_PATH) as file:
                 lines = file.readlines()[-200:]
 
             for line in lines:
-                if "sudo" in line and ("authentication failure" in line or "incorrect password" in line):
-                    self.failed_attempts.append({
-                        "timestamp": now.isoformat(),
-                        "line": line.strip()[:100]
-                    })
+                if "sudo" in line and (
+                    "authentication failure" in line or "incorrect password" in line
+                ):
+                    self.failed_attempts.append(
+                        {"timestamp": now.isoformat(), "line": line.strip()[:100]}
+                    )
 
             # Keep only recent attempts
             self.failed_attempts = [
-                attempt for attempt in self.failed_attempts
+                attempt
+                for attempt in self.failed_attempts
                 if datetime.fromisoformat(attempt["timestamp"]) > window_start
             ]
 
@@ -559,7 +561,7 @@ class SudoMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_sudo_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_sudo_alert(self, alert: dict[str, Any]) -> None:
         """Send sudo failure alert to Slack."""
         self.notifier.send_alert(
             title="Failed Sudo Attempts",
@@ -568,7 +570,7 @@ class SudoMonitor(BaseMonitor):
             fields=[
                 {"title": "Failed Attempts", "value": str(alert["attempts"])},
                 {"title": "Threshold", "value": str(alert["threshold"])},
-            ]
+            ],
         )
         self._record_alert("sudo_failed", {"key": "sudo_failed", **alert})
 
@@ -576,21 +578,18 @@ class SudoMonitor(BaseMonitor):
 class DiskSpaceMonitor(BaseMonitor):
     """Monitor for disk space usage."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None, paths: Optional[List[str]] = None):
+    def __init__(self, notifier: SlackNotifier | None = None, paths: list[str] | None = None):
         super().__init__(notifier)
         self.paths = paths or ["/", "/home"]
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Check disk space on monitored paths."""
         alerts = []
 
         for path in self.paths:
             try:
                 result = subprocess.run(
-                    ["df", "-h", path],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
+                    ["df", "-h", path], capture_output=True, text=True, timeout=10
                 )
                 if result.returncode == 0:
                     lines = result.stdout.strip().split("\n")
@@ -618,7 +617,7 @@ class DiskSpaceMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_disk_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_disk_alert(self, alert: dict[str, Any]) -> None:
         """Send disk space alert to Slack."""
         self.notifier.send_alert(
             title="Disk Space Critical",
@@ -628,7 +627,7 @@ class DiskSpaceMonitor(BaseMonitor):
                 {"title": "Path", "value": alert["path"]},
                 {"title": "Usage", "value": f"{alert['usage_percent']}%"},
                 {"title": "Available", "value": alert["available"]},
-            ]
+            ],
         )
         self._record_alert("disk_space", {"key": f"disk_space_{alert['path']}", **alert})
 
@@ -636,24 +635,25 @@ class DiskSpaceMonitor(BaseMonitor):
 class HAHealthMonitor(BaseMonitor):
     """Monitor for Home Assistant availability."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
         self.consecutive_failures = 0
         self.last_status = "unknown"
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Check if Home Assistant API is responding."""
         alerts = []
 
         try:
             import os
+
             ha_url = os.getenv("HA_URL", "http://localhost:8123")
             ha_token = os.getenv("HA_TOKEN", "")
 
             import urllib.request
+
             request = urllib.request.Request(
-                f"{ha_url}/api/",
-                headers={"Authorization": f"Bearer {ha_token}"}
+                f"{ha_url}/api/", headers={"Authorization": f"Bearer {ha_token}"}
             )
 
             try:
@@ -664,7 +664,7 @@ class HAHealthMonitor(BaseMonitor):
                             self.notifier.send_alert(
                                 title="Home Assistant Recovered",
                                 message="Home Assistant is responding again.",
-                                severity="info"
+                                severity="info",
                             )
                         self.consecutive_failures = 0
                         self.last_status = "up"
@@ -691,7 +691,7 @@ class HAHealthMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_ha_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_ha_alert(self, alert: dict[str, Any]) -> None:
         """Send HA unavailable alert to Slack."""
         self.notifier.send_alert(
             title="Home Assistant Unavailable",
@@ -700,7 +700,7 @@ class HAHealthMonitor(BaseMonitor):
             fields=[
                 {"title": "URL", "value": alert["ha_url"]},
                 {"title": "Failed Checks", "value": str(alert["consecutive_failures"])},
-            ]
+            ],
         )
         self._record_alert("ha_unavailable", {"key": "ha_unavailable", **alert})
 
@@ -708,16 +708,17 @@ class HAHealthMonitor(BaseMonitor):
 class CostVelocityMonitor(BaseMonitor):
     """Monitor for API cost velocity (spending rate)."""
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Check if API spending rate is too high."""
         alerts = []
 
         try:
-            from src.utils import USAGE_DB_PATH
             import sqlite3
+
+            from src.utils import USAGE_DB_PATH
 
             if not USAGE_DB_PATH.exists():
                 return alerts
@@ -727,11 +728,14 @@ class CostVelocityMonitor(BaseMonitor):
 
             with sqlite3.connect(USAGE_DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT COALESCE(SUM(cost_usd), 0)
                     FROM api_usage
                     WHERE timestamp > ?
-                """, (one_hour_ago,))
+                """,
+                    (one_hour_ago,),
+                )
                 result = cursor.fetchone()
                 hourly_cost = result[0] if result else 0.0
 
@@ -753,7 +757,7 @@ class CostVelocityMonitor(BaseMonitor):
 
         return alerts
 
-    def _send_velocity_alert(self, alert: Dict[str, Any]) -> None:
+    def _send_velocity_alert(self, alert: dict[str, Any]) -> None:
         """Send cost velocity alert to Slack."""
         self.notifier.send_alert(
             title="High API Spending Rate",
@@ -763,7 +767,7 @@ class CostVelocityMonitor(BaseMonitor):
                 {"title": "Last Hour", "value": f"${alert['hourly_cost']:.2f}"},
                 {"title": "Projected Daily", "value": f"${alert['projected_daily']:.2f}"},
                 {"title": "Threshold", "value": f"${alert['threshold']:.2f}/hour"},
-            ]
+            ],
         )
         self._record_alert("cost_velocity", {"key": "cost_velocity", **alert})
 
@@ -781,11 +785,11 @@ class ServerHealthMonitor(BaseMonitor):
     - System uptime
     """
 
-    def __init__(self, notifier: Optional[SlackNotifier] = None):
+    def __init__(self, notifier: SlackNotifier | None = None):
         super().__init__(notifier)
-        self.last_report_date: Optional[str] = None
+        self.last_report_date: str | None = None
 
-    def check(self) -> List[Dict[str, Any]]:
+    def check(self) -> list[dict[str, Any]]:
         """Run health checks and send alerts for issues."""
         alerts = []
         health_data = self._collect_health_data()
@@ -825,7 +829,7 @@ class ServerHealthMonitor(BaseMonitor):
 
         return alerts
 
-    def _collect_health_data(self) -> Dict[str, Any]:
+    def _collect_health_data(self) -> dict[str, Any]:
         """Collect comprehensive health metrics."""
         data = {
             "timestamp": datetime.now().isoformat(),
@@ -839,13 +843,15 @@ class ServerHealthMonitor(BaseMonitor):
             for line in df_output.strip().split("\n"):
                 parts = line.split()
                 if len(parts) >= 5:
-                    disks.append({
-                        "mount": parts[5] if len(parts) > 5 else parts[0],
-                        "size": parts[1],
-                        "used": parts[2],
-                        "available": parts[3],
-                        "percent": int(parts[4].rstrip("%")),
-                    })
+                    disks.append(
+                        {
+                            "mount": parts[5] if len(parts) > 5 else parts[0],
+                            "size": parts[1],
+                            "used": parts[2],
+                            "available": parts[3],
+                            "percent": int(parts[4].rstrip("%")),
+                        }
+                    )
             data["disks"] = disks
         except Exception:
             data["disks"] = []
@@ -894,9 +900,7 @@ class ServerHealthMonitor(BaseMonitor):
             data["tmux_sessions"] = int(tmux_output.strip())
 
             # Check for stale sessions (older than 7 days based on activity)
-            stale_output = self._run_cmd(
-                "tmux list-sessions -F '#{session_activity}' 2>/dev/null"
-            )
+            stale_output = self._run_cmd("tmux list-sessions -F '#{session_activity}' 2>/dev/null")
             stale_count = 0
             week_ago = (datetime.now() - timedelta(days=7)).timestamp()
             for line in stale_output.strip().split("\n"):
@@ -924,18 +928,12 @@ class ServerHealthMonitor(BaseMonitor):
     def _run_cmd(self, cmd: str) -> str:
         """Run a shell command and return output."""
         try:
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
             return result.stdout.strip()
         except Exception:
             return ""
 
-    def _send_memory_alert(self, data: Dict[str, Any]) -> None:
+    def _send_memory_alert(self, data: dict[str, Any]) -> None:
         """Send high memory usage alert."""
         self.notifier.send_alert(
             title="High Memory Usage",
@@ -944,11 +942,11 @@ class ServerHealthMonitor(BaseMonitor):
             fields=[
                 {"title": "Used", "value": f"{data.get('memory_used_mb', 0)}MB"},
                 {"title": "Total", "value": f"{data.get('memory_total_mb', 0)}MB"},
-            ]
+            ],
         )
         self._record_alert("memory_critical", {"key": "memory_critical", **data})
 
-    def _send_load_alert(self, data: Dict[str, Any]) -> None:
+    def _send_load_alert(self, data: dict[str, Any]) -> None:
         """Send high load average alert."""
         self.notifier.send_alert(
             title="High System Load",
@@ -958,11 +956,11 @@ class ServerHealthMonitor(BaseMonitor):
                 {"title": "1 min", "value": f"{data.get('load_1min', 0):.2f}"},
                 {"title": "5 min", "value": f"{data.get('load_5min', 0):.2f}"},
                 {"title": "15 min", "value": f"{data.get('load_15min', 0):.2f}"},
-            ]
+            ],
         )
         self._record_alert("load_critical", {"key": "load_critical", **data})
 
-    def _send_zombie_alert(self, data: Dict[str, Any]) -> None:
+    def _send_zombie_alert(self, data: dict[str, Any]) -> None:
         """Send zombie process alert."""
         self.notifier.send_alert(
             title="Zombie Processes Detected",
@@ -970,11 +968,11 @@ class ServerHealthMonitor(BaseMonitor):
             severity="warning",
             fields=[
                 {"title": "Zombie Count", "value": str(data.get("zombie_count", 0))},
-            ]
+            ],
         )
         self._record_alert("zombie_processes", {"key": "zombies", **data})
 
-    def _send_tmux_alert(self, data: Dict[str, Any]) -> None:
+    def _send_tmux_alert(self, data: dict[str, Any]) -> None:
         """Send stale tmux session alert."""
         self.notifier.send_alert(
             title="Stale Tmux Sessions",
@@ -983,11 +981,11 @@ class ServerHealthMonitor(BaseMonitor):
             fields=[
                 {"title": "Total Sessions", "value": str(data.get("tmux_sessions", 0))},
                 {"title": "Stale (7+ days)", "value": str(data.get("stale_tmux_sessions", 0))},
-            ]
+            ],
         )
         self._record_alert("stale_tmux", {"key": "stale_tmux", **data})
 
-    def _maybe_send_weekly_report(self, health_data: Dict[str, Any]) -> None:
+    def _maybe_send_weekly_report(self, health_data: dict[str, Any]) -> None:
         """Send weekly report if it's the scheduled time."""
         now = datetime.now()
         today_str = now.strftime("%Y-%m-%d")
@@ -1004,13 +1002,17 @@ class ServerHealthMonitor(BaseMonitor):
         self._send_weekly_report(health_data)
         self.last_report_date = today_str
 
-    def _send_weekly_report(self, health_data: Dict[str, Any]) -> None:
+    def _send_weekly_report(self, health_data: dict[str, Any]) -> None:
         """Send comprehensive weekly health report."""
         # Build disk summary
         disk_summary = []
         for disk in health_data.get("disks", []):
-            status = "OK" if disk["percent"] < 80 else "WARN" if disk["percent"] < 90 else "CRITICAL"
-            disk_summary.append(f"{disk['mount']}: {disk['percent']}% ({disk['available']} free) [{status}]")
+            status = (
+                "OK" if disk["percent"] < 80 else "WARN" if disk["percent"] < 90 else "CRITICAL"
+            )
+            disk_summary.append(
+                f"{disk['mount']}: {disk['percent']}% ({disk['available']} free) [{status}]"
+            )
 
         # Determine overall status
         issues = []
@@ -1035,54 +1037,71 @@ class ServerHealthMonitor(BaseMonitor):
                 "text": {
                     "type": "plain_text",
                     "text": "Weekly Server Health Report",
-                    "emoji": True
-                }
+                    "emoji": True,
+                },
             },
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*Server:* {health_data.get('hostname', 'colby')}\n*Uptime:* {health_data.get('uptime', 'unknown')}\n*Status:* {overall_status}"
-                }
+                    "text": f"*Server:* {health_data.get('hostname', 'colby')}\n*Uptime:* {health_data.get('uptime', 'unknown')}\n*Status:* {overall_status}",
+                },
             },
             {"type": "divider"},
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*Disk Usage*\n```\n" + "\n".join(disk_summary) + "\n```"
-                }
+                    "text": "*Disk Usage*\n```\n" + "\n".join(disk_summary) + "\n```",
+                },
             },
             {
                 "type": "section",
                 "fields": [
-                    {"type": "mrkdwn", "text": f"*Memory:*\n{health_data.get('memory_percent', 0)}% ({health_data.get('memory_used_mb', 0)}MB / {health_data.get('memory_total_mb', 0)}MB)"},
-                    {"type": "mrkdwn", "text": f"*Load Avg:*\n{health_data.get('load_1min', 0):.2f} / {health_data.get('load_5min', 0):.2f} / {health_data.get('load_15min', 0):.2f}"},
-                    {"type": "mrkdwn", "text": f"*Docker Containers:*\n{health_data.get('docker_containers', 0)} running"},
-                    {"type": "mrkdwn", "text": f"*Tmux Sessions:*\n{health_data.get('tmux_sessions', 0)} total ({health_data.get('stale_tmux_sessions', 0)} stale)"},
-                ]
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Memory:*\n{health_data.get('memory_percent', 0)}% ({health_data.get('memory_used_mb', 0)}MB / {health_data.get('memory_total_mb', 0)}MB)",
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Load Avg:*\n{health_data.get('load_1min', 0):.2f} / {health_data.get('load_5min', 0):.2f} / {health_data.get('load_15min', 0):.2f}",
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Docker Containers:*\n{health_data.get('docker_containers', 0)} running",
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Tmux Sessions:*\n{health_data.get('tmux_sessions', 0)} total ({health_data.get('stale_tmux_sessions', 0)} stale)",
+                    },
+                ],
             },
         ]
 
         if issues:
             blocks.append({"type": "divider"})
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Issues to Address:*\n" + "\n".join([f"• {issue}" for issue in issues])
-                }
-            })
-
-        blocks.append({
-            "type": "context",
-            "elements": [
+            blocks.append(
                 {
-                    "type": "mrkdwn",
-                    "text": f"Report generated {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Issues to Address:*\n"
+                        + "\n".join([f"• {issue}" for issue in issues]),
+                    },
                 }
-            ]
-        })
+            )
+
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Report generated {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    }
+                ],
+            }
+        )
 
         payload = {"blocks": blocks}
         self.notifier._send(payload)
@@ -1108,10 +1127,10 @@ class SecurityMonitor:
 
     def __init__(
         self,
-        security_webhook: Optional[str] = None,
-        cost_webhook: Optional[str] = None,
-        health_webhook: Optional[str] = None,
-        server_health_webhook: Optional[str] = None,
+        security_webhook: str | None = None,
+        cost_webhook: str | None = None,
+        health_webhook: str | None = None,
+        server_health_webhook: str | None = None,
     ):
         # Each monitor gets its own notifier with the appropriate webhook
         security_notifier = SlackNotifier(security_webhook or SLACK_WEBHOOK_URL)
@@ -1136,7 +1155,7 @@ class SecurityMonitor:
         # Server health channel monitors (#colby-server-health)
         self.server_health_monitor = ServerHealthMonitor(server_health_notifier)
 
-    def run_all_checks(self) -> Dict[str, List[Dict[str, Any]]]:
+    def run_all_checks(self) -> dict[str, list[dict[str, Any]]]:
         """
         Run all security checks.
 
@@ -1167,7 +1186,7 @@ class SecurityMonitor:
 
         return results
 
-    def get_all_stats(self, days: int = 7) -> Dict[str, Any]:
+    def get_all_stats(self, days: int = 7) -> dict[str, Any]:
         """Get statistics from all monitors."""
         return {
             "ssh": self.ssh_monitor.get_stats(days),

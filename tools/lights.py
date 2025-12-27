@@ -8,13 +8,13 @@ Includes basic controls and integration with the Hue specialist agent.
 from typing import Any
 
 from src.config import (
+    ROOM_ENTITY_MAP,
     VIBE_PRESETS,
     get_room_entity,
-    ROOM_ENTITY_MAP,
-    kelvin_to_mireds,
 )
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
+
 
 logger = setup_logging("tools.lights")
 
@@ -71,54 +71,49 @@ Examples:
             "properties": {
                 "room": {
                     "type": "string",
-                    "description": "Room name: living room, bedroom, kitchen, office, upstairs, downstairs, garage, staircase"
+                    "description": "Room name: living room, bedroom, kitchen, office, upstairs, downstairs, garage, staircase",
                 },
                 "action": {
                     "type": "string",
                     "enum": ["on", "off", "set"],
-                    "description": "on=turn on, off=turn off, set=adjust settings"
+                    "description": "on=turn on, off=turn off, set=adjust settings",
                 },
                 "brightness": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100,
-                    "description": "Brightness percentage (0-100)"
+                    "description": "Brightness percentage (0-100)",
                 },
                 "color": {
                     "type": "string",
-                    "description": "Color name: red, green, blue, yellow, orange, purple, pink, cyan, magenta, teal, lavender, coral, turquoise, gold, navy, indigo"
+                    "description": "Color name: red, green, blue, yellow, orange, purple, pink, cyan, magenta, teal, lavender, coral, turquoise, gold, navy, indigo",
                 },
                 "color_temp_kelvin": {
                     "type": "integer",
                     "minimum": 2200,
                     "maximum": 6500,
-                    "description": "Color temperature (white light): 2700=warm, 4000=neutral, 5000=cool, 6500=daylight. Do NOT use for colors like blue/red/green - use color parameter instead."
+                    "description": "Color temperature (white light): 2700=warm, 4000=neutral, 5000=cool, 6500=daylight. Do NOT use for colors like blue/red/green - use color parameter instead.",
                 },
                 "vibe": {
                     "type": "string",
-                    "description": "Vibe preset: cozy, relaxed, focus, energetic, romantic, movie, reading, morning, evening, night"
+                    "description": "Vibe preset: cozy, relaxed, focus, energetic, romantic, movie, reading, morning, evening, night",
                 },
                 "transition": {
                     "type": "number",
-                    "description": "Transition time in seconds (default: 0.5)"
-                }
+                    "description": "Transition time in seconds (default: 0.5)",
+                },
             },
-            "required": ["room", "action"]
-        }
+            "required": ["room", "action"],
+        },
     },
     {
         "name": "get_light_status",
         "description": "Get the current status of lights in a room. Returns on/off state, brightness, and color temperature.",
         "input_schema": {
             "type": "object",
-            "properties": {
-                "room": {
-                    "type": "string",
-                    "description": "Room name to check"
-                }
-            },
-            "required": ["room"]
-        }
+            "properties": {"room": {"type": "string", "description": "Room name to check"}},
+            "required": ["room"],
+        },
     },
     {
         "name": "activate_hue_scene",
@@ -131,43 +126,39 @@ Speed controls how fast colors change (0=slow, 100=fast). Default is 50.""",
             "properties": {
                 "room": {
                     "type": "string",
-                    "description": "Room where the scene should be activated"
+                    "description": "Room where the scene should be activated",
                 },
                 "scene_name": {
                     "type": "string",
-                    "description": "Scene name like 'arctic_aurora', 'tropical_twilight', 'savanna_sunset'"
+                    "description": "Scene name like 'arctic_aurora', 'tropical_twilight', 'savanna_sunset'",
                 },
                 "dynamic": {
                     "type": "boolean",
                     "description": "Enable dynamic mode (colors shift over time)",
-                    "default": True
+                    "default": True,
                 },
                 "speed": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Speed of color transitions (0-100)",
-                    "default": 50
+                    "default": 50,
                 },
                 "brightness": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100,
-                    "description": "Overall scene brightness"
-                }
+                    "description": "Overall scene brightness",
+                },
             },
-            "required": ["room", "scene_name"]
-        }
+            "required": ["room", "scene_name"],
+        },
     },
     {
         "name": "list_available_rooms",
         "description": "List all rooms that can be controlled.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
 ]
 
 
@@ -178,7 +169,7 @@ def set_room_ambiance(
     color: str | None = None,
     color_temp_kelvin: int | None = None,
     vibe: str | None = None,
-    transition: float = 0.5
+    transition: float = 0.5,
 ) -> dict[str, Any]:
     """
     Set the ambiance of lights in a room.
@@ -199,11 +190,7 @@ def set_room_ambiance(
 
     if not entity_id:
         available = list(ROOM_ENTITY_MAP.keys())
-        return {
-            "success": False,
-            "error": f"Unknown room: {room}",
-            "available_rooms": available
-        }
+        return {"success": False, "error": f"Unknown room: {room}", "available_rooms": available}
 
     # Convert color name to RGB if specified
     rgb_color = None
@@ -224,7 +211,9 @@ def set_room_ambiance(
                 brightness = preset.get("brightness")
             if color_temp_kelvin is None and rgb_color is None:
                 color_temp_kelvin = preset.get("color_temp_kelvin")
-            logger.info(f"Applied vibe '{vibe}': brightness={brightness}, color_temp={color_temp_kelvin}K")
+            logger.info(
+                f"Applied vibe '{vibe}': brightness={brightness}, color_temp={color_temp_kelvin}K"
+            )
         else:
             logger.warning(f"Unknown vibe '{vibe}', using explicit settings")
 
@@ -233,12 +222,7 @@ def set_room_ambiance(
     try:
         if action == "off":
             success = ha_client.turn_off_light(entity_id, transition=transition)
-            return {
-                "success": success,
-                "action": "off",
-                "room": room,
-                "entity_id": entity_id
-            }
+            return {"success": success, "action": "off", "room": room, "entity_id": entity_id}
 
         elif action in ("on", "set"):
             # Don't pass color_temp if we're using RGB color
@@ -249,15 +233,10 @@ def set_room_ambiance(
                 brightness_pct=brightness,
                 color_temp_kelvin=effective_color_temp,
                 rgb_color=rgb_color,
-                transition=transition
+                transition=transition,
             )
 
-            result = {
-                "success": success,
-                "action": action,
-                "room": room,
-                "entity_id": entity_id
-            }
+            result = {"success": success, "action": action, "room": room, "entity_id": entity_id}
 
             if brightness is not None:
                 result["brightness"] = brightness
@@ -298,11 +277,7 @@ def get_light_status(room: str) -> dict[str, Any]:
     state = ha_client.get_light_state(entity_id)
 
     if not state:
-        return {
-            "success": False,
-            "error": f"Could not get state for {entity_id}",
-            "room": room
-        }
+        return {"success": False, "error": f"Could not get state for {entity_id}", "room": room}
 
     # Convert brightness from 0-255 to 0-100 if present
     brightness_raw = state.get("brightness")
@@ -325,16 +300,12 @@ def get_light_status(room: str) -> dict[str, Any]:
         "brightness_pct": brightness_pct,
         "color_temp_kelvin": color_temp_kelvin,
         "rgb_color": state.get("rgb_color"),
-        "friendly_name": state.get("friendly_name")
+        "friendly_name": state.get("friendly_name"),
     }
 
 
 def activate_hue_scene(
-    room: str,
-    scene_name: str,
-    dynamic: bool = True,
-    speed: int = 50,
-    brightness: int | None = None
+    room: str, scene_name: str, dynamic: bool = True, speed: int = 50, brightness: int | None = None
 ) -> dict[str, Any]:
     """
     Activate a Philips Hue scene.
@@ -361,10 +332,7 @@ def activate_hue_scene(
 
     try:
         success = ha_client.activate_hue_scene(
-            scene_entity_id=scene_entity_id,
-            dynamic=dynamic,
-            speed=speed,
-            brightness=brightness
+            scene_entity_id=scene_entity_id, dynamic=dynamic, speed=speed, brightness=brightness
         )
 
         return {
@@ -374,33 +342,27 @@ def activate_hue_scene(
             "scene_entity_id": scene_entity_id,
             "dynamic": dynamic,
             "speed": speed,
-            "brightness": brightness
+            "brightness": brightness,
         }
 
     except Exception as error:
         logger.error(f"Error activating Hue scene: {error}")
-        return {
-            "success": False,
-            "error": str(error),
-            "scene_entity_id": scene_entity_id
-        }
+        return {"success": False, "error": str(error), "scene_entity_id": scene_entity_id}
 
 
 def list_available_rooms() -> dict[str, Any]:
     """List all available rooms."""
     rooms = []
     for room_key, room_config in ROOM_ENTITY_MAP.items():
-        rooms.append({
-            "name": room_key.replace("_", " "),
-            "entity_id": room_config.get("default_light"),
-            "light_count": len(room_config.get("lights", []))
-        })
+        rooms.append(
+            {
+                "name": room_key.replace("_", " "),
+                "entity_id": room_config.get("default_light"),
+                "light_count": len(room_config.get("lights", [])),
+            }
+        )
 
-    return {
-        "success": True,
-        "rooms": rooms,
-        "count": len(rooms)
-    }
+    return {"success": True, "rooms": rooms, "count": len(rooms)}
 
 
 def execute_light_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
@@ -424,7 +386,7 @@ def execute_light_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
             color=tool_input.get("color"),
             color_temp_kelvin=tool_input.get("color_temp_kelvin"),
             vibe=tool_input.get("vibe"),
-            transition=tool_input.get("transition", 0.5)
+            transition=tool_input.get("transition", 0.5),
         )
 
     elif tool_name == "get_light_status":
@@ -436,7 +398,7 @@ def execute_light_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
             scene_name=tool_input.get("scene_name", ""),
             dynamic=tool_input.get("dynamic", True),
             speed=tool_input.get("speed", 50),
-            brightness=tool_input.get("brightness")
+            brightness=tool_input.get("brightness"),
         )
 
     elif tool_name == "list_available_rooms":

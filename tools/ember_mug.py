@@ -26,6 +26,7 @@ from typing import Any
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
 
+
 logger = setup_logging("tools.ember_mug")
 
 # Temperature limits for safety
@@ -62,15 +63,15 @@ Examples:
             "properties": {
                 "target_temp": {
                     "type": "number",
-                    "description": f"Target temperature in Fahrenheit ({MIN_TEMP_F}-{MAX_TEMP_F}°F). Default is {DEFAULT_TEMP_F}°F."
+                    "description": f"Target temperature in Fahrenheit ({MIN_TEMP_F}-{MAX_TEMP_F}°F). Default is {DEFAULT_TEMP_F}°F.",
                 },
                 "entity_id": {
                     "type": "string",
-                    "description": "Specific Ember Mug entity ID (optional). If not provided, uses the first detected mug."
-                }
+                    "description": "Specific Ember Mug entity ID (optional). If not provided, uses the first detected mug.",
+                },
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "get_mug_status",
@@ -94,11 +95,11 @@ Examples:
             "properties": {
                 "entity_id": {
                     "type": "string",
-                    "description": "Specific Ember Mug entity ID (optional). If not provided, uses the first detected mug."
+                    "description": "Specific Ember Mug entity ID (optional). If not provided, uses the first detected mug.",
                 }
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     {
         "name": "list_ember_mugs",
@@ -112,12 +113,8 @@ Returns information about each mug including:
 - Connection status
 
 Useful when you have multiple Ember devices.""",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
 ]
 
 
@@ -170,7 +167,7 @@ def _get_mug_base_id(entity_id: str) -> str:
     ]
     for suffix in suffixes:
         if name.endswith(suffix):
-            name = name[:-len(suffix)]
+            name = name[: -len(suffix)]
             break
 
     return name
@@ -207,8 +204,7 @@ def _find_related_entities(base_id: str, all_states: list[dict]) -> dict[str, An
 
 
 def set_mug_temperature(
-    target_temp: float | None = None,
-    entity_id: str | None = None
+    target_temp: float | None = None, entity_id: str | None = None
 ) -> dict[str, Any]:
     """
     Set the target temperature for an Ember Mug.
@@ -228,12 +224,12 @@ def set_mug_temperature(
     if target_temp < MIN_TEMP_F:
         return {
             "success": False,
-            "error": f"Temperature {target_temp}°F is too low. Minimum is {MIN_TEMP_F}°F."
+            "error": f"Temperature {target_temp}°F is too low. Minimum is {MIN_TEMP_F}°F.",
         }
     if target_temp > MAX_TEMP_F:
         return {
             "success": False,
-            "error": f"Temperature {target_temp}°F is too high. Maximum is {MAX_TEMP_F}°F."
+            "error": f"Temperature {target_temp}°F is too high. Maximum is {MAX_TEMP_F}°F.",
         }
 
     ha_client = get_ha_client()
@@ -243,15 +239,13 @@ def set_mug_temperature(
         # Verify entity exists
         state = ha_client.get_state(entity_id)
         if not state:
-            return {
-                "success": False,
-                "error": f"Entity {entity_id} not found"
-            }
+            return {"success": False, "error": f"Entity {entity_id} not found"}
     else:
         # Find any Ember Mug target_temperature entity
         all_states = ha_client.get_all_states()
         target_entities = [
-            s for s in all_states
+            s
+            for s in all_states
             if "target_temperature" in s.get("entity_id", "").lower()
             and any(p in s.get("entity_id", "").lower() for p in EMBER_MUG_PATTERNS)
         ]
@@ -264,8 +258,8 @@ def set_mug_temperature(
                     "1. Install hass-ember-mug-component from HACS",
                     "2. Put your Ember Mug in pairing mode",
                     "3. Home Assistant should auto-detect it",
-                    "4. Try this command again once setup is complete"
-                ]
+                    "4. Try this command again once setup is complete",
+                ],
             }
 
         entity_id = target_entities[0]["entity_id"]
@@ -278,7 +272,7 @@ def set_mug_temperature(
             domain="number",
             service="set_value",
             service_data={"value": target_temp},
-            target={"entity_id": entity_id}
+            target={"entity_id": entity_id},
         )
 
         if success:
@@ -286,19 +280,16 @@ def set_mug_temperature(
                 "success": True,
                 "message": f"Set Ember Mug target temperature to {target_temp}°F",
                 "entity_id": entity_id,
-                "target_temp": target_temp
+                "target_temp": target_temp,
             }
         else:
             return {
                 "success": False,
-                "error": "Failed to set temperature. Check Home Assistant logs."
+                "error": "Failed to set temperature. Check Home Assistant logs.",
             }
     except Exception as error:
         logger.error(f"Error setting mug temperature: {error}")
-        return {
-            "success": False,
-            "error": str(error)
-        }
+        return {"success": False, "error": str(error)}
 
 
 def get_mug_status(entity_id: str | None = None) -> dict[str, Any]:
@@ -316,7 +307,8 @@ def get_mug_status(entity_id: str | None = None) -> dict[str, Any]:
 
     # Find Ember Mug entities
     mug_entities = [
-        s for s in all_states
+        s
+        for s in all_states
         if any(p in s.get("entity_id", "").lower() for p in EMBER_MUG_PATTERNS)
     ]
 
@@ -327,8 +319,8 @@ def get_mug_status(entity_id: str | None = None) -> dict[str, Any]:
             "setup_instructions": [
                 "1. Install hass-ember-mug-component from HACS",
                 "2. Put your Ember Mug in pairing mode",
-                "3. Home Assistant should auto-detect it"
-            ]
+                "3. Home Assistant should auto-detect it",
+            ],
         }
 
     # If entity_id specified, find its base ID
@@ -351,21 +343,21 @@ def get_mug_status(entity_id: str | None = None) -> dict[str, Any]:
         temp_state = related["current_temp"]
         status["current_temperature"] = {
             "value": temp_state.get("state"),
-            "unit": temp_state.get("attributes", {}).get("unit_of_measurement", "°F")
+            "unit": temp_state.get("attributes", {}).get("unit_of_measurement", "°F"),
         }
 
     if "target_temp" in related:
         temp_state = related["target_temp"]
         status["target_temperature"] = {
             "value": temp_state.get("state"),
-            "unit": temp_state.get("attributes", {}).get("unit_of_measurement", "°F")
+            "unit": temp_state.get("attributes", {}).get("unit_of_measurement", "°F"),
         }
 
     if "battery" in related:
         bat_state = related["battery"]
         status["battery"] = {
             "level": bat_state.get("state"),
-            "unit": bat_state.get("attributes", {}).get("unit_of_measurement", "%")
+            "unit": bat_state.get("attributes", {}).get("unit_of_measurement", "%"),
         }
 
     if "liquid" in related:
@@ -410,8 +402,8 @@ def list_ember_mugs() -> dict[str, Any]:
             "setup_instructions": [
                 "1. Install hass-ember-mug-component from HACS",
                 "2. Put your Ember Mug in pairing mode",
-                "3. Home Assistant should auto-detect it"
-            ]
+                "3. Home Assistant should auto-detect it",
+            ],
         }
 
     # Get status for each mug
@@ -434,11 +426,7 @@ def list_ember_mugs() -> dict[str, Any]:
 
         mugs.append(mug_info)
 
-    return {
-        "success": True,
-        "count": len(mugs),
-        "mugs": mugs
-    }
+    return {"success": True, "count": len(mugs), "mugs": mugs}
 
 
 def execute_ember_mug_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
@@ -462,19 +450,13 @@ def execute_ember_mug_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
         return {
             "success": False,
             "error": f"Unknown tool: {tool_name}",
-            "available_tools": list(tool_map.keys())
+            "available_tools": list(tool_map.keys()),
         }
 
     try:
         return tool_map[tool_name](**tool_input)
     except TypeError as error:
-        return {
-            "success": False,
-            "error": f"Invalid parameters: {error}"
-        }
+        return {"success": False, "error": f"Invalid parameters: {error}"}
     except Exception as error:
         logger.error(f"Error executing {tool_name}: {error}")
-        return {
-            "success": False,
-            "error": str(error)
-        }
+        return {"success": False, "error": str(error)}

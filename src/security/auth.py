@@ -5,20 +5,25 @@ Session-based authentication for the web UI.
 Phase 2.1: Application Security Baseline
 """
 
-import os
-import sqlite3
 import secrets
+import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from flask import Flask, Blueprint, request, redirect, url_for, render_template, flash, session
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask import Blueprint, Flask, redirect, render_template, request, url_for
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
 
 from src.config import DATA_DIR
 from src.utils import send_health_alert
+
 
 # Auth database path
 AUTH_DB_PATH = DATA_DIR / "auth.db"
@@ -95,17 +100,20 @@ def create_user(username: str, password: str) -> bool:
     try:
         with sqlite3.connect(AUTH_DB_PATH) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO users (username, password_hash, created_at)
                 VALUES (?, ?, ?)
-            """, (username, password_hash, datetime.now().isoformat()))
+            """,
+                (username, password_hash, datetime.now().isoformat()),
+            )
             conn.commit()
             return True
     except sqlite3.IntegrityError:
         return False
 
 
-def verify_user(username: str, password: str) -> Optional[User]:
+def verify_user(username: str, password: str) -> User | None:
     """
     Verify user credentials.
 
@@ -120,9 +128,12 @@ def verify_user(username: str, password: str) -> Optional[User]:
 
     with sqlite3.connect(AUTH_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, password_hash FROM users WHERE username = ?
-        """, (username,))
+        """,
+            (username,),
+        )
         row = cursor.fetchone()
 
         if not row:
@@ -134,17 +145,23 @@ def verify_user(username: str, password: str) -> Optional[User]:
             password_hasher.verify(password_hash, password)
 
             # Update last login
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE users SET last_login = ? WHERE id = ?
-            """, (datetime.now().isoformat(), user_id))
+            """,
+                (datetime.now().isoformat(), user_id),
+            )
             conn.commit()
 
             # Rehash if needed (parameters changed)
             if password_hasher.check_needs_rehash(password_hash):
                 new_hash = password_hasher.hash(password)
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE users SET password_hash = ? WHERE id = ?
-                """, (new_hash, user_id))
+                """,
+                    (new_hash, user_id),
+                )
                 conn.commit()
 
             return User(user_id, username)
@@ -162,10 +179,13 @@ def log_login_attempt(username: str, ip_address: str, success: bool) -> None:
 
     with sqlite3.connect(AUTH_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO login_attempts (username, ip_address, success, timestamp)
             VALUES (?, ?, ?, ?)
-        """, (username, ip_address, 1 if success else 0, datetime.now().isoformat()))
+        """,
+            (username, ip_address, 1 if success else 0, datetime.now().isoformat()),
+        )
         conn.commit()
 
     # Check for repeated failures and alert
@@ -210,10 +230,13 @@ def get_recent_failed_attempts(ip_address: str, minutes: int = 15) -> int:
 
     with sqlite3.connect(AUTH_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) FROM login_attempts
             WHERE ip_address = ? AND success = 0 AND timestamp > ?
-        """, (ip_address, cutoff))
+        """,
+            (ip_address, cutoff),
+        )
         return cursor.fetchone()[0]
 
 
@@ -227,7 +250,7 @@ def user_exists() -> bool:
         return cursor.fetchone()[0] > 0
 
 
-def get_user_by_id(user_id: int) -> Optional[User]:
+def get_user_by_id(user_id: int) -> User | None:
     """Load user by ID for Flask-Login."""
     if not AUTH_DB_PATH.exists():
         return None
@@ -254,10 +277,10 @@ def setup_login_manager(app: Flask) -> LoginManager:
     """
     login_manager = LoginManager()
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access this page.'
-    login_manager.login_message_category = 'info'
-    login_manager.session_protection = 'strong'
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "info"
+    login_manager.session_protection = "strong"
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -272,30 +295,30 @@ def generate_initial_password() -> str:
 
 
 # Blueprint for auth routes
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
-@auth_bp.route('/login', methods=['GET', 'POST'])
+@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     """Handle user login."""
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
 
     # Check if any user exists
     if not user_exists():
-        return redirect(url_for('auth.setup'))
+        return redirect(url_for("auth.setup"))
 
     error = None
 
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
         ip_address = request.remote_addr
 
         # Check for too many failed attempts
         failed_attempts = get_recent_failed_attempts(ip_address)
         if failed_attempts >= 5:
-            error = 'Too many failed attempts. Please try again later.'
+            error = "Too many failed attempts. Please try again later."
             log_login_attempt(username, ip_address, False)
         else:
             user = verify_user(username, password)
@@ -304,61 +327,59 @@ def login():
                 login_user(user, remember=False)
                 log_login_attempt(username, ip_address, True)
 
-                next_page = request.args.get('next')
-                if next_page and next_page.startswith('/'):
+                next_page = request.args.get("next")
+                if next_page and next_page.startswith("/"):
                     return redirect(next_page)
-                return redirect(url_for('index'))
+                return redirect(url_for("index"))
             else:
-                error = 'Invalid username or password.'
+                error = "Invalid username or password."
                 log_login_attempt(username, ip_address, False)
 
-    return render_template('auth/login.html', error=error)
+    return render_template("auth/login.html", error=error)
 
 
-@auth_bp.route('/logout')
+@auth_bp.route("/logout")
 @login_required
 def logout():
     """Handle user logout."""
     logout_user()
-    return redirect(url_for('auth.login'))
+    return redirect(url_for("auth.login"))
 
 
-@auth_bp.route('/setup', methods=['GET', 'POST'])
+@auth_bp.route("/setup", methods=["GET", "POST"])
 def setup():
     """Initial setup - create first user account."""
     if user_exists():
-        return redirect(url_for('auth.login'))
+        return redirect(url_for("auth.login"))
 
     generated_password = None
     error = None
 
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
         if not username:
-            error = 'Username is required.'
+            error = "Username is required."
         elif len(username) < 3:
-            error = 'Username must be at least 3 characters.'
+            error = "Username must be at least 3 characters."
         elif not password:
-            error = 'Password is required.'
+            error = "Password is required."
         elif len(password) < 8:
-            error = 'Password must be at least 8 characters.'
+            error = "Password must be at least 8 characters."
         elif password != confirm_password:
-            error = 'Passwords do not match.'
+            error = "Passwords do not match."
         else:
             if create_user(username, password):
                 user = verify_user(username, password)
                 if user:
                     login_user(user)
-                    return redirect(url_for('index'))
+                    return redirect(url_for("index"))
             else:
-                error = 'Failed to create user.'
+                error = "Failed to create user."
     else:
         # Generate a suggested password
         generated_password = generate_initial_password()
 
-    return render_template('auth/setup.html',
-                          error=error,
-                          generated_password=generated_password)
+    return render_template("auth/setup.html", error=error, generated_password=generated_password)

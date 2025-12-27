@@ -16,9 +16,10 @@ References:
 
 from typing import Any
 
-from src.config import get_blinds_entities, ROOM_ENTITY_MAP
+from src.config import ROOM_ENTITY_MAP, get_blinds_entities
 from src.ha_client import get_ha_client
-from src.utils import setup_logging, send_health_alert
+from src.utils import send_health_alert, setup_logging
+
 
 logger = setup_logging("tools.blinds")
 
@@ -75,6 +76,7 @@ def _clear_blinds_error(room: str) -> None:
     if _consecutive_blinds_errors > 0:
         _consecutive_blinds_errors -= 1
 
+
 # Tool definitions for Claude
 BLINDS_TOOLS = [
     {
@@ -96,22 +98,22 @@ Examples:
             "properties": {
                 "room": {
                     "type": "string",
-                    "description": "Room name where blinds should be controlled"
+                    "description": "Room name where blinds should be controlled",
                 },
                 "action": {
                     "type": "string",
                     "enum": ["open", "close", "stop", "set_position"],
-                    "description": "The blinds control action"
+                    "description": "The blinds control action",
                 },
                 "position": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100,
-                    "description": "Position percentage (0=fully closed, 100=fully open). Required for set_position action."
-                }
+                    "description": "Position percentage (0=fully closed, 100=fully open). Required for set_position action.",
+                },
             },
-            "required": ["room", "action"]
-        }
+            "required": ["room", "action"],
+        },
     },
     {
         "name": "get_blinds_status",
@@ -124,13 +126,10 @@ Use this to check blinds position before adjusting.""",
         "input_schema": {
             "type": "object",
             "properties": {
-                "room": {
-                    "type": "string",
-                    "description": "Room name to check blinds status"
-                }
+                "room": {"type": "string", "description": "Room name to check blinds status"}
             },
-            "required": ["room"]
-        }
+            "required": ["room"],
+        },
     },
     {
         "name": "set_blinds_for_scene",
@@ -153,36 +152,32 @@ Examples:
             "properties": {
                 "room": {
                     "type": "string",
-                    "description": "Room name (optional - applies to all rooms if omitted)"
+                    "description": "Room name (optional - applies to all rooms if omitted)",
                 },
                 "scene": {
                     "type": "string",
                     "enum": ["morning", "day", "evening", "night", "movie", "work"],
-                    "description": "Scene preset for blinds position"
-                }
+                    "description": "Scene preset for blinds position",
+                },
             },
-            "required": ["scene"]
-        }
+            "required": ["scene"],
+        },
     },
     {
         "name": "list_rooms_with_blinds",
         "description": "List all rooms that have smart blinds configured.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
 ]
 
 # Scene presets for blinds positions
 BLINDS_SCENE_PRESETS = {
-    "morning": 100,   # Fully open
-    "day": 75,        # Mostly open
-    "evening": 25,    # Mostly closed
-    "night": 0,       # Fully closed
-    "movie": 0,       # Fully closed
-    "work": 50,       # Half open (reduce glare)
+    "morning": 100,  # Fully open
+    "day": 75,  # Mostly open
+    "evening": 25,  # Mostly closed
+    "night": 0,  # Fully closed
+    "movie": 0,  # Fully closed
+    "work": 50,  # Half open (reduce glare)
 }
 
 
@@ -204,7 +199,9 @@ def control_blinds(room: str, action: str, position: int | None = None) -> dict[
         return {
             "success": False,
             "error": f"No blinds found in room: {room}",
-            "available_rooms": available_rooms if available_rooms else "No rooms with blinds configured"
+            "available_rooms": available_rooms
+            if available_rooms
+            else "No rooms with blinds configured",
         }
 
     ha_client = get_ha_client()
@@ -221,7 +218,7 @@ def control_blinds(room: str, action: str, position: int | None = None) -> dict[
         return {
             "success": False,
             "error": f"Unknown action: {action}",
-            "available_actions": list(service_map.keys())
+            "available_actions": list(service_map.keys()),
         }
 
     domain, service = service_map[action]
@@ -230,15 +227,14 @@ def control_blinds(room: str, action: str, position: int | None = None) -> dict[
     # Add position for set_position action
     if action == "set_position":
         if position is None:
-            return {
-                "success": False,
-                "error": "Position required for set_position action"
-            }
+            return {"success": False, "error": "Position required for set_position action"}
         service_data["position"] = max(0, min(100, position))
 
     try:
-        logger.info(f"Blinds control: {action} on {entity_id}" +
-                   (f" to {position}%" if position is not None else ""))
+        logger.info(
+            f"Blinds control: {action} on {entity_id}"
+            + (f" to {position}%" if position is not None else "")
+        )
         success = ha_client.call_service(domain, service, service_data)
 
         if success:
@@ -272,20 +268,14 @@ def get_blinds_status(room: str) -> dict[str, Any]:
     """
     entity_id = get_blinds_entities(room)
     if not entity_id:
-        return {
-            "success": False,
-            "error": f"No blinds found in room: {room}"
-        }
+        return {"success": False, "error": f"No blinds found in room: {room}"}
 
     ha_client = get_ha_client()
 
     try:
         state = ha_client.get_state(entity_id)
         if not state:
-            return {
-                "success": False,
-                "error": f"Could not get state for {entity_id}"
-            }
+            return {"success": False, "error": f"Could not get state for {entity_id}"}
 
         attributes = state.get("attributes", {})
         current_position = attributes.get("current_position")
@@ -338,7 +328,7 @@ def set_blinds_for_scene(scene: str, room: str | None = None) -> dict[str, Any]:
         return {
             "success": False,
             "error": f"Unknown scene: {scene}",
-            "available_scenes": list(BLINDS_SCENE_PRESETS.keys())
+            "available_scenes": list(BLINDS_SCENE_PRESETS.keys()),
         }
 
     position = BLINDS_SCENE_PRESETS[scene]
@@ -353,10 +343,7 @@ def set_blinds_for_scene(scene: str, room: str | None = None) -> dict[str, Any]:
     rooms_with_blinds = [r for r in ROOM_ENTITY_MAP if ROOM_ENTITY_MAP[r].get("blinds")]
 
     if not rooms_with_blinds:
-        return {
-            "success": False,
-            "error": "No rooms with blinds configured"
-        }
+        return {"success": False, "error": "No rooms with blinds configured"}
 
     results = []
     all_success = True
@@ -372,7 +359,7 @@ def set_blinds_for_scene(scene: str, room: str | None = None) -> dict[str, Any]:
         "scene": scene,
         "position": position,
         "rooms": results,
-        "message": f"Set {len(rooms_with_blinds)} room(s) to {scene} mode ({position}% open)"
+        "message": f"Set {len(rooms_with_blinds)} room(s) to {scene} mode ({position}% open)",
     }
 
 
@@ -381,16 +368,20 @@ def list_rooms_with_blinds() -> dict[str, Any]:
     rooms = []
     for room_key, room_config in ROOM_ENTITY_MAP.items():
         if room_config.get("blinds"):
-            rooms.append({
-                "name": room_key.replace("_", " "),
-                "entity_id": room_config.get("blinds"),
-            })
+            rooms.append(
+                {
+                    "name": room_key.replace("_", " "),
+                    "entity_id": room_config.get("blinds"),
+                }
+            )
 
     return {
         "success": True,
         "rooms": rooms,
         "count": len(rooms),
-        "message": f"{len(rooms)} room(s) have smart blinds" if rooms else "No rooms with blinds configured"
+        "message": f"{len(rooms)} room(s) have smart blinds"
+        if rooms
+        else "No rooms with blinds configured",
     }
 
 
@@ -411,17 +402,14 @@ def execute_blinds_tool(tool_name: str, tool_input: dict) -> dict[str, Any]:
         return control_blinds(
             room=tool_input.get("room", ""),
             action=tool_input.get("action", ""),
-            position=tool_input.get("position")
+            position=tool_input.get("position"),
         )
 
     elif tool_name == "get_blinds_status":
         return get_blinds_status(room=tool_input.get("room", ""))
 
     elif tool_name == "set_blinds_for_scene":
-        return set_blinds_for_scene(
-            scene=tool_input.get("scene", ""),
-            room=tool_input.get("room")
-        )
+        return set_blinds_for_scene(scene=tool_input.get("scene", ""), room=tool_input.get("room"))
 
     elif tool_name == "list_rooms_with_blinds":
         return list_rooms_with_blinds()

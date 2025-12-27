@@ -9,13 +9,15 @@ that don't map directly to presets.
 import json
 from typing import Any
 
-import anthropic
+import openai
 
 from src.config import (
-    ANTHROPIC_API_KEY,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
     VIBE_PRESETS,
 )
-from src.utils import setup_logging, load_prompts, track_api_usage
+from src.utils import load_prompts, setup_logging, track_api_usage
+
 
 logger = setup_logging("hue_specialist")
 
@@ -26,32 +28,34 @@ HUE_SCENE_MAPPINGS = {
     "fireplace": {"scene": "savanna_sunset", "dynamic": True, "speed": 25, "brightness": 50},
     "campfire": {"scene": "savanna_sunset", "dynamic": True, "speed": 35, "brightness": 55},
     "sunset": {"scene": "savanna_sunset", "dynamic": True, "speed": 20, "brightness": 70},
-
     # Ocean/water themes
     "ocean": {"scene": "tropical_twilight", "dynamic": True, "speed": 40, "brightness": 50},
     "under the sea": {"scene": "tropical_twilight", "dynamic": True, "speed": 45, "brightness": 45},
     "underwater": {"scene": "tropical_twilight", "dynamic": True, "speed": 50, "brightness": 40},
     "aquarium": {"scene": "tropical_twilight", "dynamic": True, "speed": 30, "brightness": 55},
     "beach": {"scene": "tropical_twilight", "dynamic": True, "speed": 25, "brightness": 65},
-
     # Aurora/sky themes
     "aurora": {"scene": "arctic_aurora", "dynamic": True, "speed": 50, "brightness": 60},
     "northern lights": {"scene": "arctic_aurora", "dynamic": True, "speed": 55, "brightness": 55},
     "aurora borealis": {"scene": "arctic_aurora", "dynamic": True, "speed": 50, "brightness": 60},
     "galaxy": {"scene": "arctic_aurora", "dynamic": True, "speed": 40, "brightness": 45},
     "space": {"scene": "arctic_aurora", "dynamic": True, "speed": 35, "brightness": 40},
-
     # Nature themes
     "forest": {"scene": "spring_blossom", "dynamic": True, "speed": 25, "brightness": 55},
     "nature": {"scene": "spring_blossom", "dynamic": True, "speed": 20, "brightness": 60},
     "spring": {"scene": "spring_blossom", "dynamic": True, "speed": 30, "brightness": 65},
     "garden": {"scene": "spring_blossom", "dynamic": True, "speed": 25, "brightness": 60},
-
     # Party/energy themes
     "party": {"scene": "tokyo", "dynamic": True, "speed": 80, "brightness": 100},
     "disco": {"scene": "tokyo", "dynamic": True, "speed": 90, "brightness": 100},
     "rave": {"scene": "tokyo", "dynamic": True, "speed": 100, "brightness": 100},
     "club": {"scene": "tokyo", "dynamic": True, "speed": 85, "brightness": 90},
+    # Holiday/Christmas themes - festive reds and golds
+    "christmas": {"scene": "chinatown", "dynamic": True, "speed": 20, "brightness": 70},
+    "holiday": {"scene": "chinatown", "dynamic": True, "speed": 15, "brightness": 65},
+    "festive": {"scene": "chinatown", "dynamic": True, "speed": 25, "brightness": 75},
+    "merry christmas": {"scene": "chinatown", "dynamic": True, "speed": 20, "brightness": 70},
+    "xmas": {"scene": "chinatown", "dynamic": True, "speed": 20, "brightness": 70},
 }
 
 # Scene descriptions for the LLM to understand available options
@@ -68,9 +72,7 @@ AVAILABLE_SCENES = {
 
 
 def interpret_vibe_request(
-    description: str,
-    room: str | None = None,
-    time_of_day: str | None = None
+    description: str, room: str | None = None, time_of_day: str | None = None
 ) -> dict[str, Any]:
     """
     Interpret an abstract vibe description and return light settings.
@@ -96,7 +98,7 @@ def interpret_vibe_request(
             "type": "basic",
             "brightness": preset["brightness"],
             "color_temp_kelvin": preset["color_temp_kelvin"],
-            "source": "preset"
+            "source": "preset",
         }
 
     # Check for Hue scene mappings
@@ -109,7 +111,7 @@ def interpret_vibe_request(
                 "dynamic": scene_config["dynamic"],
                 "speed": scene_config["speed"],
                 "brightness": scene_config["brightness"],
-                "source": "scene_mapping"
+                "source": "scene_mapping",
             }
 
     # Fall back to LLM interpretation for complex requests
@@ -118,12 +120,10 @@ def interpret_vibe_request(
 
 
 def _llm_interpret_vibe(
-    description: str,
-    room: str | None = None,
-    time_of_day: str | None = None
+    description: str, room: str | None = None, time_of_day: str | None = None
 ) -> dict[str, Any]:
     """
-    Use Claude to interpret complex vibe requests.
+    Use OpenAI to interpret complex vibe requests.
 
     Args:
         description: The vibe description
@@ -133,7 +133,7 @@ def _llm_interpret_vibe(
     Returns:
         Interpreted settings dictionary
     """
-    if not ANTHROPIC_API_KEY:
+    if not OPENAI_API_KEY:
         logger.warning("No API key, using fallback interpretation")
         return _fallback_interpretation(description)
 
@@ -141,7 +141,7 @@ def _llm_interpret_vibe(
     system_prompt = prompts.get("hue_specialist", {}).get("system", "")
 
     # Build context
-    context_parts = [f"Vibe request: \"{description}\""]
+    context_parts = [f'Vibe request: "{description}"']
     if room:
         context_parts.append(f"Room: {room}")
     if time_of_day:
@@ -161,24 +161,26 @@ def _llm_interpret_vibe(
     user_message = "\n".join(context_parts)
 
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
             max_tokens=256,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}]
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
         )
 
         # Track usage
         track_api_usage(
-            model="claude-sonnet-4-20250514",
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            command=f"hue_specialist:{description[:50]}"
+            model=OPENAI_MODEL,
+            input_tokens=response.usage.prompt_tokens,
+            output_tokens=response.usage.completion_tokens,
+            command=f"hue_specialist:{description[:50]}",
         )
 
         # Parse response
-        response_text = response.content[0].text
+        response_text = response.choices[0].message.content
 
         # Try to extract JSON from response
         try:
@@ -187,6 +189,11 @@ def _llm_interpret_vibe(
                 json_str = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 json_str = response_text.split("```")[1].split("```")[0]
+            elif "{" in response_text and "}" in response_text:
+                # Find embedded JSON object in text
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                json_str = response_text[start:end]
             else:
                 json_str = response_text
 
@@ -200,7 +207,7 @@ def _llm_interpret_vibe(
             logger.debug(f"Response was: {response_text}")
             return _fallback_interpretation(description)
 
-    except anthropic.APIError as error:
+    except openai.APIError as error:
         logger.error(f"API error in hue_specialist: {error}")
         return _fallback_interpretation(description)
 
@@ -214,47 +221,33 @@ def _fallback_interpretation(description: str) -> dict[str, Any]:
 
     # Warm/cozy keywords
     if any(word in description_lower for word in ["warm", "cozy", "comfort", "relax"]):
-        return {
-            "type": "basic",
-            "brightness": 45,
-            "color_temp_kelvin": 2700,
-            "source": "fallback"
-        }
+        return {"type": "basic", "brightness": 45, "color_temp_kelvin": 2700, "source": "fallback"}
 
     # Cool/focus keywords
     if any(word in description_lower for word in ["cool", "focus", "work", "bright", "energy"]):
-        return {
-            "type": "basic",
-            "brightness": 80,
-            "color_temp_kelvin": 4500,
-            "source": "fallback"
-        }
+        return {"type": "basic", "brightness": 80, "color_temp_kelvin": 4500, "source": "fallback"}
 
     # Dark/dim keywords
     if any(word in description_lower for word in ["dim", "dark", "night", "sleep", "movie"]):
-        return {
-            "type": "basic",
-            "brightness": 20,
-            "color_temp_kelvin": 2200,
-            "source": "fallback"
-        }
+        return {"type": "basic", "brightness": 20, "color_temp_kelvin": 2200, "source": "fallback"}
 
     # Romantic keywords
     if any(word in description_lower for word in ["romantic", "intimate", "date", "candle"]):
+        return {"type": "basic", "brightness": 25, "color_temp_kelvin": 2200, "source": "fallback"}
+
+    # Holiday/Christmas keywords - warm festive glow
+    if any(word in description_lower for word in ["christmas", "holiday", "festive", "xmas"]):
         return {
-            "type": "basic",
-            "brightness": 25,
-            "color_temp_kelvin": 2200,
-            "source": "fallback"
+            "type": "scene",
+            "scene_name": "chinatown",
+            "dynamic": True,
+            "speed": 20,
+            "brightness": 70,
+            "source": "fallback",
         }
 
     # Default: neutral medium
-    return {
-        "type": "basic",
-        "brightness": 50,
-        "color_temp_kelvin": 3500,
-        "source": "fallback"
-    }
+    return {"type": "basic", "brightness": 50, "color_temp_kelvin": 3500, "source": "fallback"}
 
 
 def get_scene_suggestions(vibe_keywords: list[str]) -> list[dict[str, Any]]:
@@ -275,12 +268,14 @@ def get_scene_suggestions(vibe_keywords: list[str]) -> list[dict[str, Any]]:
         # Check scene mappings
         if keyword_lower in HUE_SCENE_MAPPINGS:
             mapping = HUE_SCENE_MAPPINGS[keyword_lower]
-            suggestions.append({
-                "scene_name": mapping["scene"],
-                "match_keyword": keyword,
-                "settings": mapping,
-                "description": AVAILABLE_SCENES.get(mapping["scene"], "")
-            })
+            suggestions.append(
+                {
+                    "scene_name": mapping["scene"],
+                    "match_keyword": keyword,
+                    "settings": mapping,
+                    "description": AVAILABLE_SCENES.get(mapping["scene"], ""),
+                }
+            )
 
     return suggestions
 
@@ -290,5 +285,5 @@ def list_available_effects() -> dict[str, Any]:
     return {
         "vibe_presets": list(VIBE_PRESETS.keys()),
         "scene_keywords": list(HUE_SCENE_MAPPINGS.keys()),
-        "hue_scenes": AVAILABLE_SCENES
+        "hue_scenes": AVAILABLE_SCENES,
     }
