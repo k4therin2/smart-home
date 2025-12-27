@@ -2,6 +2,7 @@
 Smart Home Assistant - Home Assistant Client Module
 
 Handles all communication with the Home Assistant API.
+Includes caching for state queries to reduce API calls and latency.
 """
 
 import requests
@@ -9,6 +10,7 @@ from typing import Any
 
 from src.config import HA_URL, HA_TOKEN
 from src.utils import setup_logging
+from src.cache import get_cache
 
 logger = setup_logging("ha_client")
 
@@ -30,6 +32,7 @@ class HomeAssistantClient:
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
+        self.cache = get_cache()
 
     def _request(
         self,
@@ -91,26 +94,60 @@ class HomeAssistantClient:
         """
         Get the current state of an entity.
 
+        Results are cached to reduce API calls.
+
         Args:
             entity_id: Entity ID (e.g., light.living_room)
 
         Returns:
             State dictionary or None
         """
+        # Check cache first
+        cache_key = self.cache.make_key("get_state", entity_id=entity_id)
+        cached_result = self.cache.get(cache_key)
+
+        if cached_result is not None:
+            logger.debug(f"Cache hit for state of {entity_id}")
+            return cached_result
+
+        # Cache miss - fetch from API
+        logger.debug(f"Cache miss for state of {entity_id}, fetching from API")
         result = self._request("GET", f"/api/states/{entity_id}")
+
         if result:
             logger.debug(f"State of {entity_id}: {result.get('state')}")
+            # Cache the result
+            self.cache.set(cache_key, result)
+
         return result
 
     def get_all_states(self) -> list[dict]:
         """
         Get states of all entities.
 
+        Results are cached to reduce API calls.
+
         Returns:
             List of state dictionaries
         """
+        # Check cache first
+        cache_key = "get_all_states"
+        cached_result = self.cache.get(cache_key)
+
+        if cached_result is not None:
+            logger.debug("Cache hit for all states")
+            return cached_result
+
+        # Cache miss - fetch from API
+        logger.debug("Cache miss for all states, fetching from API")
         result = self._request("GET", "/api/states")
-        return result if isinstance(result, list) else []
+
+        if result and isinstance(result, list):
+            # Cache the result
+            self.cache.set(cache_key, result)
+            return result
+
+        return []
 
     def call_service(
         self,
@@ -121,6 +158,8 @@ class HomeAssistantClient:
     ) -> bool:
         """
         Call a Home Assistant service.
+
+        Invalidates cache for affected entities to ensure fresh data.
 
         Args:
             domain: Service domain (e.g., 'light')
@@ -139,6 +178,18 @@ class HomeAssistantClient:
 
         logger.info(f"Calling service: {domain}.{service} with {data}")
         result = self._request("POST", endpoint, data)
+
+        if result is not None:
+            # Invalidate cache for affected entity
+            if "entity_id" in data:
+                entity_id = data["entity_id"]
+                cache_key = self.cache.make_key("get_state", entity_id=entity_id)
+                self.cache.invalidate_pattern(cache_key)
+                logger.debug(f"Invalidated cache for {entity_id}")
+
+            # Also invalidate get_all_states cache since state changed
+            self.cache.invalidate_pattern("get_all_states")
+
         return result is not None
 
     def turn_on_light(
@@ -284,6 +335,67 @@ class HomeAssistantClient:
             "rgb_color": state.get("attributes", {}).get("rgb_color"),
             "friendly_name": state.get("attributes", {}).get("friendly_name"),
         }
+
+    def get_cache_stats(self) -> dict:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary with cache hits, misses, evictions, size, and hit_rate
+        """
+        return self.cache.get_stats()
+
+    def clear_cache(self) -> None:
+        """Clear all cached data."""
+        self.cache.clear()
+        logger.info("Cache cleared")
+
+    def get_states(self) -> list[dict]:
+        """
+        Alias for get_all_states for compatibility.
+
+        Returns:
+            List of all entity state dictionaries
+        """
+        return self.get_all_states()
+
+    def get_camera_snapshot(self, entity_id: str, timeout: int = 10) -> bytes | None:
+        """
+        Get a snapshot image from a camera entity.
+
+        Args:
+            entity_id: Camera entity ID (e.g., camera.front_door_live_view)
+            timeout: Request timeout in seconds
+
+        Returns:
+            Image bytes or None on error
+        """
+        url = f"{self.url}/api/camera_proxy/{entity_id}"
+        try:
+            response = requests.get(
+                url,
+                headers={"Authorization": f"Bearer {self.token}"},
+                timeout=timeout
+            )
+            response.raise_for_status()
+
+            # Camera proxy returns raw image bytes
+            if response.content:
+                logger.debug(f"Got snapshot from {entity_id}: {len(response.content)} bytes")
+                return response.content
+
+            logger.warning(f"Empty snapshot from {entity_id}")
+            return None
+
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout getting snapshot from {entity_id}")
+            return None
+        except requests.exceptions.HTTPError as error:
+            logger.error(f"HTTP error getting snapshot from {entity_id}: {error}")
+            return None
+        except Exception as error:
+            logger.error(f"Error getting snapshot from {entity_id}: {error}")
+            return None
 
 
 # Singleton instance for convenience

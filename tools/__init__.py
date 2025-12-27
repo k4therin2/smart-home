@@ -13,6 +13,7 @@ This package contains all tools for the smart home agent:
 - improvements.py: Continuous improvement scanning and management
 - presence.py: User presence detection and vacuum automation
 - ember_mug.py: Ember Mug temperature control via HA custom integration
+- camera.py: Ring camera monitoring and snapshots
 """
 
 from tools.lights import LIGHT_TOOLS, execute_light_tool
@@ -27,6 +28,7 @@ from tools.location import LOCATION_TOOLS, execute_location_tool
 from tools.improvements import IMPROVEMENT_TOOLS, handle_improvement_tool
 from tools.presence import PRESENCE_TOOLS, execute_presence_tool
 from tools.ember_mug import EMBER_MUG_TOOLS, execute_ember_mug_tool
+from tools.camera import CAMERA_TOOLS, execute_camera_tool
 
 __all__ = [
     "LIGHT_TOOLS",
@@ -54,4 +56,6 @@ __all__ = [
     "execute_presence_tool",
     "EMBER_MUG_TOOLS",
     "execute_ember_mug_tool",
+    "CAMERA_TOOLS",
+    "execute_camera_tool",
 ]
