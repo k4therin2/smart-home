@@ -14,9 +14,64 @@ from typing import Any
 
 from src.config import get_vacuum_entity
 from src.ha_client import get_ha_client
-from src.utils import setup_logging
+from src.utils import setup_logging, send_health_alert
 
 logger = setup_logging("tools.vacuum")
+
+# Track if we've already alerted for current error state
+_last_alerted_error_state: str | None = None
+
+
+def _check_vacuum_error_alert(error_state: str, entity_id: str, vacuum_state: str) -> None:
+    """
+    Check vacuum error state and send alert if new error detected.
+
+    Only alerts once per unique error state to avoid spam.
+
+    Args:
+        error_state: Error description from vacuum attributes
+        entity_id: Vacuum entity ID
+        vacuum_state: Current vacuum state
+    """
+    global _last_alerted_error_state
+
+    # Don't re-alert for the same error
+    if error_state == _last_alerted_error_state:
+        return
+
+    _last_alerted_error_state = error_state
+
+    # Common vacuum error types for severity classification
+    critical_errors = ["stuck", "cliff", "wheel", "bin", "brush", "filter"]
+    is_critical = any(keyword in error_state.lower() for keyword in critical_errors)
+
+    send_health_alert(
+        title="Vacuum Error Detected",
+        message=f"Robot vacuum reports error: *{error_state}*",
+        severity="critical" if is_critical else "warning",
+        component="vacuum",
+        details={
+            "entity_id": entity_id,
+            "error": error_state,
+            "state": vacuum_state,
+            "action": "Check vacuum and clear obstruction if needed",
+        },
+    )
+
+
+def _clear_vacuum_error_state() -> None:
+    """Clear the tracked error state when vacuum is operating normally."""
+    global _last_alerted_error_state
+    if _last_alerted_error_state is not None:
+        # Send recovery alert
+        send_health_alert(
+            title="Vacuum Error Cleared",
+            message="Robot vacuum is operating normally again",
+            severity="info",
+            component="vacuum",
+        )
+        _last_alerted_error_state = None
+
 
 # Tool definitions for Claude
 VACUUM_TOOLS = [
@@ -217,9 +272,17 @@ def get_vacuum_status() -> dict[str, Any]:
         if "cleaning_time" in attributes:
             result["cleaning_time_minutes"] = attributes.get("cleaning_time")
 
-        # Add error info if present
-        if attributes.get("error"):
-            result["error_state"] = attributes.get("error")
+        # Get current state first for error checking
+        current_state = state.get("state", "unknown")
+
+        # Add error info if present and send alert
+        error_state = attributes.get("error")
+        if error_state:
+            result["error_state"] = error_state
+            _check_vacuum_error_alert(error_state, entity_id, current_state)
+        elif current_state not in ("error", "unknown"):
+            # Vacuum is operating normally - clear any previous error state
+            _clear_vacuum_error_state()
 
         # Interpret state for natural language
         state_descriptions = {
@@ -230,8 +293,11 @@ def get_vacuum_status() -> dict[str, Any]:
             "returning": "returning to dock",
             "error": "in error state"
         }
-        current_state = state.get("state", "unknown")
         result["state_description"] = state_descriptions.get(current_state, current_state)
+
+        # Check for error state (vacuum in error but no error message)
+        if current_state == "error" and not error_state:
+            _check_vacuum_error_alert("unknown error", entity_id, current_state)
 
         return result
 

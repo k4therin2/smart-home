@@ -18,20 +18,21 @@ from src.config import (
     DATA_DIR,
     PROMPTS_DIR,
     LOG_LEVEL,
-    CLAUDE_INPUT_COST_PER_MILLION,
-    CLAUDE_OUTPUT_COST_PER_MILLION,
+    OPENAI_INPUT_COST_PER_MILLION,
+    OPENAI_OUTPUT_COST_PER_MILLION,
     DAILY_COST_TARGET,
     DAILY_COST_ALERT,
     validate_config,
 )
 from src.security.slack_client import SlackNotifier
-from src.security.config import SLACK_COST_WEBHOOK_URL
+from src.security.config import SLACK_COST_WEBHOOK_URL, SLACK_HEALTH_WEBHOOK_URL
 
 # Database path for usage tracking
 USAGE_DB_PATH = DATA_DIR / "usage.db"
 
-# Lazy-initialized cost alerter (avoid circular imports at module load)
+# Lazy-initialized notifiers (avoid circular imports at module load)
 _cost_notifier = None
+_health_notifier = None
 
 
 def _get_cost_notifier() -> SlackNotifier:
@@ -40,6 +41,72 @@ def _get_cost_notifier() -> SlackNotifier:
     if _cost_notifier is None:
         _cost_notifier = SlackNotifier(webhook_url=SLACK_COST_WEBHOOK_URL)
     return _cost_notifier
+
+
+def _get_health_notifier() -> SlackNotifier:
+    """Get or create the health alert Slack notifier."""
+    global _health_notifier
+    if _health_notifier is None:
+        _health_notifier = SlackNotifier(webhook_url=SLACK_HEALTH_WEBHOOK_URL)
+    return _health_notifier
+
+
+def send_health_alert(
+    title: str,
+    message: str,
+    severity: str = "warning",
+    component: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """
+    Send a health alert to the #smarthome-health Slack channel.
+
+    Use this function to report device errors, service failures, and
+    operational issues that require user attention.
+
+    Args:
+        title: Short alert title (e.g., "Vacuum Error", "Spotify API Failed")
+        message: Detailed description of the issue
+        severity: One of "critical", "warning", "info"
+                  - critical: System down, service unavailable
+                  - warning: Degraded performance, errors occurring
+                  - info: Recovery, successful self-healing
+        component: Optional component name (e.g., "vacuum", "spotify", "auth")
+        details: Optional dict of additional context fields
+
+    Returns:
+        True if alert was sent successfully, False otherwise
+
+    Example:
+        send_health_alert(
+            title="Vacuum Connection Lost",
+            message="Unable to communicate with Dreame L10s vacuum",
+            severity="warning",
+            component="vacuum",
+            details={"entity_id": "vacuum.dreame_r2228o", "error": "Connection timeout"}
+        )
+    """
+    # Build fields list
+    fields = []
+    if component:
+        fields.append({"title": "Component", "value": component})
+    if details:
+        for key, value in details.items():
+            fields.append({"title": key.replace("_", " ").title(), "value": str(value)})
+
+    # Log the alert
+    log_level = logging.CRITICAL if severity == "critical" else (
+        logging.WARNING if severity == "warning" else logging.INFO
+    )
+    logger.log(log_level, f"Health Alert [{severity}] {title}: {message}")
+
+    # Send to Slack
+    return _get_health_notifier().send_alert(
+        title=title,
+        message=message,
+        severity=severity,
+        fields=fields if fields else None,
+    )
 
 
 def setup_logging(name: str = "smarthome") -> logging.Logger:
@@ -191,8 +258,8 @@ def track_api_usage(
         Cost in USD for this request
     """
     # Calculate cost
-    input_cost = (input_tokens / 1_000_000) * CLAUDE_INPUT_COST_PER_MILLION
-    output_cost = (output_tokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_MILLION
+    input_cost = (input_tokens / 1_000_000) * OPENAI_INPUT_COST_PER_MILLION
+    output_cost = (output_tokens / 1_000_000) * OPENAI_OUTPUT_COST_PER_MILLION
     total_cost = input_cost + output_cost
 
     # Initialize DB if needed

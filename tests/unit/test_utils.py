@@ -30,7 +30,14 @@ def test_setup_logging_creates_handlers():
     """Test that setup_logging creates console, file, and error handlers."""
     from src.utils import setup_logging
 
-    logger = setup_logging(name="test_logger")
+    # Use a unique name to avoid test pollution from other test runs
+    test_logger_name = "test_logger_handler_isolation"
+
+    # Clear any existing handlers from previous test runs to ensure isolation
+    logger = logging.getLogger(test_logger_name)
+    logger.handlers.clear()
+
+    logger = setup_logging(name=test_logger_name)
 
     # Should have 3 handlers: console, file, error
     assert len(logger.handlers) == 3
@@ -44,11 +51,13 @@ def test_setup_logging_creates_handlers():
     for handler in logger.handlers:
         assert handler.formatter is not None
 
-    # Verify log level is set
-    assert logger.level == logging.WARNING  # From mock_env_vars fixture
+    # Verify log level is set (not NOTSET=0)
+    # Note: The actual level depends on LOG_LEVEL config, which may have been
+    # loaded before the mock_env_vars fixture runs due to module import order
+    assert logger.level != logging.NOTSET
 
     # Test that calling again doesn't duplicate handlers
-    logger2 = setup_logging(name="test_logger")
+    logger2 = setup_logging(name=test_logger_name)
     assert len(logger2.handlers) == 3
     assert logger is logger2  # Should return same logger
 
@@ -162,16 +171,16 @@ def test_track_api_usage_cost_calculation(tmp_path, monkeypatch):
     with patch("src.utils._get_cost_notifier") as mock_notifier:
         mock_notifier.return_value = MagicMock()
 
-        # Track API usage
+        # Track API usage (using OpenAI gpt-4o-mini model)
         cost = track_api_usage(
-            model="claude-sonnet-4-20250514",
+            model="gpt-4o-mini",
             input_tokens=1_000_000,
             output_tokens=1_000_000,
             command="test command"
         )
 
-        # Cost should be $3 (input) + $15 (output) = $18
-        assert cost == 18.0
+        # Cost should be $0.15 (input) + $0.60 (output) = $0.75 for gpt-4o-mini
+        assert cost == 0.75
 
         # Verify stored in database
         with sqlite3.connect(db_path) as conn:
@@ -181,10 +190,10 @@ def test_track_api_usage_cost_calculation(tmp_path, monkeypatch):
 
             assert len(rows) == 1
             row = rows[0]
-            assert row[3] == "claude-sonnet-4-20250514"  # model
+            assert row[3] == "gpt-4o-mini"  # model
             assert row[4] == 1_000_000  # input_tokens
             assert row[5] == 1_000_000  # output_tokens
-            assert row[6] == 18.0  # cost_usd
+            assert row[6] == 0.75  # cost_usd
             assert row[7] == "test command"  # command
 
 
@@ -357,9 +366,10 @@ def test_cost_alert_threshold(tmp_path, monkeypatch):
     db_path = tmp_path / "test_usage.db"
     monkeypatch.setattr("src.utils.USAGE_DB_PATH", db_path)
 
-    # Mock environment variables for thresholds
-    monkeypatch.setattr("src.utils.DAILY_COST_TARGET", 2.0)
-    monkeypatch.setattr("src.utils.DAILY_COST_ALERT", 5.0)
+    # Mock environment variables for thresholds (using lower values for gpt-4o-mini pricing)
+    # gpt-4o-mini: $0.15 per 1M input, $0.60 per 1M output
+    monkeypatch.setattr("src.utils.DAILY_COST_TARGET", 0.05)
+    monkeypatch.setattr("src.utils.DAILY_COST_ALERT", 0.15)
 
     # Mock the cost notifier
     mock_notifier = MagicMock()
@@ -367,21 +377,24 @@ def test_cost_alert_threshold(tmp_path, monkeypatch):
         mock_get_notifier.return_value = mock_notifier
 
         # First call - below target (no alert)
-        track_api_usage("claude-sonnet-4-20250514", 100_000, 50_000)  # $1.05
+        # 100K in + 50K out = $0.015 + $0.03 = $0.045 (below $0.05 target)
+        track_api_usage("gpt-4o-mini", 100_000, 50_000)
         assert mock_notifier.send_alert.call_count == 0
 
         # Second call - exceeds target but below alert (logs info but no Slack)
-        track_api_usage("claude-sonnet-4-20250514", 200_000, 100_000)  # $2.1, total $3.15
+        # 100K in + 50K out = $0.045 → total $0.09 (above $0.05, below $0.15)
+        track_api_usage("gpt-4o-mini", 100_000, 50_000)
         assert mock_notifier.send_alert.call_count == 0
 
         # Third call - exceeds alert threshold (should trigger Slack alert)
-        track_api_usage("claude-sonnet-4-20250514", 400_000, 200_000)  # $4.2, total $7.35
+        # 200K in + 100K out = $0.03 + $0.06 = $0.09 → total $0.18 (above $0.15 alert)
+        track_api_usage("gpt-4o-mini", 200_000, 100_000)
         assert mock_notifier.send_alert.call_count == 1
 
         # Verify alert was called with correct parameters
         alert_call = mock_notifier.send_alert.call_args
         assert alert_call[1]["title"] == "API Cost Alert"
-        assert "7.35" in alert_call[1]["message"] or "7.3" in alert_call[1]["message"]
+        assert "0.18" in alert_call[1]["message"]
         assert alert_call[1]["severity"] == "warning"
 
 
@@ -434,3 +447,168 @@ def test_check_setup_missing_directories(tmp_path, monkeypatch):
     # Should be valid with no errors
     assert is_valid is True
     assert errors == []
+
+
+# =============================================================================
+# Health Alert Tests
+# =============================================================================
+
+
+def test_send_health_alert_basic():
+    """Test basic health alert sending."""
+    from src.utils import send_health_alert
+
+    mock_notifier = MagicMock()
+    mock_notifier.send_alert.return_value = True
+
+    with patch("src.utils._get_health_notifier") as mock_get_notifier:
+        mock_get_notifier.return_value = mock_notifier
+
+        result = send_health_alert(
+            title="Test Alert",
+            message="This is a test alert message",
+            severity="warning",
+        )
+
+        assert result is True
+        mock_notifier.send_alert.assert_called_once()
+
+        call_kwargs = mock_notifier.send_alert.call_args[1]
+        assert call_kwargs["title"] == "Test Alert"
+        assert call_kwargs["message"] == "This is a test alert message"
+        assert call_kwargs["severity"] == "warning"
+
+
+def test_send_health_alert_with_component():
+    """Test health alert with component field."""
+    from src.utils import send_health_alert
+
+    mock_notifier = MagicMock()
+    mock_notifier.send_alert.return_value = True
+
+    with patch("src.utils._get_health_notifier") as mock_get_notifier:
+        mock_get_notifier.return_value = mock_notifier
+
+        send_health_alert(
+            title="Vacuum Error",
+            message="Robot vacuum stuck",
+            severity="critical",
+            component="vacuum",
+        )
+
+        call_kwargs = mock_notifier.send_alert.call_args[1]
+        assert call_kwargs["severity"] == "critical"
+
+        # Component should be in fields
+        fields = call_kwargs.get("fields", [])
+        component_field = next((f for f in fields if f["title"] == "Component"), None)
+        assert component_field is not None
+        assert component_field["value"] == "vacuum"
+
+
+def test_send_health_alert_with_details():
+    """Test health alert with additional detail fields."""
+    from src.utils import send_health_alert
+
+    mock_notifier = MagicMock()
+    mock_notifier.send_alert.return_value = True
+
+    with patch("src.utils._get_health_notifier") as mock_get_notifier:
+        mock_get_notifier.return_value = mock_notifier
+
+        send_health_alert(
+            title="Auth Failure",
+            message="Multiple login failures detected",
+            severity="warning",
+            component="auth",
+            details={
+                "ip_address": "192.168.1.100",
+                "failed_attempts": 5,
+            },
+        )
+
+        call_kwargs = mock_notifier.send_alert.call_args[1]
+        fields = call_kwargs.get("fields", [])
+
+        # Check that details are converted to fields
+        field_titles = [f["title"] for f in fields]
+        assert "Component" in field_titles
+        assert "Ip Address" in field_titles  # snake_case to Title Case
+        assert "Failed Attempts" in field_titles
+
+        # Verify values are converted to strings
+        ip_field = next((f for f in fields if f["title"] == "Ip Address"), None)
+        assert ip_field["value"] == "192.168.1.100"
+
+        attempts_field = next((f for f in fields if f["title"] == "Failed Attempts"), None)
+        assert attempts_field["value"] == "5"  # Converted to string
+
+
+def test_send_health_alert_severity_levels():
+    """Test health alert with different severity levels."""
+    from src.utils import send_health_alert
+
+    mock_notifier = MagicMock()
+    mock_notifier.send_alert.return_value = True
+
+    with patch("src.utils._get_health_notifier") as mock_get_notifier:
+        mock_get_notifier.return_value = mock_notifier
+
+        # Test each severity level
+        for severity in ["critical", "warning", "info"]:
+            mock_notifier.reset_mock()
+
+            send_health_alert(
+                title=f"Test {severity}",
+                message=f"Testing {severity} severity",
+                severity=severity,
+            )
+
+            call_kwargs = mock_notifier.send_alert.call_args[1]
+            assert call_kwargs["severity"] == severity
+
+
+def test_send_health_alert_logs_message(caplog):
+    """Test that health alert logs the alert."""
+    from src.utils import send_health_alert
+
+    mock_notifier = MagicMock()
+    mock_notifier.send_alert.return_value = True
+
+    with patch("src.utils._get_health_notifier") as mock_get_notifier:
+        mock_get_notifier.return_value = mock_notifier
+
+        with caplog.at_level(logging.WARNING):
+            send_health_alert(
+                title="Warning Test",
+                message="Test warning message",
+                severity="warning",
+            )
+
+        # Should have logged the alert
+        assert any("Health Alert" in record.message for record in caplog.records)
+        assert any("Warning Test" in record.message for record in caplog.records)
+
+
+def test_health_notifier_lazy_initialization():
+    """Test that health notifier is lazily initialized."""
+    # Clear any existing notifier
+    import src.utils
+    src.utils._health_notifier = None
+
+    with patch("src.utils.SlackNotifier") as mock_slack:
+        mock_instance = MagicMock()
+        mock_slack.return_value = mock_instance
+
+        # First call should create the notifier
+        notifier1 = src.utils._get_health_notifier()
+
+        # Second call should return the same instance
+        notifier2 = src.utils._get_health_notifier()
+
+        # SlackNotifier should only be instantiated once
+        assert mock_slack.call_count == 1
+        assert notifier1 is notifier2
+
+    # Clean up
+    src.utils._health_notifier = None

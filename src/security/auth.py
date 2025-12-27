@@ -18,9 +18,13 @@ from flask import Flask, Blueprint, request, redirect, url_for, render_template,
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 from src.config import DATA_DIR
+from src.utils import send_health_alert
 
 # Auth database path
 AUTH_DB_PATH = DATA_DIR / "auth.db"
+
+# Alert thresholds
+AUTH_FAILURE_ALERT_THRESHOLD = 3  # Alert after N failed attempts from same IP
 
 # Password hasher with secure defaults
 password_hasher = PasswordHasher(
@@ -149,7 +153,11 @@ def verify_user(username: str, password: str) -> Optional[User]:
 
 
 def log_login_attempt(username: str, ip_address: str, success: bool) -> None:
-    """Log login attempt for security monitoring."""
+    """
+    Log login attempt for security monitoring.
+
+    Sends a Slack health alert when failed attempts exceed the threshold.
+    """
     init_auth_db()
 
     with sqlite3.connect(AUTH_DB_PATH) as conn:
@@ -159,6 +167,39 @@ def log_login_attempt(username: str, ip_address: str, success: bool) -> None:
             VALUES (?, ?, ?, ?)
         """, (username, ip_address, 1 if success else 0, datetime.now().isoformat()))
         conn.commit()
+
+    # Check for repeated failures and alert
+    if not success:
+        failed_count = get_recent_failed_attempts(ip_address, minutes=15)
+        if failed_count == AUTH_FAILURE_ALERT_THRESHOLD:
+            # Alert on threshold hit (not on every subsequent failure)
+            send_health_alert(
+                title="Authentication Failures Detected",
+                message=f"*{failed_count}* failed login attempts from IP `{ip_address}` in the last 15 minutes",
+                severity="warning",
+                component="auth",
+                details={
+                    "ip_address": ip_address,
+                    "username_attempted": username,
+                    "failed_attempts": failed_count,
+                    "action": "Consider reviewing access logs",
+                },
+            )
+        elif failed_count >= 5:
+            # Alert on lockout (rate limit triggered)
+            if failed_count == 5:
+                send_health_alert(
+                    title="IP Address Locked Out",
+                    message=f"IP `{ip_address}` has been temporarily locked out after *{failed_count}* failed login attempts",
+                    severity="critical",
+                    component="auth",
+                    details={
+                        "ip_address": ip_address,
+                        "username_attempted": username,
+                        "failed_attempts": failed_count,
+                        "action": "Rate limiting active for 15 minutes",
+                    },
+                )
 
 
 def get_recent_failed_attempts(ip_address: str, minutes: int = 15) -> int:
