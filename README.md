@@ -1,5 +1,7 @@
 # Smart Home Assistant
 
+[![Tests](https://github.com/k4therin2/smart-home/actions/workflows/test.yml/badge.svg)](https://github.com/k4therin2/smart-home/actions/workflows/test.yml)
+
 A self-hosted, AI-powered smart home assistant built on Home Assistant. Uses OpenAI API (gpt-4o-mini by default) for natural language processing, enabling voice and text control of your smart home devices. Supports multiple LLM providers via unified abstraction layer.
 
 ## Features
