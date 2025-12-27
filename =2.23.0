@@ -1,0 +1,14 @@
+Collecting spotipy
+  Downloading spotipy-2.25.2-py3-none-any.whl.metadata (5.1 kB)
+Collecting redis>=3.5.3 (from spotipy)
+  Downloading redis-7.1.0-py3-none-any.whl.metadata (12 kB)
+Requirement already satisfied: requests>=2.25.0 in ./venv/lib/python3.12/site-packages (from spotipy) (2.32.5)
+Requirement already satisfied: urllib3>=1.26.0 in ./venv/lib/python3.12/site-packages (from spotipy) (2.6.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./venv/lib/python3.12/site-packages (from requests>=2.25.0->spotipy) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.12/site-packages (from requests>=2.25.0->spotipy) (3.11)
+Requirement already satisfied: certifi>=2017.4.17 in ./venv/lib/python3.12/site-packages (from requests>=2.25.0->spotipy) (2025.11.12)
+Downloading spotipy-2.25.2-py3-none-any.whl (31 kB)
+Downloading redis-7.1.0-py3-none-any.whl (354 kB)
+Installing collected packages: redis, spotipy
+
+Successfully installed redis-7.1.0 spotipy-2.25.2

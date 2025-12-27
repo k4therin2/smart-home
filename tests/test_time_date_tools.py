@@ -225,7 +225,7 @@ class TestGetDatetimeInfo:
 
     def test_datetime_info_is_consistent(self):
         """Datetime info should be internally consistent."""
-        from tools.system import get_datetime_info
+        from tools.system import get_datetime_info, get_timezone
 
         result = get_datetime_info()
 
@@ -233,8 +233,9 @@ class TestGetDatetimeInfo:
         timestamp = result["timestamp"]
         dt_from_timestamp = datetime.fromtimestamp(timestamp)
 
-        # Day of week should match
-        actual_day = datetime.now().strftime("%A")
+        # Day of week should match the configured timezone (not local system time)
+        timezone_obj = get_timezone()
+        actual_day = datetime.now(timezone_obj).strftime("%A")
         assert result["day_of_week"] == actual_day
 
 

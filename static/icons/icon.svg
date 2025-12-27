@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0f0f;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+
+  <!-- House Shape -->
+  <path d="M256 100 L420 220 L420 400 L92 400 L92 220 Z"
+        fill="none" stroke="#4a9eff" stroke-width="20" stroke-linejoin="round"/>
+
+  <!-- Roof peak -->
+  <path d="M256 80 L440 210" fill="none" stroke="#4a9eff" stroke-width="20" stroke-linecap="round"/>
+  <path d="M256 80 L72 210" fill="none" stroke="#4a9eff" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Smart indicator (glowing center) -->
+  <circle cx="256" cy="280" r="60" fill="#4a9eff" opacity="0.3"/>
+  <circle cx="256" cy="280" r="40" fill="#4a9eff" opacity="0.5"/>
+  <circle cx="256" cy="280" r="20" fill="#4a9eff"/>
+
+  <!-- Connection lines (smart home signals) -->
+  <path d="M200 320 Q180 300 200 280" fill="none" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M170 340 Q140 300 170 260" fill="none" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <path d="M312 320 Q332 300 312 280" fill="none" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M342 340 Q372 300 342 260" fill="none" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+</svg>

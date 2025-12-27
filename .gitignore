@@ -61,6 +61,31 @@ fungicide
 
 # Personal/Private documents - never commit
 plans/LINKEDIN_MARKETING_PLAN.md
+
+# Security - Sensitive credentials and certificates
 data/gdrive_credentials.json
 data/gdrive_token.json
 data/backup_encryption.key
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+certs/
+secrets.yaml
+.secrets.baseline
+.spotify_cache
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ruff
+.ruff_cache/

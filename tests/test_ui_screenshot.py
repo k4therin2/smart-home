@@ -1,8 +1,24 @@
 """
 Test script to capture screenshot of Web UI using Playwright.
+
+This is not a standard pytest test - it's a standalone utility script.
+Run directly with: python tests/test_ui_screenshot.py
 """
 
-from playwright.sync_api import sync_playwright
+import pytest
+
+try:
+    from playwright.sync_api import sync_playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    sync_playwright = None
+
+# Skip all tests in this module if playwright is not installed
+pytestmark = pytest.mark.skipif(
+    not HAS_PLAYWRIGHT,
+    reason="playwright not installed - run 'pip install playwright && playwright install'"
+)
 
 
 def capture_screenshot():

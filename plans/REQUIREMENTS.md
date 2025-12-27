@@ -371,7 +371,7 @@
 **Status**: COMPLETED
 **Priority**: HIGH
 **Phase**: 3
-**Last Updated**: 2025-12-09
+**Last Updated**: 2025-12-20
 
 **The system MUST provide a web-based user interface accessible from desktop and mobile browsers.**
 
@@ -381,6 +381,8 @@
 - [x] Voice input via browser (using native browser speech recognition)
 - [x] Text chat interface for commands
 - [x] Dashboard showing device status
+- [x] Command history limited to 10 items to keep UI clean
+- [x] Response display limited to 5 most recent responses
 - [ ] Settings/configuration interface (deferred to later phase)
 - [ ] Log viewer integrated into UI (deferred - see REQ-036)
 
@@ -463,19 +465,28 @@
 
 ### REQ-019: Device Organization Assistant
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 **Priority**: MEDIUM
-**Phase**: 4
-**Last Updated**: 2025-12-09
+**Phase**: 5 (WP-5.2)
+**Last Updated**: 2025-12-20
 
 **The system SHOULD assist in organizing and naming devices with smart LLM-driven prompts.**
 
 **Acceptance Criteria:**
-- [ ] When new device added, system asks contextual questions
-- [ ] LLM suggests room assignments based on device type
-- [ ] Maintains central device registry (rooms, zones, device types)
-- [ ] Validates naming consistency ("bedroom" vs "master bedroom")
-- [ ] Easy bulk reorganization interface
+- [x] When new device added, system asks contextual questions
+- [x] LLM suggests room assignments based on device type
+- [x] Maintains central device registry (rooms, zones, device types)
+- [x] Validates naming consistency ("bedroom" vs "master bedroom")
+- [x] Easy bulk reorganization interface
+
+**Implementation Notes:**
+- Completed as WP-5.2 Device Organization Assistant (2025-12-18)
+- DeviceRegistry class (SQLite-backed) maintains device/room/zone mappings
+- DeviceOrganizer provides rule-based + optional LLM room suggestions
+- 9 agent tools for device management
+- 64 total tests (28 registry + 19 organizer + 17 integration)
+- Zone onboarding UI (WP-8.2) removed 2025-12-20 - HA is source of truth
+- See devlog: `devlog/device-organization/2025-12-18-implementation.md`
 
 **Dependencies:** REQ-003, REQ-015
 

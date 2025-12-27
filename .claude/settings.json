@@ -2,9 +2,12 @@
   "mcpServers": {
     "agent-chat": {
       "command": "node",
-      "args": ["mcp-agent-chat/index.js"],
+      "args": ["/home/k4therin2/projects/agent-automation/mcp-agent-chat/index.js"],
       "env": {
-        "NATS_URL": "nats://100.75.232.36:4222"
+        "NATS_URL": "tls://100.75.232.36:4222",
+        "NATS_USERNAME": "agent",
+        "NATS_PASSWORD": "LjasCrVxZYFMVsvzt7Y5NGJC",
+        "NATS_TLS_INSECURE": "true"
       }
     }
   }

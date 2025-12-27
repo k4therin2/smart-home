@@ -268,25 +268,25 @@ class TestConfigValidation:
     def test_validate_config_with_all_vars_set(self, monkeypatch):
         """Validation should pass when all required vars are set."""
         # The autouse fixture already sets these, just verify
-        from src.config import validate_config, ANTHROPIC_API_KEY, HA_TOKEN, HA_URL
+        from src.config import validate_config, OPENAI_API_KEY, HA_TOKEN, HA_URL
 
         # Verify the environment is set up correctly
-        assert ANTHROPIC_API_KEY is not None
+        assert OPENAI_API_KEY is not None
         assert HA_TOKEN is not None
         assert HA_URL is not None
 
         errors = validate_config()
         assert len(errors) == 0
 
-    def test_validate_config_missing_anthropic_key(self, monkeypatch):
-        """Validation should fail when ANTHROPIC_API_KEY is missing."""
+    def test_validate_config_missing_openai_key(self, monkeypatch):
+        """Validation should fail when OPENAI_API_KEY is missing."""
         # Patch the module-level constant directly
-        monkeypatch.setattr("src.config.ANTHROPIC_API_KEY", None)
+        monkeypatch.setattr("src.config.OPENAI_API_KEY", None)
 
         from src.config import validate_config
 
         errors = validate_config()
-        assert any("ANTHROPIC_API_KEY" in e for e in errors)
+        assert any("OPENAI_API_KEY" in e for e in errors)
 
     def test_validate_config_missing_ha_token(self, monkeypatch):
         """Validation should fail when HA_TOKEN is missing."""

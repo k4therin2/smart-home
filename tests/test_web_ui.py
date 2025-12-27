@@ -3,16 +3,33 @@
 Web UI Integration Tests using Playwright
 
 Tests the Phase 1 Stream 3 web interface functionality.
+
+This requires playwright to be installed:
+    pip install playwright && playwright install
 """
 
 import os
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from playwright.sync_api import sync_playwright, expect
+try:
+    from playwright.sync_api import sync_playwright, expect
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    sync_playwright = None
+    expect = None
+
+# Skip all tests in this module if playwright is not installed
+pytestmark = pytest.mark.skipif(
+    not HAS_PLAYWRIGHT,
+    reason="playwright not installed - run 'pip install playwright && playwright install'"
+)
 
 BASE_URL = os.getenv("TEST_URL", "http://localhost:5050")
 SCREENSHOT_DIR = Path(__file__).parent / "screenshots"

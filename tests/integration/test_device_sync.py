@@ -24,7 +24,7 @@ from src.device_sync import (
     remove_stale_devices,
     get_device_summary,
 )
-from src.database import get_all_devices, get_device_by_entity_id
+from src.database import get_all_devices, get_device
 from src.homeassistant import HomeAssistantClient
 
 
@@ -92,7 +92,7 @@ def test_sync_devices_from_ha(mock_ha_api, test_db):
     assert len(devices) == 3
 
     # Check light device
-    light = get_device_by_entity_id("light.living_room")
+    light = get_device("light.living_room")
     assert light is not None
     assert light["friendly_name"] == "Living Room Light"
     assert light["device_type"] == "light"
@@ -186,7 +186,7 @@ def test_updated_device_detection(mock_ha_api, test_db):
     assert stats["updated_devices"] == 1
 
     # Verify update
-    device = get_device_by_entity_id("light.living_room")
+    device = get_device("light.living_room")
     assert device["friendly_name"] == "New Name"
 
 
@@ -452,7 +452,7 @@ def test_sync_single_device(mock_ha_api, test_db):
     assert device_info["room"] == "bedroom"
 
     # Verify it was registered
-    device = get_device_by_entity_id("light.bedroom")
+    device = get_device("light.bedroom")
     assert device is not None
     assert device["friendly_name"] == "Bedroom Light"
 

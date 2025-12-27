@@ -298,38 +298,39 @@ class TestSecurityHeaders:
 class TestAuthenticationRequired:
     """Test that routes require authentication."""
 
-    def test_index_redirects_to_login(self):
-        from src.server import app
+    @pytest.fixture
+    def client(self):
+        """Flask test client with LOGIN_DISABLED explicitly False."""
+        from src.server import app, limiter
 
-        with app.test_client() as client:
-            response = client.get('/')
+        # Ensure auth is required for this test
+        app.config['LOGIN_DISABLED'] = False
+        app.config['TESTING'] = True
+        limiter.reset()
 
-            assert response.status_code == 302
-            assert '/auth/login' in response.location
+        with app.test_client() as test_client:
+            yield test_client
 
-    def test_api_command_requires_auth(self):
-        from src.server import app
+    def test_index_redirects_to_login(self, client):
+        response = client.get('/')
 
-        with app.test_client() as client:
-            response = client.post('/api/command',
-                                  json={"command": "test"},
-                                  content_type='application/json')
+        assert response.status_code == 302
+        assert '/auth/login' in response.location
 
-            # Should redirect to login
-            assert response.status_code == 302
+    def test_api_command_requires_auth(self, client):
+        response = client.post('/api/command',
+                              json={"command": "test"},
+                              content_type='application/json')
 
-    def test_api_status_requires_auth(self):
-        from src.server import app
+        # Should redirect to login
+        assert response.status_code == 302
 
-        with app.test_client() as client:
-            response = client.get('/api/status')
+    def test_api_status_requires_auth(self, client):
+        response = client.get('/api/status')
 
-            assert response.status_code == 302
+        assert response.status_code == 302
 
-    def test_api_history_requires_auth(self):
-        from src.server import app
+    def test_api_history_requires_auth(self, client):
+        response = client.get('/api/history')
 
-        with app.test_client() as client:
-            response = client.get('/api/history')
-
-            assert response.status_code == 302
+        assert response.status_code == 302

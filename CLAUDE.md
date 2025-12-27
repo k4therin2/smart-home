@@ -4,15 +4,35 @@ This file provides guidance to Claude Code when working with this repository.
 
 **This project participates in the agent culture.** See `~/projects/agent-automation/orchestrator/agents/AGENT_CULTURE.md`.
 
+---
+
+## User Communication Style
+
+**The user often uses voice-to-text for input.** This means:
+
+- Messages may contain transcription errors, homophones, or odd phrasing
+- Punctuation and capitalization may be inconsistent or missing
+- Words might be misheard (e.g., "there" vs "their", "to" vs "too")
+- Sentences may run together or have unusual breaks
+- Technical terms might be phonetically approximated
+
+**How to handle:**
+- Use context to interpret ambiguous or unusual wording
+- Don't ask for clarification on obvious transcription artifacts
+- If something seems nonsensical, consider what the user *likely* meant
+- Only ask for clarification if the intent is genuinely unclear
+
 **For global agent infrastructure (NATS, coordination, coding standards):** See `~/projects/agent-automation/CLAUDE.md`
 
 ---
 
 ## Project Overview
 
-Self-hosted, AI-powered smart home assistant built on Home Assistant. Uses Claude Sonnet 4 via Anthropic API for natural language processing with multi-agent architecture. Replaces commercial ecosystems (Alexa/Google) with privacy-focused, open-source automation.
+Self-hosted, AI-powered smart home assistant built on Home Assistant. Uses OpenAI API (gpt-4o-mini) for natural language processing with multi-agent architecture. Replaces commercial ecosystems (Alexa/Google) with privacy-focused, open-source automation.
 
 **Core Philosophy**: Minimal personality, wake-word activated, self-monitoring, LLM-powered NLU.
+
+**LLM Architecture:** All LLM calls use the unified abstraction layer in `src/llm_client.py` which supports OpenAI (current), Anthropic, and local LLMs. Future migration to local LLM planned for cost reduction.
 
 ---
 
@@ -40,7 +60,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Copy and configure environment
-cp .env.example .env  # Set ANTHROPIC_API_KEY, HA_TOKEN, HA_URL
+cp .env.example .env  # Set OPENAI_API_KEY, HA_TOKEN, HA_URL
 
 # Run CLI mode
 python agent.py "turn living room to fire"
@@ -73,7 +93,9 @@ pip-audit
 
 ### Multi-Agent System
 
-**Main Agent** (`agent.py`): Coordinates requests, interprets NL → tool calls, uses Claude Sonnet 4 with 5-iteration max loop.
+**Main Agent** (`agent.py`): Coordinates requests, interprets NL → tool calls, uses LLM with 5-iteration max loop.
+
+**LLM Provider:** OpenAI API (gpt-4o-mini) via `src/llm_client.py` abstraction layer. Supports OpenAI, Anthropic, and local LLMs.
 
 **Specialist Agents** (`tools/`): Domain expertise for specific integrations:
 - `tools/lights.py` - Philips Hue control
@@ -89,10 +111,14 @@ User Command → Main Agent → Tool Selection → Specialist → HA API → Dev
 
 ### Agent Loop Pattern
 ```python
+# All LLM calls use the unified abstraction layer
+from src.llm_client import get_llm_client
+llm_client = get_llm_client()
+
 for iteration in range(5):  # max_iterations
-    response = client.messages.create(model="claude-sonnet-4-20250514", tools=tools, messages=messages)
-    if response.stop_reason == "end_turn":
-        return final_response
+    text, tool_calls = llm_client.complete_with_tools(prompt, tools, system_prompt)
+    if not tool_calls:
+        return text
     # Execute tools, add results, continue
 ```
 
@@ -118,9 +144,17 @@ for iteration in range(5):  # max_iterations
 ## Environment Variables
 
 ```
-ANTHROPIC_API_KEY     # Claude API access
+# LLM Configuration (REQUIRED)
+OPENAI_API_KEY        # OpenAI API access (current provider)
+OPENAI_MODEL          # Model name (default: gpt-4o-mini)
+LLM_PROVIDER          # Provider selection: "openai" (default), "anthropic", "local"
+LLM_BASE_URL          # For local LLMs (Ollama, LM Studio, etc.)
+
+# Home Assistant (REQUIRED)
 HA_TOKEN              # Home Assistant long-lived access token
 HA_URL                # Home Assistant URL (default: http://localhost:8123)
+
+# Agent Coordination (REQUIRED for multi-agent work)
 NATS_URL              # Agent coordination (default: nats://100.75.232.36:4222)
 
 # Slack Webhooks (optional)

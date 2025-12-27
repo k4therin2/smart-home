@@ -148,6 +148,11 @@ class TestGetAllStates:
         )
 
         from src.ha_client import HomeAssistantClient
+        from src.cache import get_cache
+
+        # Clear cache to ensure isolation from previous tests
+        cache = get_cache()
+        cache.clear()
 
         client = HomeAssistantClient()
         states = client.get_all_states()

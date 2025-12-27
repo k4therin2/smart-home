@@ -287,14 +287,11 @@ def test_apply_vibe_fallback_interpretation(mock_ha_full, monkeypatch):
     - Handling of complex vibe descriptions
     - Integration with hue_specialist fallback logic
     """
-    # Remove API key to force fallback
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    import src.config as config_module
-    config_module.ANTHROPIC_API_KEY = None
-
-    # Test with a description that doesn't match presets or scenes
-    # but has fallback keywords
-    result = apply_vibe(room="living_room", vibe_description="warm and comfortable")
+    # Patch API key in the module directly to force fallback
+    with patch("tools.hue_specialist.OPENAI_API_KEY", None):
+        # Test with a description that doesn't match presets or scenes
+        # but has fallback keywords
+        result = apply_vibe(room="living_room", vibe_description="warm and comfortable")
 
     assert result["success"] is True
     assert result["type"] == "basic"

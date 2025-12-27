@@ -29,12 +29,17 @@ sys.path.insert(0, str(PROJECT_ROOT))
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch):
     """Set up test environment variables for all tests."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-api-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv("HA_URL", "http://test-ha.local:8123")
     monkeypatch.setenv("HA_TOKEN", "test-ha-token")
     monkeypatch.setenv("DAILY_COST_TARGET", "2.00")
     monkeypatch.setenv("DAILY_COST_ALERT", "5.00")
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
+
+    # Also patch already-loaded config values since Python modules cache imports
+    monkeypatch.setattr("src.config.HA_URL", "http://test-ha.local:8123")
+    monkeypatch.setattr("src.config.HA_TOKEN", "test-ha-token")
+    monkeypatch.setattr("src.config.OPENAI_API_KEY", "test-api-key")
 
 
 @pytest.fixture
@@ -47,6 +52,9 @@ def temp_data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr("src.config.DATA_DIR", data_dir)
     monkeypatch.setattr("src.config.LOGS_DIR", data_dir / "logs")
     (data_dir / "logs").mkdir()
+
+    # Also patch DATA_DIR in server module since it imports at load time
+    monkeypatch.setattr("src.server.DATA_DIR", data_dir)
 
     return data_dir
 
@@ -110,12 +118,21 @@ def sample_devices():
 # =============================================================================
 
 @pytest.fixture
-def mock_ha_api():
+def mock_ha_api(monkeypatch):
     """
     Mock Home Assistant API using responses library.
 
     Provides common HA API response mocking. Call add() to add custom responses.
+    Resets the HA client singleton to ensure it uses the mocked environment.
     """
+    # Reset the HA client singleton before mocking
+    import src.ha_client as ha_module
+    ha_module._client = None
+
+    # Patch the module-level imports in ha_client to use test values
+    monkeypatch.setattr(ha_module, "HA_URL", "http://test-ha.local:8123")
+    monkeypatch.setattr(ha_module, "HA_TOKEN", "test-ha-token")
+
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         # Default: connection check succeeds
         rsps.add(
@@ -125,6 +142,9 @@ def mock_ha_api():
             status=200,
         )
         yield rsps
+
+    # Clean up singleton after test
+    ha_module._client = None
 
 
 @pytest.fixture
@@ -296,8 +316,14 @@ def ha_client(mock_ha_full):
     Create a HomeAssistantClient with mocked API.
 
     Use with mock_ha_full fixture for complete mocking.
+    Clears cache before each test to ensure isolation.
     """
     from src.ha_client import HomeAssistantClient
+    from src.cache import get_cache
+
+    # Clear cache before creating client to ensure test isolation
+    cache = get_cache()
+    cache.clear()
 
     client = HomeAssistantClient(
         url="http://test-ha.local:8123",
@@ -341,27 +367,41 @@ def vibe_presets():
 
 
 # =============================================================================
-# Anthropic API Mock Fixtures
+# OpenAI API Mock Fixtures
 # =============================================================================
 
 @pytest.fixture
-def mock_anthropic():
+def mock_openai():
     """
-    Mock Anthropic client for agent tests.
+    Mock OpenAI client for agent tests.
 
     Returns a MagicMock that can be configured for specific test scenarios.
     """
     mock_client = MagicMock()
 
-    # Default response - simple text completion
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(type="text", text="Test response")]
-    mock_response.stop_reason = "end_turn"
-    mock_response.usage = MagicMock(input_tokens=100, output_tokens=50)
+    # Default response - simple text completion (OpenAI format)
+    mock_message = MagicMock()
+    mock_message.content = "Test response"
+    mock_message.tool_calls = None
 
-    mock_client.messages.create.return_value = mock_response
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_choice.finish_reason = "stop"
+
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+
+    mock_client.chat.completions.create.return_value = mock_response
 
     return mock_client
+
+
+# Keep old name as alias for backwards compatibility during transition
+@pytest.fixture
+def mock_anthropic(mock_openai):
+    """Alias for mock_openai for backwards compatibility."""
+    return mock_openai
 
 
 # =============================================================================
@@ -374,3 +414,50 @@ def capture_logs(caplog):
     import logging
     caplog.set_level(logging.DEBUG)
     return caplog
+
+
+# =============================================================================
+# Flask App Fixtures
+# =============================================================================
+
+@pytest.fixture
+def app(temp_data_dir, monkeypatch):
+    """Create Flask app for testing."""
+    from src.server import app
+
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+
+    # Use temp directory for session data
+    app.config['SECRET_KEY'] = 'test-secret-key'
+
+    return app
+
+
+@pytest.fixture
+def client(app, monkeypatch):
+    """Create Flask test client with authenticated session."""
+    # Import Flask-Login utilities
+    import flask_login
+
+    # Mock the login_required decorator to always pass
+    def mock_login_required(func):
+        return func
+
+    # Patch both the decorator itself and the current_user check
+    monkeypatch.setattr("flask_login.utils.login_required", mock_login_required)
+
+    # Create a mock user
+    mock_user = MagicMock()
+    mock_user.is_authenticated = True
+    mock_user.is_active = True
+    mock_user.is_anonymous = False
+    mock_user.get_id.return_value = "test-user"
+
+    # Mock current_user to always return authenticated user
+    monkeypatch.setattr("flask_login.utils._get_user", lambda: mock_user)
+
+    # Create test client
+    with app.test_client() as client:
+        with app.app_context():
+            yield client
