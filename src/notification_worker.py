@@ -26,9 +26,7 @@ DEFAULT_CHECK_INTERVAL = 60
 
 # Slack webhook for personal reminders channel
 # Uses the personal webhook if set, falls back to health webhook
-SLACK_REMINDER_WEBHOOK_URL = os.getenv(
-    "SLACK_REMINDER_WEBHOOK", SLACK_HEALTH_WEBHOOK_URL
-)
+SLACK_REMINDER_WEBHOOK_URL = os.getenv("SLACK_REMINDER_WEBHOOK", SLACK_HEALTH_WEBHOOK_URL)
 
 
 class NotificationWorker:
@@ -68,9 +66,7 @@ class NotificationWorker:
             "check_cycles": 0,
         }
 
-        logger.info(
-            f"NotificationWorker initialized (check_interval={check_interval}s)"
-        )
+        logger.info(f"NotificationWorker initialized (check_interval={check_interval}s)")
 
     def send_notification(
         self,
@@ -145,9 +141,7 @@ class NotificationWorker:
                 processed_count += 1
             else:
                 # Leave as pending to retry on next cycle
-                logger.warning(
-                    f"Reminder {reminder_id} notification failed, will retry"
-                )
+                logger.warning(f"Reminder {reminder_id} notification failed, will retry")
 
         self._stats["check_cycles"] += 1
         return processed_count
