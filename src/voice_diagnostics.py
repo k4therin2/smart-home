@@ -767,8 +767,8 @@ class VoicePipelineDiagnostics:
                             "version": info_response.json().get("value", "unknown"),
                             "ip": ip,
                         }
-                except Exception:
-                    pass
+                except Exception as error:
+                    logger.debug(f"Could not get ESPHome version from {ip}: {error}")
 
                 # Fallback: return basic info
                 return {

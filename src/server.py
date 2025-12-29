@@ -9,7 +9,6 @@ WP-10.18: API Documentation with Swagger/OpenAPI
 """
 
 import os
-from pathlib import Path
 import secrets
 import sqlite3
 import threading
@@ -25,10 +24,9 @@ from pydantic import BaseModel, Field, ValidationError
 
 from src.config import (
     DATA_DIR,
-    ROOM_ENTITY_MAP,
     RATE_LIMIT_DEFAULT_PER_DAY,
     RATE_LIMIT_DEFAULT_PER_HOUR,
-    RATE_LIMIT_ADMIN_MULTIPLIER,
+    ROOM_ENTITY_MAP,
 )
 from src.ha_client import get_ha_client
 from src.health_monitor import get_health_monitor
