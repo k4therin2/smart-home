@@ -6,7 +6,11 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Initial Setup - Smart Home Assistant</title>
     <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+    {% if config.get('ENV') == 'production' or config.get('USE_MINIFIED_ASSETS') %}
+    <link rel="stylesheet" href="/static/build/style.min.css">
+    {% else %}
     <link rel="stylesheet" href="/static/style.css">
+    {% endif %}
     <style>
         .auth-container {
             max-width: 450px;

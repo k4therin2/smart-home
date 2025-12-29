@@ -63,6 +63,10 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour CSRF token expiry
 
+# Performance optimization: use minified assets in production
+# Set USE_MINIFIED_ASSETS=true or FLASK_ENV=production to enable
+app.config["USE_MINIFIED_ASSETS"] = os.getenv("USE_MINIFIED_ASSETS", "false").lower() == "true"
+
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
@@ -647,8 +651,15 @@ def serve_service_worker():
 
     Service workers must be served from root to control the entire app.
     Sets appropriate headers for service worker registration.
+    Uses minified version in production for performance.
     """
-    response = app.send_static_file("sw.js")
+    # Use minified version in production
+    if app.config.get("USE_MINIFIED_ASSETS") or os.getenv("FLASK_ENV") == "production":
+        sw_path = "build/sw.min.js"
+    else:
+        sw_path = "sw.js"
+
+    response = app.send_static_file(sw_path)
     response.headers["Content-Type"] = "application/javascript"
     response.headers["Service-Worker-Allowed"] = "/"
     # Prevent caching of service worker to ensure updates propagate

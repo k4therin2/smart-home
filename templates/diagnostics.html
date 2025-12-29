@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Pipeline Diagnostics - SmartHome</title>
+    <!-- CSS: Use minified in production -->
+    {% if config.get('ENV') == 'production' or config.get('USE_MINIFIED_ASSETS') %}
+    <link rel="stylesheet" href="/static/build/style.min.css">
+    {% else %}
     <link rel="stylesheet" href="/static/style.css">
+    {% endif %}
     <style>
         /* Diagnostics-specific styles */
         .diagnostics-container {
@@ -398,6 +403,11 @@
         </div>
     </div>
 
-    <script src="/static/diagnostics.js"></script>
+    <!-- JavaScript: Use minified in production, defer for non-blocking load -->
+    {% if config.get('ENV') == 'production' or config.get('USE_MINIFIED_ASSETS') %}
+    <script src="/static/build/diagnostics.min.js" defer></script>
+    {% else %}
+    <script src="/static/diagnostics.js" defer></script>
+    {% endif %}
 </body>
 </html>

@@ -23,7 +23,12 @@
     <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/apple-touch-icon-152.png">
     <link rel="apple-touch-icon" sizes="120x120" href="/static/icons/apple-touch-icon-120.png">
 
+    <!-- CSS: Use minified in production, source in development -->
+    {% if config.get('ENV') == 'production' or config.get('USE_MINIFIED_ASSETS') %}
+    <link rel="stylesheet" href="/static/build/style.min.css">
+    {% else %}
     <link rel="stylesheet" href="/static/style.css">
+    {% endif %}
 </head>
 <body>
     <div class="container" role="application" aria-label="Smart Home Assistant Interface">
@@ -391,6 +396,11 @@
     - "what's the status of the living room?"
     -->
 
-    <script src="/static/app.js"></script>
+    <!-- JavaScript: Use minified in production, defer for non-blocking load -->
+    {% if config.get('ENV') == 'production' or config.get('USE_MINIFIED_ASSETS') %}
+    <script src="/static/build/app.min.js" defer></script>
+    {% else %}
+    <script src="/static/app.js" defer></script>
+    {% endif %}
 </body>
 </html>
