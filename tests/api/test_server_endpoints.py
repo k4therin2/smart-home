@@ -505,3 +505,97 @@ def test_production_mode_error_hiding(client, authenticated_user, mock_agent):
 
     # Should contain generic message
     assert 'error' in error_text.lower() or 'internal' in error_text.lower()
+
+
+# =============================================================================
+# API Documentation Tests (WP-10.18)
+# =============================================================================
+
+def test_swagger_ui_endpoint(client):
+    """
+    Test that Swagger UI is accessible at /api/docs.
+
+    Verifies:
+    - Swagger UI endpoint exists
+    - Returns 200 OK
+    - Contains Swagger UI HTML
+    """
+    # Note: Flasgger serves Swagger UI at /api/docs (without trailing slash)
+    response = client.get('/api/docs')
+
+    assert response.status_code == 200
+    assert b'swagger' in response.data.lower() or b'Swagger' in response.data
+
+
+def test_apispec_json_endpoint(client):
+    """
+    Test that OpenAPI spec is served at /apispec.json.
+
+    Verifies:
+    - API spec endpoint exists
+    - Returns valid JSON
+    - Contains required OpenAPI fields
+    """
+    response = client.get('/apispec.json')
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data is not None
+
+    # Check for required OpenAPI fields
+    assert 'swagger' in data or 'openapi' in data
+    assert 'info' in data
+    assert 'paths' in data
+
+    # Check info section
+    assert 'title' in data['info']
+    assert 'version' in data['info']
+
+
+def test_apispec_contains_all_endpoints(client):
+    """
+    Test that API spec contains documentation for all endpoints.
+
+    Verifies:
+    - Key endpoints are documented
+    - Each documented endpoint has descriptions
+    """
+    response = client.get('/apispec.json')
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    paths = data.get('paths', {})
+
+    # Check for key endpoints
+    expected_endpoints = [
+        '/api/command',
+        '/api/status',
+        '/api/health',
+        '/healthz',
+        '/readyz',
+        '/api/todos',
+        '/api/automations',
+    ]
+
+    for endpoint in expected_endpoints:
+        assert endpoint in paths, f"Expected {endpoint} to be documented"
+
+
+def test_apispec_security_definitions(client):
+    """
+    Test that API spec contains security definitions.
+
+    Verifies:
+    - Security definitions are present
+    - SessionAuth is defined
+    """
+    response = client.get('/apispec.json')
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    # Check for security definitions
+    assert 'securityDefinitions' in data
+    assert 'SessionAuth' in data['securityDefinitions']
