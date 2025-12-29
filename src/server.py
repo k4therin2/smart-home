@@ -2492,6 +2492,134 @@ def get_log_stats():
         ), 500
 
 
+@app.route("/api/export", methods=["GET"])
+@login_required
+@limiter.limit("5 per minute")
+def export_data():
+    """
+    Export all user data (WP-10.35)
+    ---
+    tags:
+      - Data Management
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: format
+        in: query
+        type: string
+        enum: [json, csv]
+        default: json
+        description: Export format
+    responses:
+      200:
+        description: Exported data
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            data:
+              type: object
+      500:
+        description: Server error
+    """
+    from src.data_export import DataExporter
+
+    try:
+        exporter = DataExporter()
+        export_format = request.args.get("format", "json").lower()
+
+        if export_format == "csv":
+            csv_data = exporter.export_as_csv()
+            return jsonify({"success": True, "format": "csv", "data": csv_data})
+        else:
+            # Default to JSON
+            data = exporter.export_all()
+            return jsonify({"success": True, "format": "json", "data": data})
+
+    except Exception as error:
+        logger.error(f"Error exporting data: {error}")
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error exporting data"}
+        ), 500
+
+
+@app.route("/api/import", methods=["POST"])
+@login_required
+@limiter.limit("5 per minute")
+def import_data():
+    """
+    Import user data for migration (WP-10.35)
+    ---
+    tags:
+      - Data Management
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: preview
+        in: query
+        type: boolean
+        default: false
+        description: Preview import without applying
+      - name: merge
+        in: query
+        type: boolean
+        default: true
+        description: Merge with existing data (false = replace)
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+    responses:
+      200:
+        description: Import result or preview
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            imported:
+              type: object
+      400:
+        description: Invalid import data
+      500:
+        description: Server error
+    """
+    from src.data_export import DataImporter
+
+    try:
+        importer = DataImporter()
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        # Validate first
+        is_valid, errors = importer.validate_import_data(data)
+        if not is_valid:
+            return jsonify({"success": False, "errors": errors}), 400
+
+        preview = request.args.get("preview", "false").lower() == "true"
+        if preview:
+            preview_data = importer.get_import_preview(data)
+            return jsonify({"success": True, "preview": True, "changes": preview_data})
+
+        # Perform import
+        merge = request.args.get("merge", "true").lower() == "true"
+        imported = importer.import_data(data, merge=merge)
+        return jsonify({"success": True, "preview": False, "imported": imported})
+
+    except ValueError as error:
+        return jsonify({"success": False, "error": str(error)}), 400
+    except Exception as error:
+        logger.error(f"Error importing data: {error}")
+        return jsonify(
+            {"success": False, "error": str(error) if app.debug else "Error importing data"}
+        ), 500
+
+
 def is_tailscale_ip(ip: str) -> bool:
     """Check if IP is from Tailscale (100.x.x.x range)."""
     if not ip:

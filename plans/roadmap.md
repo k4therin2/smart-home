@@ -785,24 +785,25 @@ All work packages must include appropriate Slack alerts for operational visibili
 ### Parallel Group 10: Data & Privacy
 
 #### WP-10.35: Data Export Feature
-- **Status:** ⚪ Not Started
+- **Status:** ✅ Complete
 - **Priority:** P2 (user control)
 - **Effort:** S
-- **Owner:** Unassigned
+- **Owner:** Dorian
+- **Completed:** 2025-12-29
 - **Source:** Partial from REQ-006
 - **Tasks:**
-  - [ ] Implement full data export API
-  - [ ] Add export format options (JSON, CSV)
-  - [ ] Include all user data (devices, commands, settings, history)
-  - [ ] Add data import for migration
-  - [ ] Document data export/import
-  - [ ] Write tests for export/import
-  - [ ] Create devlog entry
+  - [x] Implement full data export API
+  - [x] Add export format options (JSON, CSV)
+  - [x] Include all user data (devices, commands, settings, history)
+  - [x] Add data import for migration
+  - [x] Document data export/import
+  - [x] Write tests for export/import
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] /api/export endpoint returns all user data
-  - [ ] JSON and CSV formats supported
-  - [ ] Import functionality works for migration
-  - [ ] Documentation complete
+  - [x] /api/export endpoint returns all user data
+  - [x] JSON and CSV formats supported
+  - [x] Import functionality works for migration
+  - [x] Documentation complete
 
 #### WP-10.36: Privacy Policy & Terms
 - **Status:** ⚪ Not Started
