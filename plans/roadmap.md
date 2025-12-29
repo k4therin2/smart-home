@@ -229,20 +229,25 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [ ] Tested with actual Dreame L10s vacuum
 
 #### WP-10.5: Slack Alerts for Presence/Automation
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2025-12-29)
+- **Completed By:** Agent-Nadia
 - **Priority:** P3 (operational visibility)
 - **Effort:** S
-- **Owner:** Unassigned
 - **Source:** Deferred from WP-8.1
 - **Tasks:**
-  - [ ] Configure presence state change alerts
-  - [ ] Configure automation execution alerts
-  - [ ] Test alert delivery to #smarthome-health
-  - [ ] Document presence/automation alerting
+  - [x] Configure presence state change alerts
+  - [x] Configure automation execution alerts
+  - [x] Test alert delivery to #smarthome-health (8 new tests)
+  - [x] Document presence/automation alerting
 - **Acceptance Criteria:**
-  - [ ] Presence changes (home/away) trigger alerts
-  - [ ] Critical automation executions logged to Slack
-  - [ ] Alerts tested and verified
+  - [x] Presence changes (home/away) trigger alerts
+  - [x] Critical automation executions logged to Slack
+  - [x] Alerts tested and verified
+- **Implementation Notes:**
+  - Added alerting to `PresenceManager.set_presence_state()` via new `_send_presence_alert()` method
+  - Added alerting to `AutomationScheduler._execute_automation()` via new `_send_automation_alert()` method
+  - Both use existing `send_health_alert()` infrastructure to #smarthome-health
+  - 5 new presence alert tests + 3 new automation alert tests = 8 total
 
 #### WP-10.6: LLM-Generated Dynamic Scenes
 - **Status:** ⚪ Not Started

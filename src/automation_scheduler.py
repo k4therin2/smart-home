@@ -15,6 +15,7 @@ from typing import Any
 
 from src.automation_manager import AutomationManager, get_automation_manager
 from src.ha_client import HomeAssistantClient, get_ha_client
+from src.utils import send_health_alert
 
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ class AutomationScheduler:
         """
         automation_id = automation.get("id", "unknown")
         automation_name = automation.get("name", "unnamed")
+        trigger_type = automation.get("trigger_type", "unknown")
         action_type = automation.get("action_type")
         action_config = automation.get("action_config", {})
 
@@ -91,17 +93,88 @@ class AutomationScheduler:
 
         try:
             if action_type == "agent_command":
-                return self._execute_agent_command(action_config)
+                success = self._execute_agent_command(action_config)
             elif action_type == "ha_service":
-                return self._execute_ha_service(action_config)
+                success = self._execute_ha_service(action_config)
             else:
                 logger.error(f"Unknown action type: {action_type}")
                 self._stats["executions_failed"] += 1
+                self._send_automation_alert(
+                    automation_id, automation_name, trigger_type, action_type,
+                    success=False, error=f"Unknown action type: {action_type}"
+                )
                 return False
+
+            # Send alert for execution result (WP-10.5)
+            if success:
+                self._send_automation_alert(
+                    automation_id, automation_name, trigger_type, action_type,
+                    success=True
+                )
+            else:
+                self._send_automation_alert(
+                    automation_id, automation_name, trigger_type, action_type,
+                    success=False, error="Action execution returned failure"
+                )
+            return success
+
         except Exception as error:
             logger.error(f"Error executing automation {automation_id}: {error}")
             self._stats["executions_failed"] += 1
+            self._send_automation_alert(
+                automation_id, automation_name, trigger_type, action_type,
+                success=False, error=str(error)
+            )
             return False
+
+    def _send_automation_alert(
+        self,
+        automation_id: Any,
+        automation_name: str,
+        trigger_type: str,
+        action_type: str,
+        success: bool,
+        error: str | None = None,
+    ) -> None:
+        """
+        Send Slack alert for automation execution.
+
+        Args:
+            automation_id: ID of the automation
+            automation_name: Name of the automation
+            trigger_type: Type of trigger (time, state, presence)
+            action_type: Type of action (agent_command, ha_service)
+            success: Whether execution was successful
+            error: Error message if failed
+        """
+        try:
+            if success:
+                send_health_alert(
+                    title=f"Automation Executed: {automation_name}",
+                    message=f"Successfully executed automation '{automation_name}'",
+                    severity="info",
+                    component="automation",
+                    details={
+                        "automation_id": automation_id,
+                        "trigger_type": trigger_type,
+                        "action_type": action_type,
+                    },
+                )
+            else:
+                send_health_alert(
+                    title=f"Automation Failed: {automation_name}",
+                    message=f"Failed to execute automation '{automation_name}': {error}",
+                    severity="warning",
+                    component="automation",
+                    details={
+                        "automation_id": automation_id,
+                        "trigger_type": trigger_type,
+                        "action_type": action_type,
+                        "error": error,
+                    },
+                )
+        except Exception as alert_error:
+            logger.error(f"Failed to send automation alert: {alert_error}")
 
     def _execute_agent_command(self, action_config: dict[str, Any]) -> bool:
         """

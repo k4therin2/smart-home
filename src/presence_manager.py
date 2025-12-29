@@ -20,6 +20,7 @@ from typing import Any
 
 from src.config import DATA_DIR
 from src.ha_client import get_ha_client
+from src.utils import send_health_alert
 
 
 logger = logging.getLogger(__name__)
@@ -452,8 +453,43 @@ class PresenceManager:
             elif old_state_value in ["away", "leaving"] and state in ["home", "arriving"]:
                 self._fire_arrival_callbacks()
 
+            # Send Slack alert for presence state changes (WP-10.5)
+            self._send_presence_alert(old_state_value, state, source, confidence)
+
         logger.debug(f"Presence state set to {state} (source: {source}, confidence: {confidence})")
         return True
+
+    def _send_presence_alert(
+        self,
+        old_state: str,
+        new_state: str,
+        source: str,
+        confidence: float,
+    ) -> None:
+        """
+        Send Slack alert for presence state change.
+
+        Args:
+            old_state: Previous presence state
+            new_state: New presence state
+            source: Source of detection
+            confidence: Confidence score
+        """
+        try:
+            send_health_alert(
+                title=f"Presence State Change: {new_state.capitalize()}",
+                message=f"Presence changed from {old_state} to {new_state}",
+                severity="info",
+                component="presence",
+                details={
+                    "previous_state": old_state,
+                    "new_state": new_state,
+                    "source": source,
+                    "confidence": confidence,
+                },
+            )
+        except Exception as error:
+            logger.error(f"Failed to send presence alert: {error}")
 
     def _record_departure_pattern(self, cursor, timestamp_str: str):
         """Record departure time for pattern learning."""

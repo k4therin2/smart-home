@@ -580,6 +580,87 @@ class TestHomeAssistantIntegration:
             assert result is True
 
 
+class TestPresenceStateChangeAlerts:
+    """Tests for Slack alerts on presence state changes (WP-10.5)."""
+
+    def test_state_change_home_to_away_sends_alert(self, presence_manager):
+        """Test that presence change from home to away sends Slack alert."""
+        # Set initial state to home
+        presence_manager.set_presence_state("home", source="router")
+
+        with patch("src.presence_manager.send_health_alert") as mock_alert:
+            # Change to away
+            result = presence_manager.set_presence_state("away", source="router")
+
+            assert result is True
+            # Alert should be sent for state change
+            mock_alert.assert_called_once()
+            call_kwargs = mock_alert.call_args[1]
+            assert call_kwargs["severity"] == "info"
+            assert "Presence" in call_kwargs["title"]
+            assert "away" in call_kwargs["message"].lower()
+
+    def test_state_change_away_to_home_sends_alert(self, presence_manager):
+        """Test that presence change from away to home sends Slack alert."""
+        # Set initial state to away
+        presence_manager.set_presence_state("away", source="router")
+
+        with patch("src.presence_manager.send_health_alert") as mock_alert:
+            # Change to home
+            result = presence_manager.set_presence_state("home", source="router")
+
+            assert result is True
+            # Alert should be sent for state change
+            mock_alert.assert_called_once()
+            call_kwargs = mock_alert.call_args[1]
+            assert "home" in call_kwargs["message"].lower()
+
+    def test_same_state_does_not_send_alert(self, presence_manager):
+        """Test that setting same state doesn't send alert."""
+        # Set initial state to home
+        presence_manager.set_presence_state("home", source="router")
+
+        with patch("src.presence_manager.send_health_alert") as mock_alert:
+            # Set same state again
+            result = presence_manager.set_presence_state("home", source="router")
+
+            assert result is True
+            # No alert should be sent (same state)
+            mock_alert.assert_not_called()
+
+    def test_alert_includes_source_and_confidence(self, presence_manager):
+        """Test that alert includes source and confidence in details."""
+        # Set initial state
+        presence_manager.set_presence_state("home", source="router")
+
+        with patch("src.presence_manager.send_health_alert") as mock_alert:
+            # Change state with specific source and confidence
+            result = presence_manager.set_presence_state(
+                "away", source="gps", confidence=0.95
+            )
+
+            assert result is True
+            mock_alert.assert_called_once()
+            call_kwargs = mock_alert.call_args[1]
+
+            # Check details are included
+            details = call_kwargs.get("details", {})
+            assert details.get("source") == "gps"
+            assert details.get("confidence") == 0.95
+
+    def test_transitional_states_send_alerts(self, presence_manager):
+        """Test that transitional states (arriving, leaving) also send alerts."""
+        presence_manager.set_presence_state("home", source="router")
+
+        with patch("src.presence_manager.send_health_alert") as mock_alert:
+            # Transitional state: leaving
+            result = presence_manager.set_presence_state("leaving", source="router")
+
+            assert result is True
+            mock_alert.assert_called_once()
+            assert "leaving" in mock_alert.call_args[1]["message"].lower()
+
+
 # Fixtures
 
 @pytest.fixture

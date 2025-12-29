@@ -815,3 +815,90 @@ class TestMultipleAutomations:
         assert processed == 1
         # But both were attempted
         assert scheduler._execute_automation.call_count == 2
+
+
+class TestAutomationExecutionAlerts:
+    """Tests for Slack alerts on automation execution (WP-10.5)."""
+
+    def test_successful_execution_sends_alert(self):
+        """Test that successful automation execution sends Slack alert."""
+        mock_manager = MagicMock()
+        scheduler = AutomationScheduler(automation_manager=mock_manager)
+
+        automation = {
+            "id": 42,
+            "name": "Morning Lights",
+            "trigger_type": "time",
+            "action_type": "agent_command",
+            "action_config": {"command": "turn living room lights on"},
+        }
+
+        with patch("agent.run_agent") as mock_run_agent:
+            mock_run_agent.return_value = "Done"
+
+            with patch("src.automation_scheduler.send_health_alert") as mock_alert:
+                result = scheduler._execute_automation(automation)
+
+                assert result is True
+                # Alert should be sent for successful execution
+                mock_alert.assert_called_once()
+                call_kwargs = mock_alert.call_args[1]
+                assert call_kwargs["severity"] == "info"
+                assert "Morning Lights" in call_kwargs["title"]
+
+    def test_failed_execution_sends_warning_alert(self):
+        """Test that failed automation execution sends warning alert."""
+        mock_manager = MagicMock()
+        scheduler = AutomationScheduler(automation_manager=mock_manager)
+
+        automation = {
+            "id": 42,
+            "name": "Failed Automation",
+            "trigger_type": "time",
+            "action_type": "agent_command",
+            "action_config": {"command": "invalid command"},
+        }
+
+        with patch("agent.run_agent") as mock_run_agent:
+            mock_run_agent.side_effect = Exception("API Error")
+
+            with patch("src.automation_scheduler.send_health_alert") as mock_alert:
+                result = scheduler._execute_automation(automation)
+
+                assert result is False
+                # Warning alert should be sent for failed execution
+                mock_alert.assert_called_once()
+                call_kwargs = mock_alert.call_args[1]
+                assert call_kwargs["severity"] == "warning"
+                assert "Failed" in call_kwargs["title"] or "Error" in call_kwargs["title"]
+
+    def test_alert_includes_automation_details(self):
+        """Test that alert includes automation ID, name, and trigger type."""
+        mock_manager = MagicMock()
+        mock_ha = MagicMock()
+        mock_ha.call_service.return_value = True
+
+        scheduler = AutomationScheduler(
+            automation_manager=mock_manager,
+            ha_client=mock_ha,
+        )
+
+        automation = {
+            "id": 123,
+            "name": "Evening Scene",
+            "trigger_type": "state",
+            "action_type": "ha_service",
+            "action_config": {"domain": "scene", "service": "activate"},
+        }
+
+        with patch("src.automation_scheduler.send_health_alert") as mock_alert:
+            result = scheduler._execute_automation(automation)
+
+            assert result is True
+            mock_alert.assert_called_once()
+            call_kwargs = mock_alert.call_args[1]
+
+            # Check details are included
+            details = call_kwargs.get("details", {})
+            assert details.get("automation_id") == 123
+            assert details.get("trigger_type") == "state"
