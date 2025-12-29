@@ -6,6 +6,12 @@ voice puck to TTS response. Identifies failures and suggests fixes.
 
 WP-9.2: Voice Pipeline Diagnostic Suite (Christmas Gift 2025)
 Addresses: BUG-001 (Voice Puck not responding)
+
+WP-10.17 Enhancements (2025-12-29):
+- ESPHome version/firmware checker
+- Pipeline configuration status helper
+- Expanded troubleshooting guides
+- STT/TTS quality testing helpers
 """
 
 import socket
@@ -730,6 +736,449 @@ class VoicePipelineDiagnostics:
             logger.warning(f"Error getting assist pipelines: {error}")
 
         return {"pipelines": [], "preferred_pipeline": None}
+
+    # ========== WP-10.17: Voice Pipeline Diagnostic Enhancements ==========
+
+    def get_esphome_version(self) -> dict[str, Any] | None:
+        """
+        Get ESPHome device version information (WP-10.17).
+
+        Returns:
+            Dictionary with version info or None if unavailable
+        """
+        try:
+            # ESPHome web server API endpoint for device info
+            ip = self._resolve_host(self.voice_puck_host)
+            if not ip:
+                logger.warning(f"Cannot resolve host: {self.voice_puck_host}")
+                return None
+
+            # Try ESPHome web server (common port 80) first
+            response = requests.get(f"http://{ip}/", timeout=5)
+            if response.status_code == 200:
+                # Try to parse version from response or headers
+                # ESPHome devices typically expose info via different endpoints
+                try:
+                    # Try JSON endpoint
+                    info_response = requests.get(f"http://{ip}/text_sensor/esphome_version", timeout=5)
+                    if info_response.status_code == 200:
+                        return {
+                            "name": self.voice_puck_host,
+                            "version": info_response.json().get("value", "unknown"),
+                            "ip": ip,
+                        }
+                except Exception:
+                    pass
+
+                # Fallback: return basic info
+                return {
+                    "name": self.voice_puck_host,
+                    "version": "detected (version not exposed)",
+                    "ip": ip,
+                    "reachable": True,
+                }
+
+            return None
+
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"Cannot connect to ESPHome device: {self.voice_puck_host}")
+            return None
+        except Exception as error:
+            logger.warning(f"Error getting ESPHome version: {error}")
+            return None
+
+    def get_latest_esphome_version(self) -> str | None:
+        """
+        Get the latest ESPHome version from GitHub (WP-10.17).
+
+        Returns:
+            Latest version string or None if unavailable
+        """
+        try:
+            # ESPHome releases API
+            response = requests.get(
+                "https://api.github.com/repos/esphome/esphome/releases/latest",
+                timeout=10,
+            )
+            if response.status_code == 200:
+                return response.json().get("tag_name", "").lstrip("v")
+            return None
+        except Exception as error:
+            logger.warning(f"Error getting latest ESPHome version: {error}")
+            return None
+
+    def check_firmware_update(self) -> dict[str, Any]:
+        """
+        Check if firmware update is available (WP-10.17).
+
+        Returns:
+            Dictionary with update status
+        """
+        current = self.get_esphome_version()
+        latest = self.get_latest_esphome_version()
+
+        if current is None:
+            return {
+                "update_available": False,
+                "error": "Cannot connect to ESPHome device",
+                "current_version": None,
+                "latest_version": latest,
+            }
+
+        current_version = current.get("version", "")
+
+        # If version couldn't be determined, can't compare
+        if "unknown" in current_version.lower() or "detected" in current_version.lower():
+            return {
+                "update_available": False,
+                "error": "Cannot determine current version",
+                "current_version": current_version,
+                "latest_version": latest,
+            }
+
+        if latest is None:
+            return {
+                "update_available": False,
+                "error": "Cannot fetch latest version",
+                "current_version": current_version,
+                "latest_version": None,
+            }
+
+        # Simple version comparison
+        update_available = current_version != latest
+
+        return {
+            "update_available": update_available,
+            "current_version": current_version,
+            "latest_version": latest,
+        }
+
+    def get_pipeline_status(self) -> dict[str, Any]:
+        """
+        Get HA Assist pipeline configuration status (WP-10.17).
+
+        Returns:
+            Dictionary with pipeline component status
+        """
+        try:
+            all_states = self.ha_client.get_all_states()
+
+            has_stt = any(s.get("entity_id", "").startswith("stt.") for s in all_states)
+            has_tts = any(s.get("entity_id", "").startswith("tts.") for s in all_states)
+            has_conversation = any(
+                s.get("entity_id", "").startswith("conversation.") for s in all_states
+            )
+
+            is_complete = has_stt and has_tts and has_conversation
+
+            return {
+                "has_stt": has_stt,
+                "has_tts": has_tts,
+                "has_conversation": has_conversation,
+                "is_complete": is_complete,
+                "stt_entities": [s.get("entity_id") for s in all_states if s.get("entity_id", "").startswith("stt.")],
+                "tts_entities": [s.get("entity_id") for s in all_states if s.get("entity_id", "").startswith("tts.")],
+            }
+        except Exception as error:
+            logger.error(f"Error getting pipeline status: {error}")
+            return {
+                "has_stt": False,
+                "has_tts": False,
+                "has_conversation": False,
+                "is_complete": False,
+                "error": str(error),
+            }
+
+    def get_pipeline_setup_steps(self) -> list[str]:
+        """
+        Get setup steps based on current pipeline status (WP-10.17).
+
+        Returns:
+            List of setup steps needed
+        """
+        status = self.get_pipeline_status()
+        steps = []
+
+        if not status.get("has_stt"):
+            steps.extend([
+                "Install Whisper STT: Go to Settings > Devices & Services > Add Integration > Whisper",
+                "Configure Whisper: Choose model (tiny/base/small) based on hardware",
+                "Verify STT entity: Check Settings > Voice assistants for stt.whisper",
+            ])
+
+        if not status.get("has_tts"):
+            steps.extend([
+                "Install Piper TTS: Go to Settings > Devices & Services > Add Integration > Piper",
+                "Select voice: Choose a voice pack for your language",
+                "Verify TTS entity: Check Settings > Voice assistants for tts.piper",
+            ])
+
+        if not status.get("has_conversation"):
+            steps.extend([
+                "Configure Assist: Go to Settings > Voice assistants",
+                "Create a new Assist pipeline or edit the default",
+                "Set conversation agent (Home Assistant or custom)",
+            ])
+
+        if not steps:
+            steps.append("Pipeline is fully configured! Test with: 'Hey Jarvis, what time is it?'")
+
+        return steps
+
+    def get_troubleshooting_guide(self, issue_type: str) -> dict[str, Any]:
+        """
+        Get troubleshooting guide for a specific issue (WP-10.17).
+
+        Args:
+            issue_type: Type of issue (e.g., 'voice_puck_not_responding')
+
+        Returns:
+            Dictionary with symptoms, causes, and solutions
+        """
+        guides = {
+            "voice_puck_not_responding": {
+                "type": "voice_puck_not_responding",
+                "symptoms": [
+                    "Voice puck LED not lighting up",
+                    "No audio response after speaking",
+                    "Cannot find device on network",
+                ],
+                "causes": [
+                    "Power issue (cable, adapter)",
+                    "WiFi connectivity problem",
+                    "ESPHome firmware crash",
+                    "mDNS resolution failure",
+                ],
+                "solutions": [
+                    "Check power connection and LED indicators",
+                    "Verify WiFi credentials in ESPHome config",
+                    "Restart the voice puck (power cycle)",
+                    "Check router DHCP leases for device IP",
+                    "Try accessing ESPHome web interface: http://esphome-voice.local/",
+                    "Reflash ESPHome firmware if device is unresponsive",
+                ],
+                "docs_link": "https://esphome.io/components/voice_assistant.html",
+            },
+            "stt_not_working": {
+                "type": "stt_not_working",
+                "symptoms": [
+                    "Voice recognized but not converted to text",
+                    "Empty transcription results",
+                    "STT entity shows error state",
+                ],
+                "causes": [
+                    "Whisper model not loaded",
+                    "Insufficient memory for model",
+                    "Microphone audio quality issues",
+                    "Sample rate mismatch",
+                ],
+                "solutions": [
+                    "Restart Home Assistant to reload Whisper",
+                    "Use a smaller model (tiny instead of small)",
+                    "Check system memory: free -h",
+                    "Verify microphone is not muted",
+                    "Test microphone with: arecord -d 5 test.wav",
+                ],
+                "docs_link": "https://www.home-assistant.io/integrations/whisper/",
+            },
+            "tts_not_working": {
+                "type": "tts_not_working",
+                "symptoms": [
+                    "No audio output from speakers",
+                    "TTS entity shows error",
+                    "Voice response text but no speech",
+                ],
+                "causes": [
+                    "Piper voice pack not installed",
+                    "Audio output device misconfigured",
+                    "Volume set to zero",
+                    "Media player unavailable",
+                ],
+                "solutions": [
+                    "Install Piper voice pack for your language",
+                    "Check media player entity state",
+                    "Verify volume level on target device",
+                    "Test TTS directly: Developer Tools > Services > tts.speak",
+                ],
+                "docs_link": "https://www.home-assistant.io/integrations/piper/",
+            },
+            "pipeline_not_responding": {
+                "type": "pipeline_not_responding",
+                "symptoms": [
+                    "Wake word detected but no processing",
+                    "Timeout errors in logs",
+                    "Pipeline stuck in processing state",
+                ],
+                "causes": [
+                    "Conversation agent not configured",
+                    "SmartHome webhook unreachable",
+                    "LLM API rate limit or error",
+                ],
+                "solutions": [
+                    "Check Assist pipeline configuration",
+                    "Verify SmartHome server is running",
+                    "Check LLM API key and quota",
+                    "Review Home Assistant logs for errors",
+                ],
+                "docs_link": "https://www.home-assistant.io/voice_control/",
+            },
+        }
+
+        if issue_type in guides:
+            return guides[issue_type]
+
+        # Return general troubleshooting for unknown issues
+        return {
+            "type": "general",
+            "symptoms": ["Unspecified voice pipeline issue"],
+            "causes": ["Multiple possible causes"],
+            "solutions": [
+                "Run full diagnostic: /api/voice-diagnostics",
+                "Check Home Assistant logs: docker logs homeassistant",
+                "Verify all services are running",
+                "Check network connectivity between components",
+                "Review SmartHome server logs",
+            ],
+            "docs_link": "https://www.home-assistant.io/voice_control/troubleshooting/",
+        }
+
+    def test_stt_quality(self) -> DiagnosticResult:
+        """
+        Test STT quality by checking configuration (WP-10.17).
+
+        Note: Actual audio quality testing requires hardware.
+        This checks configuration and availability.
+
+        Returns:
+            DiagnosticResult with STT status
+        """
+        start_time = datetime.now()
+        details = {}
+
+        try:
+            all_states = self.ha_client.get_all_states()
+            stt_entities = [s for s in all_states if s.get("entity_id", "").startswith("stt.")]
+
+            details["stt_entities"] = [e.get("entity_id") for e in stt_entities]
+            details["stt_count"] = len(stt_entities)
+
+            if not stt_entities:
+                duration = (datetime.now() - start_time).total_seconds() * 1000
+                return DiagnosticResult(
+                    name="STT Quality",
+                    status=TestStatus.FAILED,
+                    message="No STT entities found",
+                    details=details,
+                    fix_suggestions=self.get_troubleshooting_guide("stt_not_working")["solutions"],
+                    duration_ms=duration,
+                )
+
+            # Check if any STT entities have error states
+            error_entities = [
+                e for e in stt_entities
+                if e.get("state") in ["unavailable", "unknown", "error"]
+            ]
+
+            if error_entities:
+                details["error_entities"] = [e.get("entity_id") for e in error_entities]
+                duration = (datetime.now() - start_time).total_seconds() * 1000
+                return DiagnosticResult(
+                    name="STT Quality",
+                    status=TestStatus.WARNING,
+                    message=f"STT entity in error state: {error_entities[0].get('entity_id')}",
+                    details=details,
+                    fix_suggestions=["Restart Home Assistant", "Check STT integration logs"],
+                    duration_ms=duration,
+                )
+
+            duration = (datetime.now() - start_time).total_seconds() * 1000
+            return DiagnosticResult(
+                name="STT Quality",
+                status=TestStatus.PASSED,
+                message=f"STT configured with {len(stt_entities)} engine(s)",
+                details=details,
+                duration_ms=duration,
+            )
+
+        except Exception as error:
+            duration = (datetime.now() - start_time).total_seconds() * 1000
+            return DiagnosticResult(
+                name="STT Quality",
+                status=TestStatus.FAILED,
+                message=f"Error checking STT: {error}",
+                details={"error": str(error)},
+                fix_suggestions=["Verify Home Assistant connection"],
+                duration_ms=duration,
+            )
+
+    def test_tts_quality(self) -> DiagnosticResult:
+        """
+        Test TTS quality by checking configuration (WP-10.17).
+
+        Note: Actual audio quality testing requires hardware.
+        This checks configuration and availability.
+
+        Returns:
+            DiagnosticResult with TTS status
+        """
+        start_time = datetime.now()
+        details = {}
+
+        try:
+            all_states = self.ha_client.get_all_states()
+            tts_entities = [s for s in all_states if s.get("entity_id", "").startswith("tts.")]
+
+            details["tts_entities"] = [e.get("entity_id") for e in tts_entities]
+            details["tts_count"] = len(tts_entities)
+
+            if not tts_entities:
+                duration = (datetime.now() - start_time).total_seconds() * 1000
+                return DiagnosticResult(
+                    name="TTS Quality",
+                    status=TestStatus.FAILED,
+                    message="No TTS entities found",
+                    details=details,
+                    fix_suggestions=self.get_troubleshooting_guide("tts_not_working")["solutions"],
+                    duration_ms=duration,
+                )
+
+            # Check if any TTS entities have error states
+            error_entities = [
+                e for e in tts_entities
+                if e.get("state") in ["unavailable", "unknown", "error"]
+            ]
+
+            if error_entities:
+                details["error_entities"] = [e.get("entity_id") for e in error_entities]
+                duration = (datetime.now() - start_time).total_seconds() * 1000
+                return DiagnosticResult(
+                    name="TTS Quality",
+                    status=TestStatus.WARNING,
+                    message=f"TTS entity in error state: {error_entities[0].get('entity_id')}",
+                    details=details,
+                    fix_suggestions=["Restart Home Assistant", "Check TTS integration logs"],
+                    duration_ms=duration,
+                )
+
+            duration = (datetime.now() - start_time).total_seconds() * 1000
+            return DiagnosticResult(
+                name="TTS Quality",
+                status=TestStatus.PASSED,
+                message=f"TTS configured with {len(tts_entities)} engine(s)",
+                details=details,
+                duration_ms=duration,
+            )
+
+        except Exception as error:
+            duration = (datetime.now() - start_time).total_seconds() * 1000
+            return DiagnosticResult(
+                name="TTS Quality",
+                status=TestStatus.FAILED,
+                message=f"Error checking TTS: {error}",
+                details={"error": str(error)},
+                fix_suggestions=["Verify Home Assistant connection"],
+                duration_ms=duration,
+            )
 
     def to_dict(self, summary: DiagnosticSummary) -> dict[str, Any]:
         """

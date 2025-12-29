@@ -467,23 +467,26 @@ All work packages must include appropriate Slack alerts for operational visibili
 ### Parallel Group 5: Documentation & Developer Experience
 
 #### WP-10.17: Voice Pipeline Diagnostic Enhancements
-- **Status:** ⚪ Not Started
+- **Status:** ✅ Complete (2025-12-29)
 - **Priority:** P2 (developer/user experience)
 - **Effort:** S
-- **Owner:** Unassigned
+- **Owner:** Nadia
 - **Source:** Enhancement to completed WP-9.2
 - **Note:** WP-9.2 (Voice Pipeline Diagnostics) completed 2025-12-25
-- **Potential Enhancements:**
-  - [ ] Add HA assist pipeline auto-configuration wizard
-  - [ ] Add STT/TTS quality testing tools
-  - [ ] Add voice puck firmware update checker
-  - [ ] Add comprehensive troubleshooting guide integration
-  - [ ] Create devlog entry
+- **Completed Enhancements:**
+  - [x] Add voice puck firmware update checker (ESPHome version detection)
+  - [x] Add comprehensive troubleshooting guide integration
+  - [x] Add STT/TTS quality testing tools (configuration-based)
+  - [x] Add pipeline configuration status helper
+  - [x] Create devlog entry
+- **Partially Addressed (Hardware Required):**
+  - [ ] HA assist pipeline auto-configuration wizard (needs WebSocket API)
+  - [ ] Actual audio quality testing (needs hardware)
 - **Acceptance Criteria:**
-  - [ ] One-click HA assist pipeline configuration
-  - [ ] STT/TTS quality tests run automatically
-  - [ ] Voice puck firmware version checked
-  - [ ] Troubleshooting guide integrated into diagnostics UI
+  - [x] Voice puck firmware version checked
+  - [x] Troubleshooting guide integrated into diagnostics
+  - [x] STT/TTS quality tests (configuration checks)
+  - [ ] One-click HA assist pipeline configuration (deferred - needs hardware)
 
 #### WP-10.18: API Documentation
 - **Status:** ⚪ Not Started

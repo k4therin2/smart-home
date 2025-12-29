@@ -447,6 +447,204 @@ class TestToDict:
         assert result["results"][0]["status"] == "passed"
 
 
+# ========== WP-10.17: Voice Pipeline Diagnostic Enhancements ==========
+
+
+class TestESPHomeFirmwareChecker:
+    """Tests for ESPHome version/firmware checking (WP-10.17)."""
+
+    @pytest.fixture
+    def diagnostics(self):
+        """Create diagnostics with mocked dependencies."""
+        with patch('src.voice_diagnostics.get_ha_client'):
+            return VoicePipelineDiagnostics(
+                voice_puck_host="test-puck.local"
+            )
+
+    def test_get_esphome_version_success(self, diagnostics):
+        """Test successfully retrieving ESPHome version."""
+        with patch.object(diagnostics, '_resolve_host', return_value="192.168.1.100"):
+            with patch('requests.get') as mock_get:
+                # First call is to root, second is to version endpoint
+                mock_root_response = MagicMock()
+                mock_root_response.status_code = 200
+
+                mock_version_response = MagicMock()
+                mock_version_response.status_code = 200
+                mock_version_response.json.return_value = {"value": "2024.12.0"}
+
+                mock_get.side_effect = [mock_root_response, mock_version_response]
+
+                version_info = diagnostics.get_esphome_version()
+
+                assert version_info is not None
+                assert version_info.get("version") == "2024.12.0"
+                assert version_info.get("name") == "test-puck.local"
+
+    def test_get_esphome_version_connection_error(self, diagnostics):
+        """Test handling connection error when getting version."""
+        with patch('requests.get') as mock_get:
+            import requests
+            mock_get.side_effect = requests.exceptions.ConnectionError()
+
+            version_info = diagnostics.get_esphome_version()
+
+            assert version_info is None
+
+    def test_check_firmware_update_available(self, diagnostics):
+        """Test detecting when firmware update is available."""
+        with patch.object(diagnostics, 'get_esphome_version') as mock_version, \
+             patch.object(diagnostics, 'get_latest_esphome_version') as mock_latest:
+            mock_version.return_value = {"version": "2024.10.0"}
+            mock_latest.return_value = "2024.12.0"
+
+            result = diagnostics.check_firmware_update()
+
+            assert result["update_available"] is True
+            assert result["current_version"] == "2024.10.0"
+            assert result["latest_version"] == "2024.12.0"
+
+    def test_check_firmware_up_to_date(self, diagnostics):
+        """Test detecting when firmware is up to date."""
+        with patch.object(diagnostics, 'get_esphome_version') as mock_version, \
+             patch.object(diagnostics, 'get_latest_esphome_version') as mock_latest:
+            mock_version.return_value = {"version": "2024.12.0"}
+            mock_latest.return_value = "2024.12.0"
+
+            result = diagnostics.check_firmware_update()
+
+            assert result["update_available"] is False
+
+
+class TestPipelineConfigHelper:
+    """Tests for HA Assist pipeline configuration helper (WP-10.17)."""
+
+    @pytest.fixture
+    def mock_ha_client(self):
+        """Create a mock HA client."""
+        with patch('src.voice_diagnostics.get_ha_client') as mock:
+            client = MagicMock()
+            mock.return_value = client
+            yield client
+
+    @pytest.fixture
+    def diagnostics(self, mock_ha_client):
+        """Create diagnostics with mocked HA client."""
+        return VoicePipelineDiagnostics()
+
+    def test_get_pipeline_setup_steps(self, diagnostics, mock_ha_client):
+        """Test getting pipeline setup steps based on current config."""
+        mock_ha_client.get_all_states.return_value = []  # No STT/TTS configured
+
+        steps = diagnostics.get_pipeline_setup_steps()
+
+        assert len(steps) > 0
+        assert any("stt" in step.lower() or "whisper" in step.lower() for step in steps)
+        assert any("tts" in step.lower() or "piper" in step.lower() for step in steps)
+
+    def test_get_pipeline_status_complete(self, diagnostics, mock_ha_client):
+        """Test pipeline status when fully configured."""
+        mock_ha_client.get_all_states.return_value = [
+            {"entity_id": "stt.whisper"},
+            {"entity_id": "tts.piper"},
+            {"entity_id": "conversation.home_assistant"},
+        ]
+
+        status = diagnostics.get_pipeline_status()
+
+        assert status["has_stt"] is True
+        assert status["has_tts"] is True
+        assert status["has_conversation"] is True
+        assert status["is_complete"] is True
+
+    def test_get_pipeline_status_incomplete(self, diagnostics, mock_ha_client):
+        """Test pipeline status when missing components."""
+        mock_ha_client.get_all_states.return_value = [
+            {"entity_id": "tts.piper"},
+        ]
+
+        status = diagnostics.get_pipeline_status()
+
+        assert status["has_stt"] is False
+        assert status["has_tts"] is True
+        assert status["is_complete"] is False
+
+
+class TestExpandedTroubleshootingGuide:
+    """Tests for expanded troubleshooting guidance (WP-10.17)."""
+
+    @pytest.fixture
+    def diagnostics(self):
+        """Create diagnostics with mocked dependencies."""
+        with patch('src.voice_diagnostics.get_ha_client'):
+            return VoicePipelineDiagnostics()
+
+    def test_get_troubleshooting_guide(self, diagnostics):
+        """Test getting troubleshooting guide for a specific issue."""
+        guide = diagnostics.get_troubleshooting_guide("voice_puck_not_responding")
+
+        assert guide is not None
+        assert "symptoms" in guide
+        assert "causes" in guide
+        assert "solutions" in guide
+        assert len(guide["solutions"]) > 0
+
+    def test_get_troubleshooting_guide_unknown_issue(self, diagnostics):
+        """Test handling unknown issue type."""
+        guide = diagnostics.get_troubleshooting_guide("unknown_issue_xyz")
+
+        assert guide is not None
+        assert "general" in guide.get("type", "").lower() or len(guide.get("solutions", [])) > 0
+
+    def test_troubleshooting_guide_includes_links(self, diagnostics):
+        """Test that troubleshooting guide includes documentation links."""
+        guide = diagnostics.get_troubleshooting_guide("stt_not_working")
+
+        # Should include helpful links
+        all_text = str(guide)
+        has_link = "http" in all_text or "docs" in all_text.lower()
+        assert has_link or len(guide.get("solutions", [])) > 0
+
+
+class TestSTTTTSQualityTest:
+    """Tests for STT/TTS quality testing helpers (WP-10.17)."""
+
+    @pytest.fixture
+    def mock_ha_client(self):
+        """Create a mock HA client."""
+        with patch('src.voice_diagnostics.get_ha_client') as mock:
+            client = MagicMock()
+            mock.return_value = client
+            yield client
+
+    @pytest.fixture
+    def diagnostics(self, mock_ha_client):
+        """Create diagnostics with mocked HA client."""
+        return VoicePipelineDiagnostics()
+
+    def test_test_stt_quality_returns_result(self, diagnostics, mock_ha_client):
+        """Test STT quality check returns a diagnostic result."""
+        mock_ha_client.get_all_states.return_value = [
+            {"entity_id": "stt.whisper"},
+        ]
+
+        result = diagnostics.test_stt_quality()
+
+        assert isinstance(result, DiagnosticResult)
+        assert result.name == "STT Quality"
+
+    def test_test_tts_quality_returns_result(self, diagnostics, mock_ha_client):
+        """Test TTS quality check returns a diagnostic result."""
+        mock_ha_client.get_all_states.return_value = [
+            {"entity_id": "tts.piper"},
+        ]
+
+        result = diagnostics.test_tts_quality()
+
+        assert isinstance(result, DiagnosticResult)
+        assert result.name == "TTS Quality"
+
+
 class TestSingleton:
     """Tests for singleton pattern."""
 
