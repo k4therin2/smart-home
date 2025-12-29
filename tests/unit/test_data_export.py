@@ -12,6 +12,8 @@ import json
 import pytest
 from unittest.mock import MagicMock, patch
 
+from src.data_export import DataExporter, DataImporter
+
 
 class TestDataExportEndpoint:
     """Tests for the /api/export endpoint."""
@@ -19,9 +21,7 @@ class TestDataExportEndpoint:
     @pytest.fixture
     def client(self):
         """Create a Flask test client."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from server import app
+        from src.server import app
         app.config["TESTING"] = True
         app.config["WTF_CSRF_ENABLED"] = False
         with app.test_client() as client:
@@ -36,12 +36,9 @@ class TestDataExportEndpoint:
     def test_export_returns_json_by_default(self, client):
         """Test that export returns JSON by default."""
         # Need to login or mock auth
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from server import app
+        from src.server import app
 
         with app.test_request_context():
-            from data_export import DataExporter
             exporter = DataExporter()
             result = exporter.export_all()
 
@@ -53,10 +50,6 @@ class TestDataExportEndpoint:
 
     def test_export_includes_todos(self, client):
         """Test that export includes todo data."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -64,10 +57,6 @@ class TestDataExportEndpoint:
 
     def test_export_includes_automations(self, client):
         """Test that export includes automation data."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -75,10 +64,6 @@ class TestDataExportEndpoint:
 
     def test_export_includes_reminders(self, client):
         """Test that export includes reminder data."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -86,10 +71,6 @@ class TestDataExportEndpoint:
 
     def test_export_includes_command_history(self, client):
         """Test that export includes command history."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -101,10 +82,6 @@ class TestExportFormats:
 
     def test_export_as_json(self):
         """Test export as JSON format."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_as_json()
 
@@ -115,10 +92,6 @@ class TestExportFormats:
 
     def test_export_as_csv(self):
         """Test export as CSV format."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_as_csv()
 
@@ -135,10 +108,6 @@ class TestDataImport:
 
     def test_import_validates_format(self):
         """Test that import validates data format."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataImporter
-
         importer = DataImporter()
 
         # Invalid data should be rejected
@@ -148,10 +117,6 @@ class TestDataImport:
 
     def test_import_accepts_valid_data(self):
         """Test that import accepts valid export data."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataImporter, DataExporter
-
         # Export current data
         exporter = DataExporter()
         export_data = exporter.export_all()
@@ -163,10 +128,6 @@ class TestDataImport:
 
     def test_import_preview_shows_changes(self):
         """Test that import preview shows what would change."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataImporter
-
         importer = DataImporter()
         test_data = {
             "metadata": {"version": "1.0", "exported_at": "2025-12-29"},
@@ -187,10 +148,6 @@ class TestExportMetadata:
 
     def test_metadata_includes_version(self):
         """Test that metadata includes export version."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -198,10 +155,6 @@ class TestExportMetadata:
 
     def test_metadata_includes_timestamp(self):
         """Test that metadata includes export timestamp."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
@@ -209,10 +162,6 @@ class TestExportMetadata:
 
     def test_metadata_includes_counts(self):
         """Test that metadata includes record counts."""
-        import sys
-        sys.path.insert(0, "/home/k4therin2/projects/Smarthome/src")
-        from data_export import DataExporter
-
         exporter = DataExporter()
         result = exporter.export_all()
 
