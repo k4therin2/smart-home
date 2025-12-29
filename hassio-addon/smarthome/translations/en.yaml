@@ -1,0 +1,33 @@
+# English translations for SmartHome Add-on configuration UI
+configuration:
+  openai_api_key:
+    name: OpenAI API Key
+    description: Your OpenAI API key for LLM-powered natural language processing. Get one at https://platform.openai.com/api-keys
+
+  openai_model:
+    name: OpenAI Model
+    description: The OpenAI model to use. Default is gpt-4o-mini (recommended for cost efficiency).
+
+  daily_cost_target:
+    name: Daily Cost Target
+    description: Target daily API cost in USD. Used for cost tracking and reporting.
+
+  daily_cost_alert:
+    name: Daily Cost Alert
+    description: Daily API cost threshold in USD that triggers a Slack alert.
+
+  log_level:
+    name: Log Level
+    description: Logging verbosity. Use DEBUG for troubleshooting.
+
+  slack_webhook_url:
+    name: Slack Webhook URL
+    description: Optional. Slack webhook URL for alerts and notifications.
+
+  spotify_client_id:
+    name: Spotify Client ID
+    description: Optional. Spotify application client ID for music control features.
+
+  spotify_client_secret:
+    name: Spotify Client Secret
+    description: Optional. Spotify application client secret for music control features.

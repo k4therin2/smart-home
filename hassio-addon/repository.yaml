@@ -1,0 +1,5 @@
+# SmartHome Add-on Repository
+# For use with Home Assistant OS and Home Assistant Supervised
+name: SmartHome Add-ons
+url: https://github.com/k4therin2/smarthome
+maintainer: k4therin2 <k4therin2@users.noreply.github.com>

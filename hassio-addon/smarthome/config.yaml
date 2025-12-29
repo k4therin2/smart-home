@@ -1,0 +1,88 @@
+# SmartHome Home Assistant Add-on Configuration
+# https://developers.home-assistant.io/docs/add-ons/configuration
+
+name: SmartHome Assistant
+version: "1.0.0"
+slug: smarthome
+description: Privacy-focused, agentic smart home assistant with LLM-powered natural language control
+url: https://github.com/k4therin2/smarthome
+
+# Supported architectures (amd64 for x86_64, aarch64 for ARM64)
+arch:
+  - amd64
+  - aarch64
+  - armv7
+
+# Container image settings
+image: ghcr.io/k4therin2/smarthome-hassio-{arch}
+
+# Startup behavior
+startup: application
+boot: auto
+
+# Web UI settings
+webui: http://[HOST]:[PORT:5050]
+
+# Port mappings (exposed to network)
+ports:
+  5050/tcp: 5050
+  5049/tcp: 5049
+ports_description:
+  5050/tcp: SmartHome Web UI (HTTPS)
+  5049/tcp: SmartHome HTTP Redirect
+
+# Host network mode for direct HA communication
+host_network: true
+
+# Map Home Assistant directories for integration
+map:
+  - config:rw
+  - ssl:ro
+  - media:rw
+
+# Environment variables passed to container
+environment:
+  HA_URL: http://supervisor/core
+  HA_TOKEN: ""
+
+# User-configurable options (defaults)
+options:
+  openai_api_key: ""
+  openai_model: "gpt-4o-mini"
+  daily_cost_target: 2.0
+  daily_cost_alert: 5.0
+  log_level: "INFO"
+  slack_webhook_url: ""
+  spotify_client_id: ""
+  spotify_client_secret: ""
+
+# Configuration schema (validation)
+schema:
+  openai_api_key: str
+  openai_model: str?
+  daily_cost_target: float?
+  daily_cost_alert: float?
+  log_level: list(DEBUG|INFO|WARNING|ERROR)?
+  slack_webhook_url: str?
+  spotify_client_id: str?
+  spotify_client_secret: str?
+
+# Security settings
+privileged: false
+apparmor: true
+
+# Ingress configuration (iframe inside HA UI)
+ingress: true
+ingress_port: 5050
+panel_icon: mdi:home-assistant
+panel_title: SmartHome
+
+# Health check and watchdog
+watchdog: http://[HOST]:[PORT:5050]/healthz
+init: false
+
+# Data backup
+backup: hot
+
+# Development stage
+stage: stable

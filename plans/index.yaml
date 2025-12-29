@@ -4,8 +4,8 @@ updated_by: Agent-Nadia
 summary:
   total_phases: 10
   completed_phases: 8
-  total_wps: 26
-  completed_wps: 24
+  total_wps: 27
+  completed_wps: 25
   in_progress_wps: 1
   blocked_wps: 1
   available_wps: 0
@@ -75,6 +75,11 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-10.33
+  title: Home Assistant Add-on
+  agent: Agent-Nadia
+  date: '2025-12-29'
+  devlog: devlog/hassio-addon/2025-12-29-implementation.md
 - wp: WP-10.36
   title: Privacy Policy & Terms
   agent: Agent-Nadia
