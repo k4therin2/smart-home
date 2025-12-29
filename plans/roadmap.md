@@ -827,24 +827,26 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [x] Documentation complete
 
 #### WP-10.36: Privacy Policy & Terms
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete
 - **Priority:** P2 (legal/community)
 - **Effort:** S
-- **Owner:** Unassigned
+- **Owner:** Agent-Nadia
+- **Completed:** 2025-12-29
 - **Source:** Required for community release
 - **Tasks:**
-  - [ ] Draft privacy policy
-  - [ ] Draft terms of service
-  - [ ] Add data retention policies
-  - [ ] Document third-party data sharing (OpenAI, Spotify, etc.)
-  - [ ] Add consent management
-  - [ ] Legal review (if needed)
+  - [x] Draft privacy policy
+  - [x] Draft terms of service
+  - [x] Add data retention policies
+  - [x] Document third-party data sharing (OpenAI, Spotify, etc.)
+  - [x] Add consent management
+  - [ ] Legal review (if needed) - deferred
 - **Acceptance Criteria:**
-  - [ ] Privacy policy complete
-  - [ ] Terms of service complete
-  - [ ] Data retention policy documented
-  - [ ] Third-party data sharing disclosed
-  - [ ] Consent management implemented
+  - [x] Privacy policy complete
+  - [x] Terms of service complete
+  - [x] Data retention policy documented
+  - [x] Third-party data sharing disclosed
+  - [x] Consent management implemented
+- **Devlog:** `devlog/privacy-policy/2025-12-29-implementation.md`
 
 ---
 
