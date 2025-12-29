@@ -1,0 +1,818 @@
+openapi: 3.0.3
+info:
+  title: SmartHome Assistant API
+  description: |
+    REST API for the SmartHome Assistant - an AI-powered home automation system
+    that integrates with Home Assistant and uses LLMs for natural language processing.
+
+    ## Authentication
+
+    Most endpoints require authentication via session cookie or Bearer token.
+    Use the `/login` endpoint to authenticate and obtain a session.
+
+    ### Session-Based Auth (Web UI)
+    - Login via the web interface at `/login`
+    - Session cookie is automatically included in subsequent requests
+
+    ### Token-Based Auth (Home Assistant Webhook)
+    - Use `Authorization: Bearer <webhook_token>` header
+    - Configure webhook token in Home Assistant integration
+
+    ## Rate Limiting
+
+    API endpoints are rate limited to prevent abuse:
+    - `/api/voice_command`: 20 requests/minute
+    - `/api/command`: 30 requests/minute
+    - `/api/health`: 30 requests/minute
+    - Most other endpoints: 10-60 requests/minute
+
+    Rate limit headers are included in responses:
+    - `X-RateLimit-Limit`: Maximum requests per period
+    - `X-RateLimit-Remaining`: Requests remaining in current period
+    - `X-RateLimit-Reset`: Time until rate limit resets
+
+  version: "1.0.0"
+  contact:
+    name: SmartHome Team
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+  - url: http://colby.tail1bcfe.ts.net:5000
+    description: Home server (Tailscale)
+
+tags:
+  - name: Voice & Commands
+    description: Voice command processing and natural language control
+  - name: Health & Monitoring
+    description: System health, diagnostics, and self-healing
+  - name: Todos
+    description: Todo list management
+  - name: Reminders
+    description: Reminder management
+  - name: Automations
+    description: Automation rule management
+  - name: Logs
+    description: Log viewing and analysis
+  - name: Notifications
+    description: Push notification subscriptions
+  - name: System
+    description: System status and configuration
+
+paths:
+  /api/status:
+    get:
+      tags:
+        - System
+      summary: Get system status
+      description: Returns current system status including agent state, Home Assistant connection, and available devices.
+      security:
+        - SessionAuth: []
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  system:
+                    type: string
+                    enum: [ready, error]
+                    example: ready
+                  agent:
+                    type: string
+                    enum: [ready, error]
+                    example: ready
+                  home_assistant:
+                    type: string
+                    enum: [connected, disconnected, error]
+                    example: connected
+                  devices:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Device"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/command:
+    post:
+      tags:
+        - Voice & Commands
+      summary: Execute a natural language command
+      description: |
+        Process a natural language command through the LLM agent.
+        The agent will interpret the command and execute appropriate Home Assistant actions.
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - command
+              properties:
+                command:
+                  type: string
+                  description: Natural language command
+                  example: "Turn on the living room lights"
+            examples:
+              turnOnLights:
+                summary: Turn on lights
+                value:
+                  command: "Turn on the living room lights"
+              setTimer:
+                summary: Set a timer
+                value:
+                  command: "Set a timer for 10 minutes called pizza"
+      responses:
+        "200":
+          description: Command executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  response:
+                    type: string
+                    example: "I've turned on the living room lights."
+                  actions:
+                    type: array
+                    items:
+                      type: string
+                    example: ["light.living_room: turned on"]
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/voice_command:
+    post:
+      tags:
+        - Voice & Commands
+      summary: Process voice command (Home Assistant webhook)
+      description: |
+        Webhook endpoint for Home Assistant voice assistant integration.
+        Accepts voice transcription and returns TTS-ready response.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  description: Transcribed voice command
+                  example: "What's the weather like today?"
+                language:
+                  type: string
+                  description: Language code
+                  default: "en"
+                  example: "en"
+                device_id:
+                  type: string
+                  description: Device identifier
+                  example: "voice_puck_kitchen"
+      responses:
+        "200":
+          description: Voice response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  response:
+                    type: string
+                    description: TTS-ready response text
+                    example: "The current temperature is 72 degrees."
+
+  /api/health:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Get comprehensive system health
+      description: |
+        Returns health status of all system components with automatic
+        self-healing for degraded components.
+      security:
+        - SessionAuth: []
+      responses:
+        "200":
+          description: System health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /healthz:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Liveness probe
+      description: |
+        Kubernetes-style liveness check. Returns 200 if process is alive.
+        Does not require authentication.
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "503":
+          description: Process not responding
+
+  /readyz:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Readiness probe
+      description: |
+        Kubernetes-style readiness check. Returns 200 if all critical
+        dependencies are healthy and service can accept traffic.
+        Does not require authentication.
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                    example: true
+                  timestamp:
+                    type: string
+                    format: date-time
+                  failing:
+                    type: array
+                    items:
+                      type: string
+                    example: []
+        "503":
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                    example: false
+                  failing:
+                    type: array
+                    items:
+                      type: string
+                    example: ["home_assistant", "database"]
+
+  /api/health/trigger/{component}:
+    post:
+      tags:
+        - Health & Monitoring
+      summary: Manually trigger healing for a component
+      description: Force a healing action for a specific component.
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: component
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [home_assistant, cache, database, anthropic_api, llm_provider]
+          description: Component name to heal
+      responses:
+        "200":
+          description: Healing result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attempted:
+                    type: boolean
+                    example: true
+                  success:
+                    type: boolean
+                    example: true
+                  action:
+                    type: string
+                    example: "restart_service"
+
+  /api/diagnostics/voice:
+    post:
+      tags:
+        - Health & Monitoring
+      summary: Run voice pipeline diagnostics
+      description: Run comprehensive diagnostics on the voice pipeline.
+      security:
+        - SessionAuth: []
+      responses:
+        "200":
+          description: Diagnostic results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticSummary"
+
+  /api/todos:
+    get:
+      tags:
+        - Todos
+      summary: List all todos
+      description: Get all todo items, optionally filtered by list.
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: list_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by list ID
+      responses:
+        "200":
+          description: Todo list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  todos:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Todo"
+
+    post:
+      tags:
+        - Todos
+      summary: Create a new todo
+      description: Add a new todo item.
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  example: "Buy groceries"
+                list_id:
+                  type: integer
+                  example: 1
+                due_date:
+                  type: string
+                  format: date
+                  example: "2025-12-30"
+      responses:
+        "200":
+          description: Todo created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  todo:
+                    $ref: "#/components/schemas/Todo"
+
+  /api/todos/{todo_id}/complete:
+    post:
+      tags:
+        - Todos
+      summary: Mark todo as complete
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: todo_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Todo completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+  /api/todos/{todo_id}:
+    delete:
+      tags:
+        - Todos
+      summary: Delete a todo
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: todo_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Todo deleted
+
+  /api/reminders:
+    get:
+      tags:
+        - Reminders
+      summary: List all reminders
+      security:
+        - SessionAuth: []
+      responses:
+        "200":
+          description: Reminder list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+
+  /api/automations:
+    get:
+      tags:
+        - Automations
+      summary: List all automations
+      security:
+        - SessionAuth: []
+      responses:
+        "200":
+          description: Automation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  automations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Automation"
+
+    post:
+      tags:
+        - Automations
+      summary: Create a new automation
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationInput"
+      responses:
+        "200":
+          description: Automation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  automation:
+                    $ref: "#/components/schemas/Automation"
+
+  /api/automations/{automation_id}/toggle:
+    post:
+      tags:
+        - Automations
+      summary: Toggle automation enabled state
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: automation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Automation toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  enabled:
+                    type: boolean
+
+  /api/logs:
+    get:
+      tags:
+        - Logs
+      summary: Get application logs
+      description: Retrieve logs with filtering and pagination.
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LogEntry"
+                  total:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+  /api/notifications/subscribe:
+    post:
+      tags:
+        - Notifications
+      summary: Subscribe to push notifications
+      description: Register a push subscription for browser notifications.
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subscription:
+                  type: object
+                  description: Web Push subscription object
+      responses:
+        "200":
+          description: Subscription registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Session cookie obtained via login
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: Webhook token for Home Assistant integration
+
+  schemas:
+    Device:
+      type: object
+      properties:
+        entity_id:
+          type: string
+          example: "light.living_room"
+        friendly_name:
+          type: string
+          example: "Living Room Light"
+        state:
+          type: string
+          example: "on"
+        domain:
+          type: string
+          example: "light"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid request"
+        details:
+          type: string
+
+    HealthStatus:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        components:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [healthy, degraded, unhealthy]
+              message:
+                type: string
+              last_check:
+                type: string
+                format: date-time
+
+    DiagnosticSummary:
+      type: object
+      properties:
+        overall_status:
+          type: string
+          enum: [passed, failed, warning]
+        timestamp:
+          type: string
+          format: date-time
+        total_duration_ms:
+          type: number
+        summary:
+          type: object
+          properties:
+            passed:
+              type: integer
+            failed:
+              type: integer
+            warnings:
+              type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+              message:
+                type: string
+              fix_suggestions:
+                type: array
+                items:
+                  type: string
+
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        completed:
+          type: boolean
+        list_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        due_date:
+          type: string
+          format: date
+
+    Reminder:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        due_time:
+          type: string
+          format: date-time
+        is_recurring:
+          type: boolean
+        dismissed:
+          type: boolean
+
+    Automation:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        trigger_type:
+          type: string
+          enum: [time, event, state]
+        trigger_value:
+          type: string
+        action:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AutomationInput:
+      type: object
+      required:
+        - name
+        - trigger_type
+        - trigger_value
+        - action
+      properties:
+        name:
+          type: string
+          example: "Morning lights"
+        trigger_type:
+          type: string
+          enum: [time, event, state]
+        trigger_value:
+          type: string
+          example: "07:00"
+        action:
+          type: string
+          example: "Turn on kitchen lights"
+
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+        logger:
+          type: string
+        message:
+          type: string
+        extra:
+          type: object

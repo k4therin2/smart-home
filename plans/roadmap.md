@@ -489,24 +489,26 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [ ] One-click HA assist pipeline configuration (deferred - needs hardware)
 
 #### WP-10.18: API Documentation
-- **Status:** ⚪ Not Started
+- **Status:** ✅ Complete
 - **Priority:** P2 (developer experience)
 - **Effort:** M
-- **Owner:** Unassigned
+- **Owner:** Agent-Nadia
 - **Source:** No API docs currently exist
+- **Completed:** 2025-12-29
 - **Tasks:**
-  - [ ] Document all REST API endpoints
-  - [ ] Add OpenAPI/Swagger spec
-  - [ ] Create API usage examples
-  - [ ] Document authentication flows
-  - [ ] Add rate limiting documentation
-  - [ ] Generate interactive API docs (Swagger UI)
-  - [ ] Create devlog entry
+  - [x] Document all REST API endpoints
+  - [x] Add OpenAPI/Swagger spec
+  - [x] Create API usage examples
+  - [x] Document authentication flows
+  - [x] Add rate limiting documentation
+  - [x] Generate interactive API docs (Swagger UI)
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] All API endpoints documented
-  - [ ] OpenAPI/Swagger spec complete
-  - [ ] API examples provided
-  - [ ] Interactive docs accessible at /api/docs
+  - [x] All API endpoints documented
+  - [x] OpenAPI/Swagger spec complete
+  - [x] API examples provided
+  - [x] Interactive docs accessible at /api/docs
+- **Notes:** Implementation was already in place via Flasgger integration in server.py. Tests confirmed at /api/docs and /apispec.json.
 
 #### WP-10.19: Developer Guide
 - **Status:** ⚪ Not Started
