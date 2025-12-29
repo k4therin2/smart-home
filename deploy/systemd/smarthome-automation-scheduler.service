@@ -1,0 +1,37 @@
+[Unit]
+Description=SmartHome Automation Scheduler - Background automation trigger evaluation
+After=network.target nats-server.service homeassistant.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=k4therin2
+Group=k4therin2
+WorkingDirectory=/home/k4therin2/projects/Smarthome
+Environment=PYTHONPATH=/home/k4therin2/projects/Smarthome
+EnvironmentFile=/home/k4therin2/projects/Smarthome/.env
+
+# Run the automation scheduler
+ExecStart=/home/k4therin2/projects/Smarthome/venv/bin/python -m src.automation_scheduler
+
+# Restart on failure
+Restart=on-failure
+RestartSec=30
+
+# Graceful shutdown timeout (allow pending automations to complete)
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smarthome-automation
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/k4therin2/projects/Smarthome/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

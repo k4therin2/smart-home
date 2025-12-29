@@ -177,28 +177,32 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [x] Worker runs as systemd service
 
 #### WP-10.3: Automation Scheduler Background Process
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2025-12-29)
+- **Completed By:** Agent-Nadia
 - **Priority:** P2 (automation feature completion)
 - **Effort:** M
-- **Owner:** Unassigned
 - **Source:** Deferred from WP-4.2 (Automation Creation)
-- **Blocked by:** None
-- **Note:** AutomationManager infrastructure ready
 - **Tasks:**
-  - [ ] Design scheduler daemon for automation execution
-  - [ ] Implement time-based trigger evaluation
-  - [ ] Implement state-based trigger evaluation
-  - [ ] Add action execution (agent commands + HA services)
-  - [ ] Write tests for scheduler
-  - [ ] Create systemd service for scheduler daemon
-  - [ ] Document automation scheduler
-  - [ ] Create devlog entry
+  - [x] Design scheduler daemon for automation execution
+  - [x] Implement time-based trigger evaluation
+  - [x] Implement state-based trigger evaluation
+  - [x] Add action execution (agent commands + HA services)
+  - [x] Write tests for scheduler (39 unit tests)
+  - [x] Create systemd service for scheduler daemon
+  - [x] Document automation scheduler
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] Time-based automations execute at specified times
-  - [ ] State-based automations execute on state changes
-  - [ ] Both agent commands and HA services work as actions
-  - [ ] Scheduler runs as systemd service
-  - [ ] Error handling and logging
+  - [x] Time-based automations execute at specified times
+  - [x] State-based automations execute on state changes
+  - [x] Both agent commands and HA services work as actions
+  - [x] Scheduler runs as systemd service
+  - [x] Error handling and logging
+- **Implementation Notes:**
+  - Created `src/automation_scheduler.py` - Core scheduler with polling-based state detection
+  - Created `deploy/systemd/smarthome-automation-scheduler.service` - Production systemd unit
+  - Created `docs/automation-scheduler.md` - Complete documentation
+  - 39 new unit tests in `tests/unit/test_automation_scheduler.py`
+  - Devlog: `devlog/automation-scheduler/2025-12-29-wp-10-3-automation-scheduler.md`
 
 ---
 
