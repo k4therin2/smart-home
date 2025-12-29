@@ -926,9 +926,20 @@ class ServerHealthMonitor(BaseMonitor):
         return data
 
     def _run_cmd(self, cmd: str) -> str:
-        """Run a shell command and return output."""
+        """Run a shell command and return output.
+
+        Security note: All commands passed to this method are hardcoded strings
+        in the calling methods (hostname, df, free, etc.) - no user input is passed.
+        Shell features (pipes, redirects) are required for these monitoring commands.
+        """
         try:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                cmd,
+                shell=True,  # nosec B602 - hardcoded commands only, no user input
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
             return result.stdout.strip()
         except Exception:
             return ""

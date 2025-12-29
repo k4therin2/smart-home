@@ -5,15 +5,18 @@ Flask-based web interface for the smart home assistant.
 REQ-015: Web UI (Basic)
 Phase 2.1: Application Security Baseline
 Phase 2.2: HTTPS/TLS Configuration
+WP-10.18: API Documentation with Swagger/OpenAPI
 """
 
 import os
+from pathlib import Path
 import secrets
 import sqlite3
 import threading
 from datetime import date, datetime
 
-from flask import Flask, jsonify, redirect, render_template, request
+from flasgger import Swagger
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import current_user, login_required
@@ -84,6 +87,45 @@ login_manager = setup_login_manager(app)
 # Register auth blueprint
 app.register_blueprint(auth_bp)
 
+# WP-10.18: Initialize Swagger/OpenAPI documentation
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec",
+            "route": "/apispec.json",
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/api/docs"
+}
+
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "SmartHome Assistant API",
+        "description": "REST API for the SmartHome Assistant - an AI-powered home automation system",
+        "version": "1.0.0"
+    },
+    "securityDefinitions": {
+        "SessionAuth": {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": "session"
+        },
+        "BearerAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization"
+        }
+    }
+}
+
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
 
 @app.after_request
 def add_security_headers(response):
@@ -117,6 +159,14 @@ def add_security_headers(response):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     return response
+
+
+@app.route("/.well-known/security.txt")
+def security_txt():
+    """Serve security.txt for vulnerability disclosure."""
+    return send_from_directory(
+        app.static_folder, ".well-known/security.txt", mimetype="text/plain"
+    )
 
 
 @app.errorhandler(CSRFError)
@@ -188,12 +238,41 @@ def index():
 @csrf.exempt  # API uses token in header instead
 def handle_command():
     """
-    Handle incoming commands from the web interface.
-
-    Expects JSON: {"command": "user command text"}
-    Returns JSON: {"success": bool, "response": str, ...}
-
-    Rate limited to 10 requests per minute per IP.
+    Execute a natural language command
+    ---
+    tags:
+      - Voice & Commands
+    security:
+      - SessionAuth: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - command
+          properties:
+            command:
+              type: string
+              description: Natural language command to execute
+              example: "Turn on the living room lights"
+    responses:
+      200:
+        description: Command executed successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+            response:
+              type: string
+              example: "I've turned on the living room lights."
+      400:
+        description: Bad request
+      429:
+        description: Rate limit exceeded
     """
     try:
         data = request.get_json()
@@ -229,7 +308,43 @@ def handle_command():
 @limiter.limit("30 per minute")
 def get_status():
     """
-    Return system status for the dashboard including connected devices.
+    Get system status
+    ---
+    tags:
+      - System
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: System status
+        schema:
+          type: object
+          properties:
+            system:
+              type: string
+              enum: [ready, error]
+              example: ready
+            agent:
+              type: string
+              enum: [ready, error]
+              example: ready
+            home_assistant:
+              type: string
+              enum: [connected, disconnected, error]
+              example: connected
+            devices:
+              type: array
+              items:
+                type: object
+                properties:
+                  entity_id:
+                    type: string
+                  friendly_name:
+                    type: string
+                  state:
+                    type: string
+      500:
+        description: Server error
     """
     try:
         ha_client = get_ha_client()
@@ -292,16 +407,48 @@ def get_status():
 @limiter.limit("30 per minute")
 def get_health():
     """
-    Return comprehensive system health status.
+    Get comprehensive system health
+    ---
+    tags:
+      - Health & Monitoring
+    security:
+      - SessionAuth: []
+    description: |
+      Returns health status of all system components with automatic
+      self-healing for degraded components.
 
-    REQ-021: Self-Monitoring & Self-Healing
-    Provides detailed health status for all system components including:
-    - Home Assistant connectivity
-    - Cache performance
-    - Database health
-    - Anthropic API usage
-
-    Also triggers automatic healing actions for degraded components.
+      REQ-021: Self-Monitoring & Self-Healing
+    responses:
+      200:
+        description: System health status
+        schema:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            status:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            components:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  message:
+                    type: string
+            healing_attempted:
+              type: boolean
+            healing_results:
+              type: array
+              items:
+                type: object
+      500:
+        description: Health check error
     """
     try:
         health_monitor = get_health_monitor()
@@ -365,7 +512,38 @@ def get_health():
 @limiter.limit("10 per minute")
 def get_health_history():
     """
-    Return health check history for trending and analysis.
+    Get health check history for trending
+    ---
+    tags:
+      - Health & Monitoring
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: component
+        in: query
+        type: string
+        description: Filter by component name
+        required: false
+      - name: limit
+        in: query
+        type: integer
+        default: 50
+        maximum: 100
+        description: Maximum entries to return
+    responses:
+      200:
+        description: Health history data
+        schema:
+          type: object
+          properties:
+            history:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+      500:
+        description: Server error
     """
     try:
         health_monitor = get_health_monitor()
@@ -392,7 +570,46 @@ def get_health_history():
 @limiter.limit("10 per minute")
 def get_healing_history():
     """
-    Return self-healing action history.
+    Get self-healing action history
+    ---
+    tags:
+      - Health & Monitoring
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: component
+        in: query
+        type: string
+        description: Filter by component name
+        required: false
+      - name: limit
+        in: query
+        type: integer
+        default: 50
+        maximum: 100
+        description: Maximum entries to return
+    responses:
+      200:
+        description: Healing action history
+        schema:
+          type: object
+          properties:
+            healing_history:
+              type: array
+              items:
+                type: object
+                properties:
+                  component:
+                    type: string
+                  action:
+                    type: string
+                  success:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+      500:
+        description: Server error
     """
     try:
         self_healer = get_self_healer()
@@ -415,14 +632,27 @@ def get_healing_history():
 @limiter.limit("60 per minute")
 def healthz():
     """
-    Liveness probe endpoint (WP-10.21).
-
-    Kubernetes-style liveness check. Returns 200 if the process is alive.
-    Does NOT require authentication - this is intentional for k8s probes.
-
-    Returns:
-        200: Process is alive and can respond
-        503: Process is not responding (should be restarted)
+    Liveness probe (Kubernetes-style)
+    ---
+    tags:
+      - Health & Monitoring
+    description: |
+      Kubernetes-style liveness check. Returns 200 if the process is alive.
+      Does NOT require authentication - this is intentional for k8s probes.
+    responses:
+      200:
+        description: Process is alive
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: ok
+            timestamp:
+              type: string
+              format: date-time
+      503:
+        description: Process not responding
     """
     try:
         health_monitor = get_health_monitor()
@@ -439,15 +669,38 @@ def healthz():
 @limiter.limit("30 per minute")
 def readyz():
     """
-    Readiness probe endpoint (WP-10.21).
-
-    Kubernetes-style readiness check. Returns 200 if all critical dependencies
-    are healthy and the service can accept traffic.
-    Does NOT require authentication - this is intentional for k8s probes.
-
-    Returns:
-        200: All dependencies healthy, can accept traffic
-        503: One or more dependencies unhealthy, should not receive traffic
+    Readiness probe (Kubernetes-style)
+    ---
+    tags:
+      - Health & Monitoring
+    description: |
+      Kubernetes-style readiness check. Returns 200 if all critical dependencies
+      are healthy and the service can accept traffic.
+      Does NOT require authentication - this is intentional for k8s probes.
+    responses:
+      200:
+        description: Ready to accept traffic
+        schema:
+          type: object
+          properties:
+            ready:
+              type: boolean
+              example: true
+            timestamp:
+              type: string
+              format: date-time
+      503:
+        description: Not ready - one or more dependencies unhealthy
+        schema:
+          type: object
+          properties:
+            ready:
+              type: boolean
+              example: false
+            failing:
+              type: array
+              items:
+                type: string
     """
     try:
         health_monitor = get_health_monitor()
@@ -468,15 +721,35 @@ def readyz():
 @limiter.limit("5 per minute")
 def trigger_healing(component: str):
     """
-    Manually trigger healing for a component (WP-10.21).
-
-    POST /api/health/trigger/home_assistant
-
-    Args:
-        component: Name of the component to heal
-
-    Returns:
-        Healing result with success status
+    Manually trigger healing for a component
+    ---
+    tags:
+      - Health & Monitoring
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: component
+        in: path
+        type: string
+        required: true
+        description: Name of the component to heal
+        enum: [home_assistant, cache, database, llm_provider]
+    responses:
+      200:
+        description: Healing result
+        schema:
+          type: object
+          properties:
+            attempted:
+              type: boolean
+            success:
+              type: boolean
+            actions:
+              type: array
+              items:
+                type: string
+      500:
+        description: Healing trigger failed
     """
     try:
         health_monitor = get_health_monitor()
@@ -503,7 +776,28 @@ def trigger_healing(component: str):
 @limiter.limit("30 per minute")
 def get_history():
     """
-    Return recent command history from the usage database.
+    Get recent command history
+    ---
+    tags:
+      - Voice & Commands
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: Command history
+        schema:
+          type: object
+          properties:
+            history:
+              type: array
+              items:
+                type: object
+                properties:
+                  command:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
     """
     try:
         usage_db = DATA_DIR / "usage.db"
@@ -540,7 +834,23 @@ def get_history():
 @app.route("/api/csrf-token")
 @login_required
 def get_csrf_token():
-    """Return a CSRF token for API clients."""
+    """
+    Get a CSRF token for API clients
+    ---
+    tags:
+      - Authentication
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: CSRF token
+        schema:
+          type: object
+          properties:
+            csrf_token:
+              type: string
+              description: Token to include in X-CSRFToken header
+    """
     from flask_wtf.csrf import generate_csrf
 
     return jsonify({"csrf_token": generate_csrf()})
@@ -569,18 +879,56 @@ def diagnostics_page():
 @csrf.exempt  # Diagnostics page uses JS fetch
 def run_voice_diagnostics():
     """
-    Run the full voice pipeline diagnostic suite.
-
-    WP-9.2: Voice Pipeline Diagnostic Suite
-    Tests the entire voice pipeline from puck to TTS response:
-    1. Voice Puck connectivity
-    2. HA Assist pipeline configuration
-    3. SmartHome webhook reachability
-    4. SmartHome voice endpoint functionality
-    5. TTS output verification
-
-    Returns:
-        JSON with diagnostic results and fix suggestions
+    Run voice pipeline diagnostics
+    ---
+    tags:
+      - Voice & Commands
+    security:
+      - SessionAuth: []
+    description: |
+      Tests the entire voice pipeline from puck to TTS response:
+      1. Voice Puck connectivity
+      2. HA Assist pipeline configuration
+      3. SmartHome webhook reachability
+      4. SmartHome voice endpoint functionality
+      5. TTS output verification
+    responses:
+      200:
+        description: Diagnostic results
+        schema:
+          type: object
+          properties:
+            overall_status:
+              type: string
+              enum: [passed, failed, warning]
+            summary:
+              type: object
+              properties:
+                passed:
+                  type: integer
+                failed:
+                  type: integer
+                warnings:
+                  type: integer
+                total:
+                  type: integer
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  fix_suggestions:
+                    type: array
+                    items:
+                      type: string
+      500:
+        description: Diagnostics failed
     """
     try:
         from src.voice_diagnostics import VoicePipelineDiagnostics
@@ -664,13 +1012,52 @@ def _get_voice_handler() -> VoiceHandler:
 @csrf.exempt  # Webhook uses token auth instead
 def handle_voice_command():
     """
-    Handle voice commands from Home Assistant conversation agent webhook.
-
-    Expects JSON: {"text": "voice command text", "language": "en", ...}
-    Returns JSON: {"success": bool, "response": str}
-
-    Authentication: Either session auth OR Bearer token from VOICE_WEBHOOK_TOKEN env var.
-    Rate limited to 20 requests per minute per IP.
+    Handle voice commands from Home Assistant
+    ---
+    tags:
+      - Voice & Commands
+    security:
+      - SessionAuth: []
+      - BearerAuth: []
+    description: |
+      Webhook endpoint for Home Assistant conversation agent.
+      Authentication: Either session auth OR Bearer token (VOICE_WEBHOOK_TOKEN env var).
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              type: string
+              description: Voice command text from STT
+              example: "Turn on the kitchen lights"
+            language:
+              type: string
+              default: en
+            conversation_id:
+              type: string
+            device_id:
+              type: string
+    responses:
+      200:
+        description: Command result
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            response:
+              type: string
+      400:
+        description: Invalid request
+      401:
+        description: Unauthorized
+      429:
+        description: Rate limit exceeded
     """
     # Check authentication (session or webhook token)
     if not current_user.is_authenticated:
@@ -763,10 +1150,41 @@ def serve_service_worker():
 @csrf.exempt
 def subscribe_notifications():
     """
-    Handle push notification subscription.
-
-    Stores the push subscription endpoint for later notification delivery.
-    Currently a placeholder - full implementation requires web-push library.
+    Subscribe to push notifications
+    ---
+    tags:
+      - Notifications
+    security:
+      - SessionAuth: []
+    description: |
+      Register for push notifications (PWA feature).
+      Currently a placeholder - full implementation requires web-push library.
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - endpoint
+          properties:
+            endpoint:
+              type: string
+              description: Push subscription endpoint URL
+            keys:
+              type: object
+              properties:
+                p256dh:
+                  type: string
+                auth:
+                  type: string
+    responses:
+      201:
+        description: Subscription registered
+      400:
+        description: Missing endpoint
+      500:
+        description: Subscription failed
     """
     try:
         data = request.get_json()
@@ -794,13 +1212,52 @@ def subscribe_notifications():
 @limiter.limit("30 per minute")
 def get_todos():
     """
-    Get todos from a list.
-
-    Query params:
-    - list_name: Name of the list (default: 'default')
-    - show_completed: Include completed items (default: false)
-
-    Returns JSON with todos array.
+    Get todos from a list
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: list_name
+        in: query
+        type: string
+        default: default
+        description: Name of the list
+      - name: show_completed
+        in: query
+        type: boolean
+        default: false
+        description: Include completed items
+    responses:
+      200:
+        description: Todo list
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            todos:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  content:
+                    type: string
+                  completed:
+                    type: boolean
+                  priority:
+                    type: integer
+                  created_at:
+                    type: string
+            count:
+              type: integer
+            list_name:
+              type: string
+      500:
+        description: Server error
     """
     from src.todo_manager import get_todo_manager
 
@@ -828,9 +1285,49 @@ def get_todos():
 @csrf.exempt
 def add_todo():
     """
-    Add a new todo item.
-
-    Expects JSON: {"content": "...", "list_name": "...", "priority": "normal|high|urgent"}
+    Add a new todo item
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - content
+          properties:
+            content:
+              type: string
+              description: Todo item text
+            list_name:
+              type: string
+              default: default
+            priority:
+              type: string
+              enum: [normal, high, urgent]
+              default: normal
+    responses:
+      201:
+        description: Todo created
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            todo_id:
+              type: integer
+            content:
+              type: string
+            list_name:
+              type: string
+      400:
+        description: Invalid input
+      500:
+        description: Server error
     """
     from src.todo_manager import get_todo_manager
 
@@ -869,7 +1366,27 @@ def add_todo():
 @limiter.limit("20 per minute")
 @csrf.exempt
 def complete_todo(todo_id):
-    """Mark a todo as completed."""
+    """
+    Mark a todo as completed
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: todo_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the todo to complete
+    responses:
+      200:
+        description: Todo completed
+      404:
+        description: Todo not found
+      500:
+        description: Server error
+    """
     from src.todo_manager import get_todo_manager
 
     try:
@@ -893,7 +1410,27 @@ def complete_todo(todo_id):
 @limiter.limit("20 per minute")
 @csrf.exempt
 def delete_todo(todo_id):
-    """Delete a todo item."""
+    """
+    Delete a todo item
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: todo_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the todo to delete
+    responses:
+      200:
+        description: Todo deleted
+      404:
+        description: Todo not found
+      500:
+        description: Server error
+    """
     from src.todo_manager import get_todo_manager
 
     try:
@@ -916,7 +1453,33 @@ def delete_todo(todo_id):
 @login_required
 @limiter.limit("30 per minute")
 def get_todo_lists():
-    """Get all todo lists with item counts."""
+    """
+    Get all todo lists with item counts
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: List of todo lists
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            lists:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  count:
+                    type: integer
+      500:
+        description: Server error
+    """
     from src.todo_manager import get_todo_manager
 
     try:
@@ -936,7 +1499,38 @@ def get_todo_lists():
 @login_required
 @limiter.limit("30 per minute")
 def get_reminders():
-    """Get pending reminders."""
+    """
+    Get pending reminders
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: List of pending reminders
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            reminders:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  message:
+                    type: string
+                  due_at:
+                    type: string
+                    format: date-time
+            count:
+              type: integer
+      500:
+        description: Server error
+    """
     from src.reminder_manager import get_reminder_manager
 
     try:
@@ -957,7 +1551,27 @@ def get_reminders():
 @limiter.limit("20 per minute")
 @csrf.exempt
 def dismiss_reminder(reminder_id):
-    """Dismiss a reminder."""
+    """
+    Dismiss a reminder
+    ---
+    tags:
+      - Todos & Reminders
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: reminder_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the reminder to dismiss
+    responses:
+      200:
+        description: Reminder dismissed
+      404:
+        description: Reminder not found
+      500:
+        description: Server error
+    """
     from src.reminder_manager import get_reminder_manager
 
     try:
@@ -986,13 +1600,52 @@ def dismiss_reminder(reminder_id):
 @limiter.limit("30 per minute")
 def get_automations():
     """
-    Get all automations.
-
-    Query params:
-    - enabled_only: Only return enabled automations (default: false)
-    - trigger_type: Filter by trigger type ('time' or 'state')
-
-    Returns JSON with automations array.
+    Get all automations
+    ---
+    tags:
+      - Automations
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: enabled_only
+        in: query
+        type: boolean
+        default: false
+        description: Only return enabled automations
+      - name: trigger_type
+        in: query
+        type: string
+        enum: [time, state]
+        description: Filter by trigger type
+    responses:
+      200:
+        description: List of automations
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            automations:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  trigger_type:
+                    type: string
+                  action_type:
+                    type: string
+                  enabled:
+                    type: boolean
+            count:
+              type: integer
+            stats:
+              type: object
+      500:
+        description: Server error
     """
     from src.automation_manager import get_automation_manager
 
@@ -1021,17 +1674,58 @@ def get_automations():
 @csrf.exempt
 def create_automation():
     """
-    Create a new automation.
-
-    Request JSON:
-    {
-        "name": "string",
-        "trigger_type": "time" | "state",
-        "trigger_config": {...},
-        "action_type": "agent_command" | "ha_service",
-        "action_config": {...},
-        "description": "string" (optional)
-    }
+    Create a new automation
+    ---
+    tags:
+      - Automations
+    security:
+      - SessionAuth: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - trigger_type
+            - trigger_config
+            - action_type
+            - action_config
+          properties:
+            name:
+              type: string
+              description: Automation name
+            trigger_type:
+              type: string
+              enum: [time, state]
+            trigger_config:
+              type: object
+              description: Trigger-specific configuration
+            action_type:
+              type: string
+              enum: [agent_command, ha_service]
+            action_config:
+              type: object
+              description: Action-specific configuration
+            description:
+              type: string
+    responses:
+      201:
+        description: Automation created
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            automation_id:
+              type: integer
+            message:
+              type: string
+      400:
+        description: Invalid input
+      500:
+        description: Server error
     """
     from src.automation_manager import get_automation_manager
 
@@ -1079,9 +1773,41 @@ def create_automation():
 @csrf.exempt
 def update_automation(automation_id: int):
     """
-    Update an existing automation.
-
-    Request JSON can include: name, description, trigger_config, action_config, enabled
+    Update an existing automation
+    ---
+    tags:
+      - Automations
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: automation_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the automation to update
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            description:
+              type: string
+            trigger_config:
+              type: object
+            action_config:
+              type: object
+            enabled:
+              type: boolean
+    responses:
+      200:
+        description: Automation updated
+      404:
+        description: Automation not found
+      500:
+        description: Server error
     """
     from src.automation_manager import get_automation_manager
 
@@ -1110,7 +1836,27 @@ def update_automation(automation_id: int):
 @limiter.limit("10 per minute")
 @csrf.exempt
 def delete_automation(automation_id: int):
-    """Delete an automation by ID."""
+    """
+    Delete an automation
+    ---
+    tags:
+      - Automations
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: automation_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the automation to delete
+    responses:
+      200:
+        description: Automation deleted
+      404:
+        description: Automation not found
+      500:
+        description: Server error
+    """
     from src.automation_manager import get_automation_manager
 
     try:
@@ -1134,7 +1880,36 @@ def delete_automation(automation_id: int):
 @limiter.limit("20 per minute")
 @csrf.exempt
 def toggle_automation(automation_id: int):
-    """Toggle automation enabled/disabled state."""
+    """
+    Toggle automation enabled/disabled state
+    ---
+    tags:
+      - Automations
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: automation_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the automation to toggle
+    responses:
+      200:
+        description: Automation toggled
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            enabled:
+              type: boolean
+      404:
+        description: Automation not found
+      500:
+        description: Server error
+    """
     from src.automation_manager import get_automation_manager
 
     try:
@@ -1176,12 +1951,44 @@ def toggle_automation(automation_id: int):
 @limiter.limit("30 per minute")
 def get_log_files():
     """
-    List available log files.
-
-    Query params:
-    - type: Filter by log type ('main', 'error', 'api') or None for all
-
-    Returns JSON with list of log files and their metadata.
+    List available log files
+    ---
+    tags:
+      - Logs
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: type
+        in: query
+        type: string
+        enum: [main, error, api]
+        description: Filter by log type
+    responses:
+      200:
+        description: List of log files
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            files:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  path:
+                    type: string
+                  size:
+                    type: integer
+                  modified:
+                    type: string
+                    format: date-time
+            count:
+              type: integer
+      500:
+        description: Server error
     """
     from src.log_reader import LogReader
 
@@ -1223,21 +2030,79 @@ def get_log_files():
 @limiter.limit("30 per minute")
 def get_logs():
     """
-    Read and filter log entries.
-
-    Query params:
-    - log_type: Type of log ('main', 'error', 'api')
-    - offset: Number of entries to skip (default: 0)
-    - limit: Max entries to return (default: 100, max: 1000)
-    - reverse: Return entries newest first (default: true)
-    - min_level: Minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    - levels: Comma-separated specific levels to include
-    - start_time: Filter entries after this ISO datetime
-    - end_time: Filter entries before this ISO datetime
-    - module: Exact module name to filter
-    - search: Text to search in log messages
-
-    Returns JSON with log entries and statistics.
+    Read and filter log entries
+    ---
+    tags:
+      - Logs
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: log_type
+        in: query
+        type: string
+        enum: [main, error, api]
+        description: Type of log to read
+      - name: offset
+        in: query
+        type: integer
+        default: 0
+        description: Number of entries to skip
+      - name: limit
+        in: query
+        type: integer
+        default: 100
+        maximum: 1000
+        description: Max entries to return
+      - name: reverse
+        in: query
+        type: boolean
+        default: true
+        description: Return entries newest first
+      - name: min_level
+        in: query
+        type: string
+        enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+        description: Minimum log level
+      - name: levels
+        in: query
+        type: string
+        description: Comma-separated specific levels to include
+      - name: start_time
+        in: query
+        type: string
+        format: date-time
+        description: Filter entries after this time
+      - name: end_time
+        in: query
+        type: string
+        format: date-time
+        description: Filter entries before this time
+      - name: module
+        in: query
+        type: string
+        description: Exact module name to filter
+      - name: search
+        in: query
+        type: string
+        description: Text to search in log messages
+    responses:
+      200:
+        description: Log entries
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            entries:
+              type: array
+              items:
+                type: object
+            total:
+              type: integer
+            stats:
+              type: object
+      500:
+        description: Server error
     """
     from src.log_reader import LogLevel, LogReader
 
@@ -1342,14 +2207,35 @@ def get_logs():
 @limiter.limit("10 per minute")
 def export_logs():
     """
-    Export log entries in JSON or text format.
-
-    Query params:
-    - format: Export format ('json' or 'text', default: 'json')
-    - download: If 'true', set Content-Disposition for download
-    - (All filter params from /api/logs also supported)
-
-    Returns log data in requested format.
+    Export log entries
+    ---
+    tags:
+      - Logs
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: format
+        in: query
+        type: string
+        enum: [json, text]
+        default: json
+        description: Export format
+      - name: download
+        in: query
+        type: boolean
+        default: false
+        description: Set Content-Disposition for download
+      - name: log_type
+        in: query
+        type: string
+        enum: [main, error, api]
+      - name: min_level
+        in: query
+        type: string
+        enum: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+    responses:
+      200:
+        description: Log data in requested format
     """
     from flask import Response
 
@@ -1410,13 +2296,42 @@ def export_logs():
 @limiter.limit("60 per minute")
 def tail_logs():
     """
-    Get the latest log entries (tail functionality).
-
-    Query params:
-    - lines: Number of lines to return (default: 50, max: 500)
-    - from_position: File position to read from (for follow mode)
-
-    Returns JSON with entries and current file position for follow-up requests.
+    Get latest log entries (tail)
+    ---
+    tags:
+      - Logs
+    security:
+      - SessionAuth: []
+    description: |
+      Tail the log file. Use from_position for follow mode to get new entries since last request.
+    parameters:
+      - name: lines
+        in: query
+        type: integer
+        default: 50
+        maximum: 500
+        description: Number of lines to return
+      - name: from_position
+        in: query
+        type: integer
+        description: File position to read from (for follow mode)
+    responses:
+      200:
+        description: Log entries with position for follow-up
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            entries:
+              type: array
+              items:
+                type: object
+            position:
+              type: integer
+              description: Current file position for follow mode
+      500:
+        description: Server error
     """
     from src.log_reader import LogReader
 
@@ -1468,12 +2383,38 @@ def tail_logs():
 @limiter.limit("30 per minute")
 def get_log_stats():
     """
-    Get statistics for log files.
-
-    Query params:
-    - log_type: Type of log ('main', 'error', 'api')
-
-    Returns JSON with log statistics.
+    Get log file statistics
+    ---
+    tags:
+      - Logs
+    security:
+      - SessionAuth: []
+    parameters:
+      - name: log_type
+        in: query
+        type: string
+        enum: [main, error, api]
+        description: Type of log
+    responses:
+      200:
+        description: Log statistics
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            total_entries:
+              type: integer
+            level_counts:
+              type: object
+            first_entry:
+              type: string
+              format: date-time
+            last_entry:
+              type: string
+              format: date-time
+      500:
+        description: Server error
     """
     from src.log_reader import LogReader
 

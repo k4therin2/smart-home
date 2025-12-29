@@ -249,11 +249,13 @@ class AutomationManager:
         # Always update updated_at
         updates["updated_at"] = datetime.now().isoformat()
 
-        set_clause = ", ".join(f"{key} = ?" for key in updates)
+        # Build dynamic SET clause - safe because keys are validated against allowed_fields
+        # Column names are from allowlist, values use parameterized queries
+        set_clause = ", ".join(f"{key} = ?" for key in updates)  # nosec B608
         values = list(updates.values()) + [automation_id]
 
         with self._get_cursor() as cursor:
-            cursor.execute(f"UPDATE automations SET {set_clause} WHERE id = ?", values)
+            cursor.execute(f"UPDATE automations SET {set_clause} WHERE id = ?", values)  # nosec B608
             success = cursor.rowcount > 0
 
             if success:

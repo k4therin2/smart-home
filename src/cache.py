@@ -225,7 +225,8 @@ class CacheManager:
         params_str = json.dumps(sorted_params, sort_keys=True)
 
         # Hash for shorter keys with large parameters
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
+        # usedforsecurity=False since this is just for cache key generation, not security
+        params_hash = hashlib.md5(params_str.encode(), usedforsecurity=False).hexdigest()[:8]
 
         return f"{prefix}:{params_hash}"
 

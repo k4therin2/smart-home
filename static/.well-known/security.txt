@@ -1,0 +1,10 @@
+# SmartHome Security Contact
+# See https://securitytxt.org/ for more information
+
+Contact: https://github.com/k4therin2/smarthome/security/advisories/new
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://github.com/k4therin2/smarthome/.well-known/security.txt
+
+# This is a personal/home automation project.
+# For security issues, please use GitHub's private vulnerability reporting.
