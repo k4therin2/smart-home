@@ -514,6 +514,133 @@ class TestSpotifyErrorHandling:
         assert 'volume' in result['error'].lower()
 
 
+class TestSpotifyErrorAlerting:
+    """Test Slack alerting for Spotify API errors (WP-10.1)."""
+
+    @pytest.fixture(autouse=True)
+    def reset_error_count(self):
+        """Reset the error counter before each test."""
+        import tools.spotify as spotify_module
+        spotify_module._consecutive_spotify_errors = 0
+        yield
+        spotify_module._consecutive_spotify_errors = 0
+
+    def test_alert_sent_at_error_threshold(self, mock_spotify_client):
+        """Alert is sent when consecutive errors reach threshold (3)."""
+        from spotipy.exceptions import SpotifyException
+        import tools.spotify as spotify_module
+
+        mock_spotify_client.search.side_effect = SpotifyException(
+            http_status=500, code=-1, msg="Internal Server Error"
+        )
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            # Call function 3 times to hit threshold
+            for _ in range(3):
+                search_spotify(query="test", search_type="track")
+
+            # Alert should be called once at threshold
+            mock_alert.assert_called_once()
+            call_args = mock_alert.call_args
+            assert call_args[1]["title"] == "Spotify API Errors Detected"
+            assert call_args[1]["severity"] == "warning"
+            assert call_args[1]["component"] == "spotify"
+
+    def test_no_alert_below_threshold(self, mock_spotify_client):
+        """No alert is sent when errors are below threshold."""
+        from spotipy.exceptions import SpotifyException
+
+        mock_spotify_client.search.side_effect = SpotifyException(
+            http_status=500, code=-1, msg="Internal Server Error"
+        )
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            # Call function only twice (below threshold of 3)
+            for _ in range(2):
+                search_spotify(query="test", search_type="track")
+
+            mock_alert.assert_not_called()
+
+    def test_recovery_alert_after_error_state(self, mock_spotify_client):
+        """Recovery alert is sent when Spotify recovers from error state."""
+        from spotipy.exceptions import SpotifyException
+        import tools.spotify as spotify_module
+
+        # Simulate being in error state (>= threshold)
+        spotify_module._consecutive_spotify_errors = 3
+
+        # Now mock a successful response
+        mock_spotify_client.search.return_value = {
+            'tracks': {'items': [{'uri': 'spotify:track:123', 'name': 'Test', 'artists': [{'name': 'Artist'}]}]}
+        }
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            result = search_spotify(query="test", search_type="track")
+
+            # Verify successful result and recovery alert
+            assert result['success'] is True
+            mock_alert.assert_called_once()
+            call_args = mock_alert.call_args
+            assert call_args[1]["title"] == "Spotify API Recovered"
+            assert call_args[1]["severity"] == "info"
+
+    def test_error_count_resets_on_success(self, mock_spotify_client):
+        """Error count resets when a successful API call occurs."""
+        from spotipy.exceptions import SpotifyException
+        import tools.spotify as spotify_module
+
+        # Simulate 2 errors (below threshold)
+        spotify_module._consecutive_spotify_errors = 2
+
+        # Mock a successful response
+        mock_spotify_client.search.return_value = {
+            'tracks': {'items': [{'uri': 'spotify:track:123', 'name': 'Test', 'artists': [{'name': 'Artist'}]}]}
+        }
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            search_spotify(query="test", search_type="track")
+
+            # No alert sent (was below threshold)
+            mock_alert.assert_not_called()
+            # Counter should be reset
+            assert spotify_module._consecutive_spotify_errors == 0
+
+    def test_alert_includes_operation_context(self, mock_spotify_client):
+        """Alert includes context about which operation failed."""
+        from spotipy.exceptions import SpotifyException
+        import tools.spotify as spotify_module
+
+        mock_spotify_client.search.side_effect = SpotifyException(
+            http_status=429, code=-1, msg="Rate limited"
+        )
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            for _ in range(3):
+                search_spotify(query="test", search_type="track")
+
+            call_args = mock_alert.call_args
+            details = call_args[1]["details"]
+            assert "search" in details["operation"].lower()
+            assert details["consecutive_errors"] == 3
+
+    def test_no_alert_spam_beyond_threshold(self, mock_spotify_client):
+        """Only one alert is sent at threshold, not on every subsequent error."""
+        from spotipy.exceptions import SpotifyException
+        import tools.spotify as spotify_module
+
+        mock_spotify_client.search.side_effect = SpotifyException(
+            http_status=500, code=-1, msg="Internal Server Error"
+        )
+
+        with patch('tools.spotify.send_health_alert') as mock_alert:
+            # Call function 5 times (beyond threshold of 3)
+            for _ in range(5):
+                search_spotify(query="test", search_type="track")
+
+            # Alert should only be called once (at threshold 3)
+            assert mock_alert.call_count == 1
+
+
 class TestSpotifyToolIntegration:
     """Test integration with agent tool execution system."""
 

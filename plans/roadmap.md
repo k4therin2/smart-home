@@ -137,22 +137,23 @@ All work packages must include appropriate Slack alerts for operational visibili
 ### Parallel Group 1: Alerting & Notifications
 
 #### WP-10.1: Slack Alerting Configuration
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2025-12-29)
+- **Completed By:** Agent-Nadia
 - **Priority:** P2 (operational visibility)
 - **Effort:** S
-- **Owner:** Unassigned
 - **Source:** Deferred from WP-2.1, WP-2.7
+- **Note:** Alerting was already implemented in WP-2.1/WP-2.7. This WP added test coverage and documentation.
 - **Tasks:**
-  - [ ] Configure Slack alerts to #smarthome-health for auth failures (from WP-2.1)
-  - [ ] Configure Slack alerts to #smarthome-health for Spotify API errors (from WP-2.7)
-  - [ ] Test alert delivery and message formatting
-  - [ ] Document alerting configuration
-  - [ ] Create devlog entry
+  - [x] Configure Slack alerts to #smarthome-health for auth failures (from WP-2.1) - Already implemented
+  - [x] Configure Slack alerts to #smarthome-health for Spotify API errors (from WP-2.7) - Already implemented
+  - [x] Test alert delivery and message formatting - Added 12 tests
+  - [x] Document alerting configuration - Created docs/alerting.md
+  - [x] Create devlog entry - Created devlog/2025-12-29-wp-10.1-alerting-tests-docs.md
 - **Acceptance Criteria:**
-  - [ ] Auth failures trigger alerts to #smarthome-health
-  - [ ] Spotify API errors trigger alerts to #smarthome-health
-  - [ ] Alert messages are actionable
-  - [ ] Alerts tested and verified
+  - [x] Auth failures trigger alerts to #smarthome-health
+  - [x] Spotify API errors trigger alerts to #smarthome-health
+  - [x] Alert messages are actionable
+  - [x] Alerts tested and verified (12 new tests)
 
 #### WP-10.2: Background Notification Worker
 - **Status:** ⚪ Not Started

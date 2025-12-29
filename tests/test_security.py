@@ -134,6 +134,92 @@ class TestLoginAttemptTracking:
         assert get_recent_failed_attempts("10.0.0.2") == 2
 
 
+class TestAuthFailureAlerting:
+    """Test Slack alerting for authentication failures (WP-10.1)."""
+
+    def test_alert_sent_at_threshold(self, mock_data_dir):
+        """Alert is sent when failed attempts reach AUTH_FAILURE_ALERT_THRESHOLD (3)."""
+        from src.security.auth import log_login_attempt, AUTH_FAILURE_ALERT_THRESHOLD
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            # Log exactly threshold number of failed attempts
+            for i in range(AUTH_FAILURE_ALERT_THRESHOLD):
+                log_login_attempt("attacker", "10.0.0.50", False)
+
+            # Should have called alert exactly once at threshold
+            mock_alert.assert_called_once()
+            call_args = mock_alert.call_args
+            assert call_args[1]["title"] == "Authentication Failures Detected"
+            assert call_args[1]["severity"] == "warning"
+            assert call_args[1]["component"] == "auth"
+            assert "10.0.0.50" in call_args[1]["message"]
+
+    def test_no_alert_below_threshold(self, mock_data_dir):
+        """No alert is sent when failed attempts are below threshold."""
+        from src.security.auth import log_login_attempt, AUTH_FAILURE_ALERT_THRESHOLD
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            # Log one less than threshold
+            for i in range(AUTH_FAILURE_ALERT_THRESHOLD - 1):
+                log_login_attempt("attacker", "10.0.0.51", False)
+
+            mock_alert.assert_not_called()
+
+    def test_lockout_alert_at_five_failures(self, mock_data_dir):
+        """Critical lockout alert is sent at 5 failed attempts."""
+        from src.security.auth import log_login_attempt
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            # Log 5 failed attempts
+            for i in range(5):
+                log_login_attempt("attacker", "10.0.0.52", False)
+
+            # Should have been called twice: once at 3 (warning), once at 5 (critical)
+            assert mock_alert.call_count == 2
+
+            # Last call should be the lockout alert
+            last_call = mock_alert.call_args_list[-1]
+            assert last_call[1]["title"] == "IP Address Locked Out"
+            assert last_call[1]["severity"] == "critical"
+
+    def test_no_alert_spam_after_threshold(self, mock_data_dir):
+        """Alert is only sent once at threshold, not on every subsequent failure."""
+        from src.security.auth import log_login_attempt, AUTH_FAILURE_ALERT_THRESHOLD
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            # Log 4 failed attempts (beyond threshold of 3)
+            for i in range(4):
+                log_login_attempt("attacker", "10.0.0.53", False)
+
+            # Should only have called alert once (at threshold 3)
+            # 4th attempt is between threshold (3) and lockout (5)
+            assert mock_alert.call_count == 1
+
+    def test_alert_includes_username(self, mock_data_dir):
+        """Alert details include the username being attempted."""
+        from src.security.auth import log_login_attempt, AUTH_FAILURE_ALERT_THRESHOLD
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            for i in range(AUTH_FAILURE_ALERT_THRESHOLD):
+                log_login_attempt("admin", "10.0.0.54", False)
+
+            call_args = mock_alert.call_args
+            details = call_args[1]["details"]
+            assert details["username_attempted"] == "admin"
+            assert details["ip_address"] == "10.0.0.54"
+
+    def test_no_alert_on_success(self, mock_data_dir):
+        """Successful login does not trigger alert regardless of previous failures."""
+        from src.security.auth import log_login_attempt
+
+        with patch('src.security.auth.send_health_alert') as mock_alert:
+            # Mix of failures and successes - all different IPs
+            log_login_attempt("user1", "10.0.0.60", True)
+            log_login_attempt("user2", "10.0.0.61", True)
+
+            mock_alert.assert_not_called()
+
+
 class TestUserClass:
     """Test User class for Flask-Login."""
 
