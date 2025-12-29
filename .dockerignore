@@ -1,0 +1,90 @@
+# SmartHome Docker Build Ignore File
+# Files and directories to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env
+.env.local
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation (not needed in production)
+docs/
+*.md
+!README.md
+
+# Development files
+plans/
+devlog/
+TESTING_ROADMAP.md
+ROADMAP_GARDENING_SUMMARY.md
+ARCHITECTURE.md
+CHANGELOG.md
+CONTRIBUTING.md
+
+# Local data (use volumes instead)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates (mount via volumes)
+certs/
+*.pem
+*.crt
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+tmp/
+temp/
+
+# Claude Code
+.claude/
+
+# Test fixtures that shouldn't be in production
+tests/
+pytest.ini
+
+# GitHub Actions
+.github/
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Ruff cache
+.ruff_cache/
+
+# HA config (development only)
+ha-config/

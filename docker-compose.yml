@@ -1,0 +1,89 @@
+# SmartHome Assistant - Docker Compose Configuration
+#
+# Quick Start:
+#   1. Copy .env.example to .env and configure
+#   2. docker-compose up -d
+#   3. Access at https://localhost:5050
+#
+# For development:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  smarthome:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: smarthome-assistant
+    restart: unless-stopped
+
+    # Environment variables from .env file
+    env_file:
+      - .env
+
+    # Override specific environment variables for Docker
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATA_DIR=/app/data
+      - CERTS_DIR=/app/certs
+
+    # Port mapping (HTTP redirect:HTTPS)
+    ports:
+      - "${HTTP_PORT:-5049}:5049"
+      - "${HTTPS_PORT:-5050}:5050"
+
+    # Persistent volumes
+    volumes:
+      # Application data (SQLite database, caches)
+      - smarthome_data:/app/data
+      # SSL certificates
+      - smarthome_certs:/app/certs
+      # Logs (optional, for debugging)
+      - smarthome_logs:/app/logs
+
+    # Health check (uses Kubernetes-style liveness endpoint)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+
+# Named volumes for persistence
+volumes:
+  smarthome_data:
+    driver: local
+  smarthome_certs:
+    driver: local
+  smarthome_logs:
+    driver: local
+
+# Network configuration
+networks:
+  default:
+    name: smarthome_network

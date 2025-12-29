@@ -1,0 +1,46 @@
+# SmartHome Assistant - Development Override
+#
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This override enables:
+#   - Source code hot-reloading via bind mount
+#   - Debug logging
+#   - Flask debug mode
+#   - Exposed debug ports
+
+services:
+  smarthome:
+    build:
+      target: production  # Still use production build for consistency
+
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=true
+      - LOG_LEVEL=DEBUG
+
+    # Mount source code for hot-reloading
+    volumes:
+      # Override to bind-mount source code
+      - ./src:/app/src:ro
+      - ./tools:/app/tools:ro
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+      - ./agent.py:/app/agent.py:ro
+      - ./prompts:/app/prompts:ro
+      # Keep persistent data volumes
+      - smarthome_data:/app/data
+      - smarthome_certs:/app/certs
+
+    # Remove resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 2G
+
+    # More verbose logging for development
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
