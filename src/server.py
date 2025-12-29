@@ -375,9 +375,9 @@ def get_health_history():
         if component:
             history = health_monitor.get_health_history(component, limit=limit)
         else:
-            # Get history for all components
+            # Get history for all components (including llm_provider from WP-10.21)
             history = {}
-            for comp in ["home_assistant", "cache", "database", "anthropic_api"]:
+            for comp in ["home_assistant", "cache", "database", "anthropic_api", "llm_provider"]:
                 history[comp] = health_monitor.get_health_history(comp, limit=limit)
 
         return jsonify({"history": history})
@@ -406,6 +406,96 @@ def get_healing_history():
     except Exception as error:
         logger.error(f"Healing history error: {error}")
         return jsonify({"error": str(error)}), 500
+
+
+# ========== WP-10.21: Kubernetes-style Health Probes ==========
+
+
+@app.route("/healthz")
+@limiter.limit("60 per minute")
+def healthz():
+    """
+    Liveness probe endpoint (WP-10.21).
+
+    Kubernetes-style liveness check. Returns 200 if the process is alive.
+    Does NOT require authentication - this is intentional for k8s probes.
+
+    Returns:
+        200: Process is alive and can respond
+        503: Process is not responding (should be restarted)
+    """
+    try:
+        health_monitor = get_health_monitor()
+        liveness = health_monitor.get_liveness()
+
+        return jsonify(liveness), 200
+
+    except Exception as error:
+        logger.error(f"Liveness check failed: {error}")
+        return jsonify({"status": "error", "error": str(error)}), 503
+
+
+@app.route("/readyz")
+@limiter.limit("30 per minute")
+def readyz():
+    """
+    Readiness probe endpoint (WP-10.21).
+
+    Kubernetes-style readiness check. Returns 200 if all critical dependencies
+    are healthy and the service can accept traffic.
+    Does NOT require authentication - this is intentional for k8s probes.
+
+    Returns:
+        200: All dependencies healthy, can accept traffic
+        503: One or more dependencies unhealthy, should not receive traffic
+    """
+    try:
+        health_monitor = get_health_monitor()
+        readiness = health_monitor.get_readiness()
+
+        if readiness["ready"]:
+            return jsonify(readiness), 200
+        else:
+            return jsonify(readiness), 503
+
+    except Exception as error:
+        logger.error(f"Readiness check failed: {error}")
+        return jsonify({"ready": False, "error": str(error)}), 503
+
+
+@app.route("/api/health/trigger/<component>", methods=["POST"])
+@login_required
+@limiter.limit("5 per minute")
+def trigger_healing(component: str):
+    """
+    Manually trigger healing for a component (WP-10.21).
+
+    POST /api/health/trigger/home_assistant
+
+    Args:
+        component: Name of the component to heal
+
+    Returns:
+        Healing result with success status
+    """
+    try:
+        health_monitor = get_health_monitor()
+        self_healer = get_self_healer()
+
+        # Set the healer on the health monitor
+        health_monitor.set_healer(self_healer)
+
+        result = health_monitor.trigger_healing(component)
+
+        return jsonify(result)
+
+    except Exception as error:
+        logger.error(f"Manual healing trigger error: {error}")
+        return jsonify({
+            "attempted": False,
+            "success": False,
+            "error": str(error)
+        }), 500
 
 
 @app.route("/api/history")

@@ -552,25 +552,25 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [ ] Documentation for setup and configuration
 
 #### WP-10.21: Health Check Improvements
-- **Status:** ⚪ Not Started
+- **Status:** ✅ Complete (2025-12-29)
 - **Priority:** P2 (reliability)
 - **Effort:** S
-- **Owner:** Unassigned
+- **Owner:** Nadia
 - **Source:** Existing /api/health could be enhanced
 - **Tasks:**
-  - [ ] Add dependency health checks (database, HA, LLM provider)
-  - [ ] Implement readiness vs liveness endpoints
-  - [ ] Add health check history retention policies
-  - [ ] Improve healing action logging
-  - [ ] Add manual healing triggers via API
-  - [ ] Write tests for enhanced health checks
-  - [ ] Create devlog entry
+  - [x] Add dependency health checks (database, HA, LLM provider)
+  - [x] Implement readiness vs liveness endpoints
+  - [x] Add health check history retention policies
+  - [x] Improve healing action logging
+  - [x] Add manual healing triggers via API
+  - [x] Write tests for enhanced health checks
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] /healthz (liveness) and /readyz (readiness) endpoints
-  - [ ] All critical dependencies checked
-  - [ ] Health history retained for troubleshooting
-  - [ ] Manual healing triggers via API
-  - [ ] Improved logging and alerting
+  - [x] /healthz (liveness) and /readyz (readiness) endpoints
+  - [x] All critical dependencies checked
+  - [x] Health history retained for troubleshooting
+  - [x] Manual healing triggers via API
+  - [x] Improved logging and alerting
 
 ---
 

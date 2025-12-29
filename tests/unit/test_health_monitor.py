@@ -580,3 +580,240 @@ class TestConsecutiveFailures:
         )
 
         assert monitor.get_consecutive_failures("ha") == 0
+
+
+class TestLLMProviderHealthCheck:
+    """Tests for LLM provider health check (WP-10.21)."""
+
+    def test_llm_healthy_when_api_reachable(self):
+        """LLM should be healthy when provider API is reachable."""
+        from src.health_monitor import HealthMonitor, HealthStatus
+
+        with patch("src.llm_client.get_llm_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.provider = "openai"
+            mock_client.model = "gpt-4o-mini"
+            # Mock a successful API check
+            mock_client.complete.return_value = MagicMock(content="test", input_tokens=5, output_tokens=5)
+            mock_get_client.return_value = mock_client
+
+            monitor = HealthMonitor()
+            health = monitor.check_llm_provider()
+
+            assert health.status == HealthStatus.HEALTHY
+            assert "llm" in health.name.lower() or "provider" in health.name.lower()
+
+    def test_llm_unhealthy_when_api_fails(self):
+        """LLM should be unhealthy when provider API fails."""
+        from src.health_monitor import HealthMonitor, HealthStatus
+
+        with patch("src.llm_client.get_llm_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.provider = "openai"
+            mock_client.complete.side_effect = Exception("API rate limit exceeded")
+            mock_get_client.return_value = mock_client
+
+            monitor = HealthMonitor()
+            health = monitor.check_llm_provider()
+
+            assert health.status == HealthStatus.UNHEALTHY
+            assert "error" in health.message.lower() or "fail" in health.message.lower()
+
+    def test_llm_includes_provider_details(self):
+        """LLM health check should include provider details."""
+        from src.health_monitor import HealthMonitor
+
+        with patch("src.llm_client.get_llm_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.provider = "anthropic"
+            mock_client.model = "claude-sonnet-4"
+            mock_client.complete.return_value = MagicMock(content="test", input_tokens=5, output_tokens=5)
+            mock_get_client.return_value = mock_client
+
+            monitor = HealthMonitor()
+            health = monitor.check_llm_provider()
+
+            assert "provider" in health.details
+            assert health.details["provider"] == "anthropic"
+
+
+class TestLivenessReadinessEndpoints:
+    """Tests for /healthz and /readyz endpoint functionality (WP-10.21)."""
+
+    def test_liveness_check_basic(self):
+        """Liveness check should verify process is alive."""
+        from src.health_monitor import HealthMonitor, HealthStatus
+
+        monitor = HealthMonitor()
+        liveness = monitor.get_liveness()
+
+        # Should always be healthy if the process is running
+        assert liveness["status"] == "ok"
+        assert "timestamp" in liveness
+
+    def test_readiness_check_all_healthy(self):
+        """Readiness check should return ready when all critical deps are healthy."""
+        from src.health_monitor import HealthMonitor, HealthStatus, ComponentHealth, ComponentChecker
+        from unittest.mock import Mock
+
+        monitor = HealthMonitor()
+        # Replace checkers with healthy mocks
+        mock_checkers = []
+        for name in ["home_assistant", "database"]:
+            health = ComponentHealth(name, HealthStatus.HEALTHY, "OK", datetime.now())
+            mock_fn = Mock(return_value=health)
+            mock_checkers.append(ComponentChecker(name, mock_fn))
+        monitor._component_checkers = mock_checkers
+
+        readiness = monitor.get_readiness()
+
+        assert readiness["ready"] is True
+
+    def test_readiness_check_unhealthy_critical_dep(self):
+        """Readiness check should return not ready when critical dep unhealthy."""
+        from src.health_monitor import HealthMonitor, HealthStatus, ComponentHealth, ComponentChecker
+        from unittest.mock import Mock
+
+        monitor = HealthMonitor()
+        # Replace checkers with one unhealthy mock
+        mock_checkers = []
+        for name, status in [("home_assistant", HealthStatus.UNHEALTHY), ("database", HealthStatus.HEALTHY)]:
+            health = ComponentHealth(name, status, "msg", datetime.now())
+            mock_fn = Mock(return_value=health)
+            mock_checkers.append(ComponentChecker(name, mock_fn))
+        monitor._component_checkers = mock_checkers
+
+        readiness = monitor.get_readiness()
+
+        assert readiness["ready"] is False
+        assert "home_assistant" in readiness.get("failing", [])
+
+
+class TestHealthHistoryRetention:
+    """Tests for health check history retention policies (WP-10.21)."""
+
+    def test_history_retention_default_policy(self):
+        """Should retain history according to default policy."""
+        from src.health_monitor import HealthMonitor, HealthStatus, ComponentHealth
+
+        monitor = HealthMonitor(max_history=100, history_retention_days=7)
+
+        # Record health checks
+        for i in range(5):
+            monitor._record_health_check(
+                ComponentHealth("test", HealthStatus.HEALTHY, f"Check {i}", datetime.now())
+            )
+
+        history = monitor.get_health_history("test")
+        assert len(history) == 5
+
+    def test_history_cleanup_old_entries(self):
+        """Should clean up old entries beyond retention period."""
+        from src.health_monitor import HealthMonitor, HealthStatus, ComponentHealth
+
+        monitor = HealthMonitor(max_history=100, history_retention_days=1)
+
+        # Record old health check (beyond retention)
+        old_time = datetime.now() - timedelta(days=2)
+        monitor._health_history["test"].append(
+            ComponentHealth("test", HealthStatus.HEALTHY, "Old check", old_time).to_dict()
+        )
+
+        # Record new health check
+        monitor._record_health_check(
+            ComponentHealth("test", HealthStatus.HEALTHY, "New check", datetime.now())
+        )
+
+        # Cleanup should remove old entries
+        monitor.cleanup_old_history()
+        history = monitor.get_health_history("test")
+
+        # Only the new entry should remain
+        assert len(history) == 1
+        assert "New check" in history[0]["message"]
+
+
+class TestManualHealingTriggers:
+    """Tests for manual healing triggers (WP-10.21)."""
+
+    def test_trigger_healing_for_component(self):
+        """Should be able to manually trigger healing for a component."""
+        from src.health_monitor import HealthMonitor, HealthStatus
+
+        mock_healer = MagicMock()
+        mock_healer.attempt_healing.return_value = {"attempted": True, "success": True, "action": "restart"}
+
+        monitor = HealthMonitor()
+        monitor.set_healer(mock_healer)
+
+        result = monitor.trigger_healing("home_assistant")
+
+        assert result["attempted"] is True
+        mock_healer.attempt_healing.assert_called_once()
+
+    def test_trigger_healing_returns_result(self):
+        """Manual healing trigger should return healing result."""
+        from src.health_monitor import HealthMonitor
+
+        mock_healer = MagicMock()
+        mock_healer.attempt_healing.return_value = {
+            "attempted": True,
+            "success": False,
+            "action": "restart",
+            "error": "Service restart failed"
+        }
+
+        monitor = HealthMonitor()
+        monitor.set_healer(mock_healer)
+
+        result = monitor.trigger_healing("database")
+
+        assert result["attempted"] is True
+        assert result["success"] is False
+        assert "error" in result
+
+
+class TestImprovedHealingLogging:
+    """Tests for improved healing action logging (WP-10.21)."""
+
+    def test_healing_action_logged_with_details(self):
+        """Healing actions should be logged with full details."""
+        from src.health_monitor import HealthMonitor, HealthStatus, ComponentHealth, HealingLogEntry
+
+        monitor = HealthMonitor()
+
+        healing_entry = HealingLogEntry(
+            component="home_assistant",
+            action="restart_service",
+            success=True,
+            timestamp=datetime.now(),
+            details={"service": "ha-supervisor", "duration_ms": 1500}
+        )
+
+        monitor.log_healing_action(healing_entry)
+
+        logs = monitor.get_healing_log(limit=10)
+        assert len(logs) >= 1
+        assert logs[0]["component"] == "home_assistant"
+        assert logs[0]["action"] == "restart_service"
+        assert logs[0]["success"] is True
+
+    def test_healing_log_stores_failures(self):
+        """Healing log should store failure details."""
+        from src.health_monitor import HealthMonitor, HealingLogEntry
+
+        monitor = HealthMonitor()
+
+        healing_entry = HealingLogEntry(
+            component="database",
+            action="repair_tables",
+            success=False,
+            timestamp=datetime.now(),
+            details={"error": "Permission denied", "tables_attempted": 3}
+        )
+
+        monitor.log_healing_action(healing_entry)
+
+        logs = monitor.get_healing_log(limit=10)
+        assert logs[0]["success"] is False
+        assert "error" in logs[0]["details"]

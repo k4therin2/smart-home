@@ -3,6 +3,13 @@ Smart Home Assistant - Health Monitor
 
 Centralized health monitoring system that aggregates health status from all
 system components and triggers alerts/self-healing actions.
+
+WP-10.21 Enhancements:
+- LLM provider health check
+- Liveness (/healthz) and readiness (/readyz) endpoints
+- Health history retention policies
+- Manual healing triggers
+- Improved healing action logging
 """
 
 import logging
@@ -11,7 +18,7 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from threading import Lock
@@ -71,6 +78,27 @@ class ComponentChecker:
     check_fn: Callable[[], ComponentHealth]
 
 
+@dataclass
+class HealingLogEntry:
+    """Log entry for a healing action (WP-10.21)."""
+
+    component: str
+    action: str
+    success: bool
+    timestamp: datetime
+    details: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "component": self.component,
+            "action": self.action,
+            "success": self.success,
+            "timestamp": self.timestamp.isoformat(),
+            "details": self.details,
+        }
+
+
 class HealthMonitor:
     """
     Centralized health monitoring for all system components.
@@ -99,6 +127,7 @@ class HealthMonitor:
         check_interval: int = 60,
         max_history: int = 100,
         notifier: Any | None = None,
+        history_retention_days: int = 7,
     ):
         """
         Initialize the health monitor.
@@ -107,15 +136,19 @@ class HealthMonitor:
             check_interval: Seconds between automatic health checks
             max_history: Maximum health history entries per component
             notifier: SlackNotifier instance for alerts (optional)
+            history_retention_days: Days to retain health history (WP-10.21)
         """
         self.check_interval = check_interval
         self.max_history = max_history
         self.notifier = notifier
+        self.history_retention_days = history_retention_days
 
         self._lock = Lock()
         self._health_history: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self._consecutive_failures: dict[str, int] = defaultdict(int)
         self._last_status: dict[str, HealthStatus] = {}
+        self._healing_log: list[dict[str, Any]] = []  # WP-10.21: Healing action log
+        self._healer: Any | None = None  # WP-10.21: Self-healer reference
 
         # Register default component checkers
         self._component_checkers: list[ComponentChecker] = [
@@ -123,6 +156,7 @@ class HealthMonitor:
             ComponentChecker("cache", self.check_cache),
             ComponentChecker("database", self.check_database),
             ComponentChecker("anthropic_api", self.check_anthropic_api),
+            ComponentChecker("llm_provider", self.check_llm_provider),  # WP-10.21
         ]
 
     def check_home_assistant(self) -> ComponentHealth:
@@ -343,6 +377,59 @@ class HealthMonitor:
                 details={"error": str(error)},
             )
 
+    def check_llm_provider(self) -> ComponentHealth:
+        """
+        Check LLM provider health (WP-10.21).
+
+        Validates that the configured LLM provider is reachable and responding.
+        """
+        try:
+            from src.llm_client import get_llm_client
+
+            start_time = time.time()
+            client = get_llm_client()
+
+            # Try a minimal completion to verify connectivity
+            response = client.complete(
+                prompt="Say 'ok'",
+                max_tokens=5,
+                temperature=0,
+            )
+            response_time_ms = int((time.time() - start_time) * 1000)
+
+            details = {
+                "provider": client.provider,
+                "model": client.model,
+                "response_time_ms": response_time_ms,
+            }
+
+            if response and response.content:
+                return ComponentHealth(
+                    name="llm_provider",
+                    status=HealthStatus.HEALTHY,
+                    message=f"LLM provider ({client.provider}) healthy",
+                    last_check=datetime.now(),
+                    details=details,
+                )
+            else:
+                return ComponentHealth(
+                    name="llm_provider",
+                    status=HealthStatus.DEGRADED,
+                    message=f"LLM provider ({client.provider}) returned empty response",
+                    last_check=datetime.now(),
+                    details=details,
+                )
+
+        except Exception as error:
+            logger.error(f"Error checking LLM provider health: {error}")
+            return ComponentHealth(
+                name="llm_provider",
+                status=HealthStatus.UNHEALTHY,
+                message=f"LLM provider check failed: {error!s}",
+                last_check=datetime.now(),
+                details={"error": str(error)},
+            )
+
     def get_system_health(self) -> dict[str, Any]:
         """
         Get aggregated system health status.
@@ -498,6 +585,165 @@ class HealthMonitor:
             check_fn: Function that returns ComponentHealth
         """
         self._component_checkers.append(ComponentChecker(name, check_fn))
+
+    # ========== WP-10.21: Liveness and Readiness ==========
+
+    def get_liveness(self) -> dict[str, Any]:
+        """
+        Get liveness status for /healthz endpoint (WP-10.21).
+
+        Liveness indicates the process is alive and not deadlocked.
+        This should always return ok if the process can respond.
+        """
+        return {
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    def get_readiness(self) -> dict[str, Any]:
+        """
+        Get readiness status for /readyz endpoint (WP-10.21).
+
+        Readiness indicates the service can accept traffic.
+        Returns not ready if any critical dependency is unhealthy.
+        """
+        failing_components = []
+        all_healthy = True
+
+        for checker in self._component_checkers:
+            try:
+                health = checker.check_fn()
+                if health.status == HealthStatus.UNHEALTHY:
+                    failing_components.append(checker.name)
+                    all_healthy = False
+            except Exception as error:
+                logger.error(f"Readiness check failed for {checker.name}: {error}")
+                failing_components.append(checker.name)
+                all_healthy = False
+
+        return {
+            "ready": all_healthy,
+            "timestamp": datetime.now().isoformat(),
+            "failing": failing_components,
+        }
+
+    # ========== WP-10.21: History Retention ==========
+
+    def cleanup_old_history(self) -> int:
+        """
+        Clean up health history entries older than retention period (WP-10.21).
+
+        Returns:
+            Number of entries removed
+        """
+        with self._lock:
+            cutoff = datetime.now() - timedelta(days=self.history_retention_days)
+            total_removed = 0
+
+            for component in self._health_history:
+                original_len = len(self._health_history[component])
+                self._health_history[component] = [
+                    entry
+                    for entry in self._health_history[component]
+                    if datetime.fromisoformat(entry["last_check"]) > cutoff
+                ]
+                total_removed += original_len - len(self._health_history[component])
+
+            if total_removed > 0:
+                logger.info(f"Cleaned up {total_removed} old health history entries")
+
+            return total_removed
+
+    # ========== WP-10.21: Manual Healing Triggers ==========
+
+    def set_healer(self, healer: Any) -> None:
+        """
+        Set the self-healer instance for manual healing triggers (WP-10.21).
+
+        Args:
+            healer: SelfHealer instance
+        """
+        self._healer = healer
+
+    def trigger_healing(self, component_name: str) -> dict[str, Any]:
+        """
+        Manually trigger healing for a component (WP-10.21).
+
+        Args:
+            component_name: Name of the component to heal
+
+        Returns:
+            Healing result dictionary
+        """
+        if self._healer is None:
+            return {
+                "attempted": False,
+                "success": False,
+                "error": "No healer configured",
+            }
+
+        # Get current health status for the component
+        health = None
+        for checker in self._component_checkers:
+            if checker.name == component_name:
+                try:
+                    health = checker.check_fn()
+                except Exception as error:
+                    health = ComponentHealth(
+                        name=component_name,
+                        status=HealthStatus.UNHEALTHY,
+                        message=f"Health check failed: {error}",
+                        last_check=datetime.now(),
+                        details={"error": str(error)},
+                    )
+                break
+
+        if health is None:
+            return {
+                "attempted": False,
+                "success": False,
+                "error": f"Unknown component: {component_name}",
+            }
+
+        result = self._healer.attempt_healing(component_name, health)
+        return result
+
+    # ========== WP-10.21: Improved Healing Logging ==========
+
+    def log_healing_action(self, entry: HealingLogEntry) -> None:
+        """
+        Log a healing action with full details (WP-10.21).
+
+        Args:
+            entry: HealingLogEntry to log
+        """
+        with self._lock:
+            self._healing_log.append(entry.to_dict())
+
+            # Keep log size reasonable
+            if len(self._healing_log) > 1000:
+                self._healing_log = self._healing_log[-500:]
+
+            # Also log to standard logger
+            log_level = logging.INFO if entry.success else logging.WARNING
+            logger.log(
+                log_level,
+                f"Healing action: {entry.component}/{entry.action} - "
+                f"{'SUCCESS' if entry.success else 'FAILED'} - {entry.details}",
+            )
+
+    def get_healing_log(self, limit: int = 50) -> list[dict[str, Any]]:
+        """
+        Get recent healing action log (WP-10.21).
+
+        Args:
+            limit: Maximum number of entries to return
+
+        Returns:
+            List of healing log entries (most recent first)
+        """
+        with self._lock:
+            return self._healing_log[-limit:][::-1]  # Reverse for most recent first
 
 
 # Singleton instance

@@ -57,7 +57,8 @@ class TestHealthMonitoringFlow:
 
         with patch("src.ha_client.HomeAssistantClient") as mock_ha_class, \
              patch("src.cache.get_cache") as mock_get_cache, \
-             patch("src.utils.get_daily_usage") as mock_usage:
+             patch("src.utils.get_daily_usage") as mock_usage, \
+             patch("src.llm_client.get_llm_client") as mock_llm:
 
             mock_client = MagicMock()
             mock_client.check_connection.return_value = True
@@ -77,6 +78,13 @@ class TestHealthMonitoringFlow:
 
             mock_usage.return_value = {"cost_usd": 1.0, "requests": 30}
 
+            # Mock LLM client to be healthy (WP-10.21)
+            mock_llm_client = MagicMock()
+            mock_llm_client.provider = "openai"
+            mock_llm_client.model = "gpt-4o-mini"
+            mock_llm_client.complete.return_value = MagicMock(content="ok", input_tokens=5, output_tokens=2)
+            mock_llm.return_value = mock_llm_client
+
             monitor = HealthMonitor()
             result = monitor.get_system_health()
 
@@ -93,7 +101,8 @@ class TestHealthMonitoringFlow:
 
         with patch("src.ha_client.HomeAssistantClient") as mock_ha_class, \
              patch("src.cache.get_cache") as mock_get_cache, \
-             patch("src.utils.get_daily_usage") as mock_usage:
+             patch("src.utils.get_daily_usage") as mock_usage, \
+             patch("src.llm_client.get_llm_client") as mock_llm:
 
             mock_client = MagicMock()
             mock_client.check_connection.return_value = True
@@ -107,6 +116,13 @@ class TestHealthMonitoringFlow:
             mock_get_cache.return_value = mock_cache
 
             mock_usage.return_value = {"cost_usd": 1.0, "requests": 30}
+
+            # Mock LLM client to be healthy (WP-10.21)
+            mock_llm_client = MagicMock()
+            mock_llm_client.provider = "openai"
+            mock_llm_client.model = "gpt-4o-mini"
+            mock_llm_client.complete.return_value = MagicMock(content="ok", input_tokens=5, output_tokens=2)
+            mock_llm.return_value = mock_llm_client
 
             monitor = HealthMonitor()
 
