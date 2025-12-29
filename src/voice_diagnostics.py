@@ -760,7 +760,9 @@ class VoicePipelineDiagnostics:
                 # ESPHome devices typically expose info via different endpoints
                 try:
                     # Try JSON endpoint
-                    info_response = requests.get(f"http://{ip}/text_sensor/esphome_version", timeout=5)
+                    info_response = requests.get(
+                        f"http://{ip}/text_sensor/esphome_version", timeout=5
+                    )
                     if info_response.status_code == 200:
                         return {
                             "name": self.voice_puck_host,
@@ -876,8 +878,16 @@ class VoicePipelineDiagnostics:
                 "has_tts": has_tts,
                 "has_conversation": has_conversation,
                 "is_complete": is_complete,
-                "stt_entities": [s.get("entity_id") for s in all_states if s.get("entity_id", "").startswith("stt.")],
-                "tts_entities": [s.get("entity_id") for s in all_states if s.get("entity_id", "").startswith("tts.")],
+                "stt_entities": [
+                    s.get("entity_id")
+                    for s in all_states
+                    if s.get("entity_id", "").startswith("stt.")
+                ],
+                "tts_entities": [
+                    s.get("entity_id")
+                    for s in all_states
+                    if s.get("entity_id", "").startswith("tts.")
+                ],
             }
         except Exception as error:
             logger.error(f"Error getting pipeline status: {error}")
@@ -900,25 +910,31 @@ class VoicePipelineDiagnostics:
         steps = []
 
         if not status.get("has_stt"):
-            steps.extend([
-                "Install Whisper STT: Go to Settings > Devices & Services > Add Integration > Whisper",
-                "Configure Whisper: Choose model (tiny/base/small) based on hardware",
-                "Verify STT entity: Check Settings > Voice assistants for stt.whisper",
-            ])
+            steps.extend(
+                [
+                    "Install Whisper STT: Go to Settings > Devices & Services > Add Integration > Whisper",
+                    "Configure Whisper: Choose model (tiny/base/small) based on hardware",
+                    "Verify STT entity: Check Settings > Voice assistants for stt.whisper",
+                ]
+            )
 
         if not status.get("has_tts"):
-            steps.extend([
-                "Install Piper TTS: Go to Settings > Devices & Services > Add Integration > Piper",
-                "Select voice: Choose a voice pack for your language",
-                "Verify TTS entity: Check Settings > Voice assistants for tts.piper",
-            ])
+            steps.extend(
+                [
+                    "Install Piper TTS: Go to Settings > Devices & Services > Add Integration > Piper",
+                    "Select voice: Choose a voice pack for your language",
+                    "Verify TTS entity: Check Settings > Voice assistants for tts.piper",
+                ]
+            )
 
         if not status.get("has_conversation"):
-            steps.extend([
-                "Configure Assist: Go to Settings > Voice assistants",
-                "Create a new Assist pipeline or edit the default",
-                "Set conversation agent (Home Assistant or custom)",
-            ])
+            steps.extend(
+                [
+                    "Configure Assist: Go to Settings > Voice assistants",
+                    "Create a new Assist pipeline or edit the default",
+                    "Set conversation agent (Home Assistant or custom)",
+                ]
+            )
 
         if not steps:
             steps.append("Pipeline is fully configured! Test with: 'Hey Jarvis, what time is it?'")
@@ -1075,8 +1091,7 @@ class VoicePipelineDiagnostics:
 
             # Check if any STT entities have error states
             error_entities = [
-                e for e in stt_entities
-                if e.get("state") in ["unavailable", "unknown", "error"]
+                e for e in stt_entities if e.get("state") in ["unavailable", "unknown", "error"]
             ]
 
             if error_entities:
@@ -1144,8 +1159,7 @@ class VoicePipelineDiagnostics:
 
             # Check if any TTS entities have error states
             error_entities = [
-                e for e in tts_entities
-                if e.get("state") in ["unavailable", "unknown", "error"]
+                e for e in tts_entities if e.get("state") in ["unavailable", "unknown", "error"]
             ]
 
             if error_entities:

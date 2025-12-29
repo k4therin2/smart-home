@@ -225,7 +225,14 @@ class DataImporter:
         """
         preview = {}
 
-        for section in ["todos", "automations", "reminders", "command_history", "timers", "locations"]:
+        for section in [
+            "todos",
+            "automations",
+            "reminders",
+            "command_history",
+            "timers",
+            "locations",
+        ]:
             records = data.get(section, [])
             preview[section] = {
                 "count": len(records),

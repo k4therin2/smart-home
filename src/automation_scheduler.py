@@ -100,21 +100,28 @@ class AutomationScheduler:
                 logger.error(f"Unknown action type: {action_type}")
                 self._stats["executions_failed"] += 1
                 self._send_automation_alert(
-                    automation_id, automation_name, trigger_type, action_type,
-                    success=False, error=f"Unknown action type: {action_type}"
+                    automation_id,
+                    automation_name,
+                    trigger_type,
+                    action_type,
+                    success=False,
+                    error=f"Unknown action type: {action_type}",
                 )
                 return False
 
             # Send alert for execution result (WP-10.5)
             if success:
                 self._send_automation_alert(
-                    automation_id, automation_name, trigger_type, action_type,
-                    success=True
+                    automation_id, automation_name, trigger_type, action_type, success=True
                 )
             else:
                 self._send_automation_alert(
-                    automation_id, automation_name, trigger_type, action_type,
-                    success=False, error="Action execution returned failure"
+                    automation_id,
+                    automation_name,
+                    trigger_type,
+                    action_type,
+                    success=False,
+                    error="Action execution returned failure",
                 )
             return success
 
@@ -122,8 +129,12 @@ class AutomationScheduler:
             logger.error(f"Error executing automation {automation_id}: {error}")
             self._stats["executions_failed"] += 1
             self._send_automation_alert(
-                automation_id, automation_name, trigger_type, action_type,
-                success=False, error=str(error)
+                automation_id,
+                automation_name,
+                trigger_type,
+                action_type,
+                success=False,
+                error=str(error),
             )
             return False
 
@@ -199,7 +210,9 @@ class AutomationScheduler:
             from agent import run_agent
 
             response = run_agent(command)
-            logger.info(f"Agent command completed: {response[:100] if response else 'No response'}...")
+            logger.info(
+                f"Agent command completed: {response[:100] if response else 'No response'}..."
+            )
             self._stats["executions_success"] += 1
             return True
         except Exception as error:
@@ -271,7 +284,9 @@ class AutomationScheduler:
                 self.automation_manager.mark_triggered(automation_id)
                 processed += 1
             else:
-                logger.warning(f"Automation {automation_id} execution failed, will retry next cycle")
+                logger.warning(
+                    f"Automation {automation_id} execution failed, will retry next cycle"
+                )
 
         return processed
 

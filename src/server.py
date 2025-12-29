@@ -85,7 +85,7 @@ def get_rate_limit_key() -> str:
     Returns user ID for authenticated users, IP address for anonymous.
     This enables per-user rate limiting instead of just per-IP.
     """
-    if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+    if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
         return f"user:{current_user.id}"
     return f"ip:{get_remote_address()}"
 
@@ -97,9 +97,9 @@ def is_admin_rate_limit_exempt() -> bool:
     Admin users get RATE_LIMIT_ADMIN_MULTIPLIER times the normal limit.
     Returns True to exempt from default limits (custom limits applied).
     """
-    if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+    if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
         # Check if user has admin role
-        if hasattr(current_user, 'is_admin') and current_user.is_admin:
+        if hasattr(current_user, "is_admin") and current_user.is_admin:
             return True
     return False
 
@@ -110,7 +110,7 @@ limiter = Limiter(
     app=app,
     default_limits=[
         f"{RATE_LIMIT_DEFAULT_PER_DAY} per day",
-        f"{RATE_LIMIT_DEFAULT_PER_HOUR} per hour"
+        f"{RATE_LIMIT_DEFAULT_PER_HOUR} per hour",
     ],
     storage_uri="memory://",
     headers_enabled=True,  # Enable X-RateLimit-* headers
@@ -135,7 +135,7 @@ swagger_config = {
     ],
     "static_url_path": "/flasgger_static",
     "swagger_ui": True,
-    "specs_route": "/api/docs"
+    "specs_route": "/api/docs",
 }
 
 swagger_template = {
@@ -143,20 +143,12 @@ swagger_template = {
     "info": {
         "title": "SmartHome Assistant API",
         "description": "REST API for the SmartHome Assistant - an AI-powered home automation system",
-        "version": "1.0.0"
+        "version": "1.0.0",
     },
     "securityDefinitions": {
-        "SessionAuth": {
-            "type": "apiKey",
-            "in": "cookie",
-            "name": "session"
-        },
-        "BearerAuth": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "Authorization"
-        }
-    }
+        "SessionAuth": {"type": "apiKey", "in": "cookie", "name": "session"},
+        "BearerAuth": {"type": "apiKey", "in": "header", "name": "Authorization"},
+    },
 }
 
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
@@ -199,9 +191,7 @@ def add_security_headers(response):
 @app.route("/.well-known/security.txt")
 def security_txt():
     """Serve security.txt for vulnerability disclosure."""
-    return send_from_directory(
-        app.static_folder, ".well-known/security.txt", mimetype="text/plain"
-    )
+    return send_from_directory(app.static_folder, ".well-known/security.txt", mimetype="text/plain")
 
 
 @app.errorhandler(CSRFError)
@@ -799,11 +789,7 @@ def trigger_healing(component: str):
 
     except Exception as error:
         logger.error(f"Manual healing trigger error: {error}")
-        return jsonify({
-            "attempted": False,
-            "success": False,
-            "error": str(error)
-        }), 500
+        return jsonify({"attempted": False, "success": False, "error": str(error)}), 500
 
 
 @app.route("/api/history")

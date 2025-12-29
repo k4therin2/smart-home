@@ -938,7 +938,7 @@ class ServerHealthMonitor(BaseMonitor):
                 shell=True,  # nosec B602 - hardcoded commands only, no user input
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             return result.stdout.strip()
         except Exception:
