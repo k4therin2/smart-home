@@ -3,14 +3,27 @@ Smart Home Assistant - Local Data Storage Module
 
 SQLite-based local storage for device registry, command history,
 usage tracking, and other persistent data.
+
+WP-10.24: Database Query Optimization
+- Connection pooling for better performance
+- Additional indexes for common queries
+- Query performance monitoring
+- SQLite optimizations (WAL mode, cache size, etc.)
+- Database statistics and backup functionality
 """
 
 import json
 import logging
+import os
+import shutil
 import sqlite3
-from collections.abc import Generator
+import threading
+import time
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
+from queue import Queue, Empty
 from typing import Any
 
 from src.config import DATA_DIR
@@ -20,6 +33,88 @@ logger = logging.getLogger(__name__)
 
 # Database file path
 DATABASE_PATH = DATA_DIR / "smarthome.db"
+
+# =============================================================================
+# Connection Pooling (WP-10.24)
+# =============================================================================
+
+MAX_POOL_CONNECTIONS = 5
+_connection_pool: Queue = Queue(maxsize=MAX_POOL_CONNECTIONS)
+_pool_lock = threading.Lock()
+_pool_initialized = False
+
+
+def _apply_sqlite_optimizations(connection: sqlite3.Connection) -> None:
+    """Apply SQLite performance optimizations to a connection."""
+    cursor = connection.cursor()
+    # WAL mode for better concurrency
+    cursor.execute("PRAGMA journal_mode=WAL")
+    # NORMAL synchronous for better performance (still safe with WAL)
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    # Increase cache size (negative = KB, 4MB cache)
+    cursor.execute("PRAGMA cache_size=-4000")
+    # Enable memory-mapped I/O (64MB)
+    cursor.execute("PRAGMA mmap_size=67108864")
+    # Enable foreign keys
+    cursor.execute("PRAGMA foreign_keys=ON")
+    connection.commit()
+
+
+def _create_pooled_connection() -> sqlite3.Connection:
+    """Create a new connection with optimizations applied."""
+    connection = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
+    connection.row_factory = sqlite3.Row
+    _apply_sqlite_optimizations(connection)
+    return connection
+
+
+def _initialize_pool() -> None:
+    """Initialize the connection pool."""
+    global _pool_initialized
+    with _pool_lock:
+        if _pool_initialized:
+            return
+        # Pre-create connections
+        for _ in range(MAX_POOL_CONNECTIONS):
+            try:
+                conn = _create_pooled_connection()
+                _connection_pool.put_nowait(conn)
+            except Exception as e:
+                logger.warning(f"Failed to pre-create pooled connection: {e}")
+        _pool_initialized = True
+
+
+def get_pooled_connection() -> sqlite3.Connection:
+    """
+    Get a connection from the pool.
+
+    Returns:
+        SQLite connection from pool (or new if pool empty)
+    """
+    _initialize_pool()
+    try:
+        return _connection_pool.get_nowait()
+    except Empty:
+        # Pool exhausted, create new connection
+        logger.debug("Connection pool exhausted, creating new connection")
+        return _create_pooled_connection()
+
+
+def release_connection(connection: sqlite3.Connection) -> None:
+    """
+    Return a connection to the pool.
+
+    Args:
+        connection: Connection to return to pool
+    """
+    try:
+        _connection_pool.put_nowait(connection)
+    except Exception:
+        # Pool full, close the connection
+        try:
+            connection.close()
+        except Exception:
+            pass
 
 
 def get_connection() -> sqlite3.Connection:
@@ -58,6 +153,97 @@ def get_cursor() -> Generator[sqlite3.Cursor, None, None]:
         raise
     finally:
         connection.close()
+
+
+# =============================================================================
+# Query Performance Monitoring (WP-10.24)
+# =============================================================================
+
+_slow_query_threshold_ms: float = 100.0  # Default 100ms
+_slow_query_callback: Callable[[str, float], None] | None = None
+_query_metrics = {
+    "total_queries": 0,
+    "total_time_ms": 0.0,
+    "slow_queries": 0,
+}
+_metrics_lock = threading.Lock()
+
+
+def get_slow_query_threshold() -> float:
+    """Get the current slow query threshold in milliseconds."""
+    return _slow_query_threshold_ms
+
+
+def set_slow_query_threshold(threshold_ms: float) -> None:
+    """Set the slow query threshold in milliseconds."""
+    global _slow_query_threshold_ms
+    _slow_query_threshold_ms = threshold_ms
+
+
+def set_slow_query_callback(callback: Callable[[str, float], None] | None) -> None:
+    """Set callback for slow queries. Callback receives (query, duration_ms)."""
+    global _slow_query_callback
+    _slow_query_callback = callback
+
+
+def get_query_metrics() -> dict:
+    """Get query performance metrics."""
+    with _metrics_lock:
+        total = _query_metrics["total_queries"]
+        return {
+            "total_queries": total,
+            "total_time_ms": _query_metrics["total_time_ms"],
+            "avg_time_ms": _query_metrics["total_time_ms"] / total if total > 0 else 0,
+            "slow_queries": _query_metrics["slow_queries"],
+        }
+
+
+def reset_query_metrics() -> None:
+    """Reset query performance metrics."""
+    global _query_metrics
+    with _metrics_lock:
+        _query_metrics = {
+            "total_queries": 0,
+            "total_time_ms": 0.0,
+            "slow_queries": 0,
+        }
+
+
+def execute_with_monitoring(query: str, params: tuple = ()) -> list:
+    """
+    Execute a query with performance monitoring.
+
+    Args:
+        query: SQL query to execute
+        params: Query parameters
+
+    Returns:
+        List of rows from the query
+    """
+    start_time = time.perf_counter()
+
+    with get_cursor() as cursor:
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+    end_time = time.perf_counter()
+    duration_ms = (end_time - start_time) * 1000
+
+    # Update metrics
+    with _metrics_lock:
+        _query_metrics["total_queries"] += 1
+        _query_metrics["total_time_ms"] += duration_ms
+        if duration_ms > _slow_query_threshold_ms:
+            _query_metrics["slow_queries"] += 1
+
+    # Call slow query callback if threshold exceeded
+    if duration_ms > _slow_query_threshold_ms and _slow_query_callback:
+        try:
+            _slow_query_callback(query, duration_ms)
+        except Exception as e:
+            logger.warning(f"Slow query callback error: {e}")
+
+    return [dict(row) for row in rows]
 
 
 def initialize_database():
@@ -144,7 +330,7 @@ def initialize_database():
             )
         """)
 
-        # Create indexes
+        # Create indexes (WP-10.24: Added additional indexes for common queries)
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_command_history_created
             ON command_history(created_at)
@@ -157,6 +343,35 @@ def initialize_database():
             CREATE INDEX IF NOT EXISTS idx_device_state_history_entity
             ON device_state_history(entity_id, recorded_at)
         """)
+
+        # WP-10.24: Additional indexes for common query patterns
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_devices_room
+            ON devices(room)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_devices_type
+            ON devices(device_type)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_command_history_result
+            ON command_history(result)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_command_history_type
+            ON command_history(command_type)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_device_state_entity_only
+            ON device_state_history(entity_id)
+        """)
+
+    # Apply SQLite optimizations after table creation
+    connection = get_connection()
+    try:
+        _apply_sqlite_optimizations(connection)
+    finally:
+        connection.close()
 
     logger.info(f"Database initialized at {DATABASE_PATH}")
 
@@ -677,6 +892,145 @@ def get_device_state_history(
             history.append(record)
 
         return history
+
+
+# =============================================================================
+# Database Backup Functions (WP-10.24)
+# =============================================================================
+
+_backup_schedule = {
+    "enabled": False,
+    "hour": 3,
+    "minute": 0,
+}
+
+
+def create_backup(backup_path: str) -> bool:
+    """
+    Create a backup of the database.
+
+    Args:
+        backup_path: Path to save the backup file
+
+    Returns:
+        True if backup successful
+    """
+    try:
+        # Ensure parent directory exists
+        Path(backup_path).parent.mkdir(parents=True, exist_ok=True)
+
+        # Use SQLite's backup API for safe backup
+        source_conn = sqlite3.connect(DATABASE_PATH)
+        dest_conn = sqlite3.connect(backup_path)
+
+        with dest_conn:
+            source_conn.backup(dest_conn)
+
+        source_conn.close()
+        dest_conn.close()
+
+        logger.info(f"Database backup created at {backup_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Database backup failed: {e}")
+        return False
+
+
+def get_backup_schedule() -> dict:
+    """Get the current backup schedule."""
+    return _backup_schedule.copy()
+
+
+def set_backup_schedule(hour: int = 3, minute: int = 0, enabled: bool = True) -> None:
+    """
+    Set the automated backup schedule.
+
+    Args:
+        hour: Hour to run backup (0-23)
+        minute: Minute to run backup (0-59)
+        enabled: Whether automated backups are enabled
+    """
+    global _backup_schedule
+    _backup_schedule = {
+        "enabled": enabled,
+        "hour": hour,
+        "minute": minute,
+    }
+
+
+# =============================================================================
+# Database Statistics Functions (WP-10.24)
+# =============================================================================
+
+
+def get_database_stats() -> dict:
+    """
+    Get database statistics for monitoring.
+
+    Returns:
+        Dict with database statistics
+    """
+    stats = {
+        "file_size_bytes": 0,
+        "table_counts": {},
+        "index_count": 0,
+        "page_count": 0,
+        "page_size": 0,
+    }
+
+    # File size
+    if DATABASE_PATH.exists():
+        stats["file_size_bytes"] = DATABASE_PATH.stat().st_size
+
+    with get_cursor() as cursor:
+        # Page statistics
+        cursor.execute("PRAGMA page_count")
+        stats["page_count"] = cursor.fetchone()[0]
+
+        cursor.execute("PRAGMA page_size")
+        stats["page_size"] = cursor.fetchone()[0]
+
+        # Table row counts
+        cursor.execute("""
+            SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+
+        for table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")  # noqa: S608
+            stats["table_counts"][table] = cursor.fetchone()[0]
+
+        # Index count
+        cursor.execute("""
+            SELECT COUNT(*) FROM sqlite_master WHERE type='index'
+        """)
+        stats["index_count"] = cursor.fetchone()[0]
+
+    return stats
+
+
+def get_index_stats() -> list[dict]:
+    """
+    Get statistics about database indexes.
+
+    Returns:
+        List of index info dicts
+    """
+    with get_cursor() as cursor:
+        cursor.execute("""
+            SELECT name, tbl_name as 'table', sql
+            FROM sqlite_master
+            WHERE type='index' AND name NOT LIKE 'sqlite_%'
+        """)
+
+        return [
+            {
+                "name": row["name"],
+                "table": row["table"],
+                "sql": row["sql"],
+            }
+            for row in cursor.fetchall()
+        ]
 
 
 # Initialize database on module import
