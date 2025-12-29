@@ -606,25 +606,26 @@ All work packages must include appropriate Slack alerts for operational visibili
 - **Devlog:** `devlog/security-audit/2025-12-29-wp-10-22-security-audit.md`
 
 #### WP-10.23: Rate Limiting Enhancements
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2025-12-29)
+- **Completed By:** Agent-Dorian
 - **Priority:** P2 (abuse prevention)
 - **Effort:** S
-- **Owner:** Unassigned
 - **Source:** Basic rate limiting exists, could be improved
 - **Tasks:**
-  - [ ] Implement per-user rate limiting (vs per-IP)
-  - [ ] Add configurable rate limit thresholds
-  - [ ] Implement rate limit headers (X-RateLimit-*)
-  - [ ] Add rate limit bypass for authenticated admin
-  - [ ] Document rate limiting behavior
-  - [ ] Write tests for rate limiting
-  - [ ] Create devlog entry
+  - [x] Implement per-user rate limiting (vs per-IP)
+  - [x] Add configurable rate limit thresholds (5 env vars)
+  - [x] Implement rate limit headers (X-RateLimit-*)
+  - [x] Add rate limit bypass for authenticated admin
+  - [x] Document rate limiting behavior (devlog)
+  - [x] Write tests for rate limiting (12 new tests)
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] Per-user rate limiting working
-  - [ ] Rate limits configurable via environment variables
-  - [ ] Standard rate limit headers returned
-  - [ ] Admin bypass mechanism implemented
-  - [ ] Documentation complete
+  - [x] Per-user rate limiting working
+  - [x] Rate limits configurable via environment variables
+  - [x] Standard rate limit headers returned
+  - [x] Admin bypass mechanism implemented
+  - [x] Documentation complete
+- **Devlog:** `devlog/rate-limiting/2025-12-29-wp-10-23-rate-limiting-enhancements.md`
 
 #### WP-10.24: Database Query Optimization
 - **Status:** ⚪ Not Started

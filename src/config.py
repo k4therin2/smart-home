@@ -61,6 +61,13 @@ CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
 HA_STATE_CACHE_TTL = int(os.getenv("HA_STATE_CACHE_TTL", "10"))  # seconds
 CACHE_MAX_SIZE = int(os.getenv("CACHE_MAX_SIZE", "1000"))  # entries
 
+# Rate Limiting Configuration (WP-10.23)
+RATE_LIMIT_DEFAULT_PER_DAY = int(os.getenv("RATE_LIMIT_DEFAULT_PER_DAY", "200"))
+RATE_LIMIT_DEFAULT_PER_HOUR = int(os.getenv("RATE_LIMIT_DEFAULT_PER_HOUR", "50"))
+RATE_LIMIT_API_PER_MINUTE = int(os.getenv("RATE_LIMIT_API_PER_MINUTE", "30"))
+RATE_LIMIT_COMMAND_PER_MINUTE = int(os.getenv("RATE_LIMIT_COMMAND_PER_MINUTE", "10"))
+RATE_LIMIT_ADMIN_MULTIPLIER = int(os.getenv("RATE_LIMIT_ADMIN_MULTIPLIER", "5"))  # 5x normal limits for admins
+
 # Room Entity Mappings
 # Maps room names to Home Assistant entity IDs
 # Blinds use the Tuya integration via Hapadif Smart Bridge Hub

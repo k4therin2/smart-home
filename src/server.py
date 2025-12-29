@@ -23,7 +23,13 @@ from flask_login import current_user, login_required
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from pydantic import BaseModel, Field, ValidationError
 
-from src.config import DATA_DIR, ROOM_ENTITY_MAP
+from src.config import (
+    DATA_DIR,
+    ROOM_ENTITY_MAP,
+    RATE_LIMIT_DEFAULT_PER_DAY,
+    RATE_LIMIT_DEFAULT_PER_HOUR,
+    RATE_LIMIT_ADMIN_MULTIPLIER,
+)
 from src.ha_client import get_ha_client
 from src.health_monitor import get_health_monitor
 from src.security.auth import auth_bp, setup_login_manager
@@ -73,12 +79,43 @@ app.config["USE_MINIFIED_ASSETS"] = os.getenv("USE_MINIFIED_ASSETS", "false").lo
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-# Initialize rate limiter
+
+def get_rate_limit_key() -> str:
+    """
+    Get rate limit key based on user identity (WP-10.23).
+
+    Returns user ID for authenticated users, IP address for anonymous.
+    This enables per-user rate limiting instead of just per-IP.
+    """
+    if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+        return f"user:{current_user.id}"
+    return f"ip:{get_remote_address()}"
+
+
+def is_admin_rate_limit_exempt() -> bool:
+    """
+    Check if current user should get increased rate limits (WP-10.23).
+
+    Admin users get RATE_LIMIT_ADMIN_MULTIPLIER times the normal limit.
+    Returns True to exempt from default limits (custom limits applied).
+    """
+    if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated:
+        # Check if user has admin role
+        if hasattr(current_user, 'is_admin') and current_user.is_admin:
+            return True
+    return False
+
+
+# Initialize rate limiter with per-user keying (WP-10.23)
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=get_rate_limit_key,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=[
+        f"{RATE_LIMIT_DEFAULT_PER_DAY} per day",
+        f"{RATE_LIMIT_DEFAULT_PER_HOUR} per hour"
+    ],
     storage_uri="memory://",
+    headers_enabled=True,  # Enable X-RateLimit-* headers
 )
 
 # Initialize Flask-Login
