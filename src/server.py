@@ -6,6 +6,7 @@ REQ-015: Web UI (Basic)
 Phase 2.1: Application Security Baseline
 Phase 2.2: HTTPS/TLS Configuration
 WP-10.18: API Documentation with Swagger/OpenAPI
+WP-10.20: Prometheus Metrics Exporter
 """
 
 import os
@@ -36,6 +37,7 @@ from src.self_healer import get_self_healer
 from src.utils import get_daily_usage, log_command, setup_logging
 from src.voice_handler import VoiceHandler
 from src.voice_response import ResponseFormatter
+from src.metrics import init_metrics
 
 
 # Initialize logging
@@ -152,6 +154,9 @@ swagger_template = {
 }
 
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
+
+# WP-10.20: Initialize Prometheus metrics (rate limit exempt)
+init_metrics(app, limiter=limiter)
 
 
 @app.after_request
