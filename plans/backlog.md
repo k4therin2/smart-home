@@ -84,6 +84,56 @@ From WP-2.6 - GitHub Actions for test automation not yet complete:
 - Need automated CI/CD pipeline
 - Need coverage report generation
 
+### Meshtastic Integration for Smart Home
+**Priority:** P3 (research/planning phase)
+**Effort:** L (large - new hardware + integration)
+**Status:** Backlog (needs scoping)
+**Added:** 2025-12-29
+
+Investigate and implement Meshtastic LoRa mesh network for smart home automation, covering:
+
+**1. Dog Tracking (Sophie)**
+- Collar-mounted GPS tracker (SenseCAP T1000-E or similar)
+- Detect dog arrivals/departures and track location
+- No subscription fees (unlike cellular trackers)
+
+**2. Presence Detection**
+- Keychain tracker for user
+- Trigger home automations (arriving/leaving geofences)
+
+**3. Chicken Coop Automation**
+- Remote coop monitoring and control:
+  - Door open/closed status (magnetometer)
+  - Temperature/humidity monitoring
+  - Light sensor for sunrise/sunset automation
+  - Predator detection with local AI camera processing + Meshtastic alert
+  - Feed/water level monitoring
+  - Solar-powered node (no wiring needed)
+
+**4. Garden Sensor Network**
+- Soil moisture monitoring
+- Temperature monitoring
+- Irrigation triggers
+
+**5. General Infrastructure**
+- Base station node at house
+- Connected to Home Assistant via MQTT
+- Single mesh network covers entire property
+
+**Technical Notes:**
+- Meshtastic uses LoRa for long-range, low-power mesh networking
+- No subscription fees (unlike cellular trackers)
+- Native Home Assistant integration via MQTT
+- For predator detection: camera does local AI processing, Meshtastic only sends text alerts (can't handle video)
+
+**Implementation Considerations:**
+- Hardware sourcing (Meshtastic devices, sensors, solar panels)
+- Range testing across property
+- Battery life optimization
+- Weatherproofing for outdoor nodes
+- Home Assistant integration complexity
+- Privacy/security of mesh network
+
 ---
 
 ## Archive
