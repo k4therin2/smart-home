@@ -73,25 +73,64 @@ RATE_LIMIT_ADMIN_MULTIPLIER = int(
 # Room Entity Mappings
 # Maps room names to Home Assistant entity IDs
 # Blinds use the Tuya integration via Hapadif Smart Bridge Hub
+#
+# Philips Hue Device Descriptions (updated 2026-01-02):
+# Kitchen: Two 2-bulb overhanging fixtures
+# Living Room: Reading lamp (right of couch), Pendant (left, boho wicker),
+#              Golden lamp (art nouveau floor lamp), Hue Play 1&2 (behind TV)
+# Bedroom: Bed north/south (bedside lamps), Bubble (circular on dresser)
+# Master Bathroom: Above toilet (attached to bedroom)
+# Staircase: Top of Stairs
+#
 ROOM_ENTITY_MAP = {
     "living_room": {
-        "lights": ["light.living_room", "light.living_room_2"],
-        "default_light": "light.living_room_2",  # Has color support
+        "lights": [
+            "light.reading_light",      # Lamp to right of couch (reading spot)
+            "light.pendant_lamp",       # Left of couch, hanging boho wicker shade
+            "light.golden_lamp",        # Art nouveau floor lamp
+            "light.hue_play_1",         # Behind TV console table
+            "light.hue_play_2",         # Behind TV
+        ],
+        "default_light": "light.reading_light",  # Good for general use
         "blinds": "cover.living_room_blinds",  # Hapadif via Tuya
     },
     "bedroom": {
-        "lights": ["light.bedroom", "light.bedroom_2", "light.bed_north", "light.bed_south"],
-        "default_light": "light.bedroom_2",  # Has color support
+        "lights": [
+            "light.bed_north",          # Bedside lamp (north side)
+            "light.bed_south",          # Bedside lamp (south side)
+            "light.bubble",             # Circular lamp on dresser
+        ],
+        "default_light": "light.bubble",  # Has color support
         "blinds": "cover.bedroom_blinds",  # Hapadif via Tuya
     },
+    "master_bathroom": {
+        "lights": [
+            "light.master_bathroom",    # Hue light above toilet
+            # Note: There's also a non-Hue light in here (not controllable)
+        ],
+        "default_light": "light.master_bathroom",
+    },
     "kitchen": {
-        "lights": ["light.kitchen", "light.kitchen_2"],
-        "default_light": "light.kitchen_2",  # Has color support
+        "lights": [
+            "light.hue_color_lamp_1",   # Fixture 1, bulb 1
+            "light.hue_color_lamp_2",   # Fixture 1, bulb 2
+            "light.hue_color_lamp_3",   # Fixture 2, bulb 1
+            "light.hue_color_lamp_4",   # Fixture 2, bulb 2
+        ],
+        "default_light": "light.hue_color_lamp_1",  # All have color support
+        "fixtures": {
+            "fixture_1": ["light.hue_color_lamp_1", "light.hue_color_lamp_2"],
+            "fixture_2": ["light.hue_color_lamp_3", "light.hue_color_lamp_4"],
+        },
     },
     "office": {
         "lights": ["light.office_pendant", "light.office_2"],
         "default_light": "light.office_pendant",  # Has color support, is available
         "blinds": "cover.office_blinds",  # Hapadif via Tuya
+    },
+    "staircase": {
+        "lights": ["light.top_of_stairs"],
+        "default_light": "light.top_of_stairs",
     },
     "upstairs": {
         "lights": ["light.upstairs", "light.top_of_stairs"],
@@ -105,10 +144,6 @@ ROOM_ENTITY_MAP = {
         "lights": ["light.garage", "light.garage_2"],
         "default_light": "light.garage",
     },
-    "staircase": {
-        "lights": ["light.staircase", "light.top_of_stairs"],
-        "default_light": "light.staircase",
-    },
 }
 
 # Room name aliases for natural language processing
@@ -118,10 +153,16 @@ ROOM_ALIASES = {
     "front room": "living_room",
     "bed room": "bedroom",
     "master bedroom": "bedroom",
-    "bath room": "bathroom",
-    "restroom": "bathroom",
+    "master bath": "master_bathroom",
+    "master bathroom": "master_bathroom",
+    "ensuite": "master_bathroom",
+    "bathroom": "master_bathroom",  # Default bathroom is master
+    "bath room": "master_bathroom",
+    "restroom": "master_bathroom",
     "home office": "office",
     "study": "office",
+    "stairs": "staircase",
+    "top of stairs": "staircase",
 }
 
 # Color temperature presets (in Kelvin)
