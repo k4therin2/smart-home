@@ -276,6 +276,34 @@ def get_room_entity(room_name: str, device_type: str = "lights") -> str | None:
     return None
 
 
+def get_room_lights(room_name: str) -> list[str]:
+    """
+    Get ALL light entity IDs for a room.
+
+    Args:
+        room_name: Natural language room name
+
+    Returns:
+        List of entity ID strings (empty if room not found)
+    """
+    # Normalize room name
+    normalized = room_name.lower().strip()
+
+    # Check aliases first
+    if normalized in ROOM_ALIASES:
+        normalized = ROOM_ALIASES[normalized]
+
+    # Replace spaces with underscores
+    normalized = normalized.replace(" ", "_")
+
+    # Look up in mapping
+    if normalized in ROOM_ENTITY_MAP:
+        room_config = ROOM_ENTITY_MAP[normalized]
+        return room_config.get("lights", [])
+
+    return []
+
+
 def validate_config() -> list[str]:
     """
     Validate that required configuration is present.

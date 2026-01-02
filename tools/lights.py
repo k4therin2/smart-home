@@ -11,6 +11,7 @@ from src.config import (
     ROOM_ENTITY_MAP,
     VIBE_PRESETS,
     get_room_entity,
+    get_room_lights,
 )
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
@@ -186,9 +187,11 @@ def set_room_ambiance(
     Returns:
         Result dictionary with success status and details
     """
-    entity_id = get_room_entity(room)
+    # Get all lights in the room for on/off actions
+    room_lights = get_room_lights(room)
+    entity_id = get_room_entity(room)  # Default light for specific settings
 
-    if not entity_id:
+    if not entity_id and not room_lights:
         available = list(ROOM_ENTITY_MAP.keys())
         return {"success": False, "error": f"Unknown room: {room}", "available_rooms": available}
 
@@ -221,22 +224,60 @@ def set_room_ambiance(
 
     try:
         if action == "off":
-            success = ha_client.turn_off_light(entity_id, transition=transition)
-            return {"success": success, "action": "off", "room": room, "entity_id": entity_id}
+            # Turn off ALL lights in the room
+            if room_lights:
+                all_success = True
+                for light_id in room_lights:
+                    if not ha_client.turn_off_light(light_id, transition=transition):
+                        all_success = False
+                        logger.warning(f"Failed to turn off {light_id}")
+                return {
+                    "success": all_success,
+                    "action": "off",
+                    "room": room,
+                    "entity_ids": room_lights,
+                    "count": len(room_lights)
+                }
+            else:
+                # Fallback to single entity
+                success = ha_client.turn_off_light(entity_id, transition=transition)
+                return {"success": success, "action": "off", "room": room, "entity_id": entity_id}
 
         elif action in ("on", "set"):
             # Don't pass color_temp if we're using RGB color
             effective_color_temp = None if rgb_color else color_temp_kelvin
 
-            success = ha_client.turn_on_light(
-                entity_id=entity_id,
-                brightness_pct=brightness,
-                color_temp_kelvin=effective_color_temp,
-                rgb_color=rgb_color,
-                transition=transition,
-            )
+            # Turn on ALL lights in the room
+            if room_lights:
+                all_success = True
+                for light_id in room_lights:
+                    if not ha_client.turn_on_light(
+                        entity_id=light_id,
+                        brightness_pct=brightness,
+                        color_temp_kelvin=effective_color_temp,
+                        rgb_color=rgb_color,
+                        transition=transition,
+                    ):
+                        all_success = False
+                        logger.warning(f"Failed to turn on {light_id}")
 
-            result = {"success": success, "action": action, "room": room, "entity_id": entity_id}
+                result = {
+                    "success": all_success,
+                    "action": action,
+                    "room": room,
+                    "entity_ids": room_lights,
+                    "count": len(room_lights)
+                }
+            else:
+                # Fallback to single entity
+                success = ha_client.turn_on_light(
+                    entity_id=entity_id,
+                    brightness_pct=brightness,
+                    color_temp_kelvin=effective_color_temp,
+                    rgb_color=rgb_color,
+                    transition=transition,
+                )
+                result = {"success": success, "action": action, "room": room, "entity_id": entity_id}
 
             if brightness is not None:
                 result["brightness"] = brightness

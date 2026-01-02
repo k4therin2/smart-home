@@ -10,6 +10,7 @@ Handles user feedback on assistant responses:
 import asyncio
 import logging
 import os
+import ssl
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -132,7 +133,12 @@ async def _send_nats_alert(bug_id: str, command: str, response: str):
     """Send async NATS message to alert developers."""
     nc = NATS()
     try:
-        await nc.connect(NATS_URL)
+        # Create SSL context that accepts self-signed certificates
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+
+        await nc.connect(NATS_URL, tls=ssl_ctx, allow_reconnect=False)
 
         message = f"""New Bug Filed: {bug_id}
 
@@ -165,9 +171,86 @@ def alert_developers_via_nats(bug_id: str, command: str, response: str):
         response: Original response
     """
     try:
-        asyncio.run(_send_nats_alert(bug_id, command, response))
+        # Use asyncio with timeout to prevent hanging
+        asyncio.run(asyncio.wait_for(_send_nats_alert(bug_id, command, response), timeout=2.0))
+    except asyncio.TimeoutError:
+        logger.warning(f"NATS alert timed out for {bug_id}")
     except Exception as e:
         logger.warning(f"Failed to send NATS alert: {e}")
+
+
+def update_bug_with_retry_result(
+    bug_id: str,
+    feedback_text: str,
+    retry_response: str,
+    retry_success: bool
+) -> bool:
+    """
+    Update a Vikunja bug with retry results.
+
+    Args:
+        bug_id: The bug ID (e.g., "BUG-20260102120000")
+        feedback_text: User's feedback about what went wrong
+        retry_response: The response from the retry attempt
+        retry_success: Whether the retry was successful
+
+    Returns:
+        True if update succeeded, False otherwise
+    """
+    client = get_vikunja_client()
+    if not client:
+        logger.error("Could not create Vikunja client for update")
+        return False
+
+    try:
+        # Find the task by searching for bug_id in title
+        tasks = client.list_tasks(SMARTHOME_PROJECT_ID)
+        task = None
+        for t in tasks:
+            if bug_id in t.get("title", ""):
+                task = t
+                break
+
+        if not task:
+            logger.error(f"Could not find task for {bug_id}")
+            return False
+
+        # Append retry information to description
+        current_desc = task.get("description", "")
+        retry_status = "✅ SUCCESS" if retry_success else "❌ FAILED"
+
+        updated_desc = f"""{current_desc}
+
+---
+
+## User Feedback
+```
+{feedback_text}
+```
+
+## Retry Attempt ({retry_status})
+```
+{retry_response[:500]}{"..." if len(retry_response) > 500 else ""}
+```
+
+Updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+"""
+
+        # Update the task
+        client.update_task(task["id"], description=updated_desc)
+
+        # If retry succeeded, add "resolved" label
+        if retry_success:
+            resolved_label = client.get_or_create_label("resolved-by-retry", "27ae60")
+            if resolved_label:
+                client.add_label_to_task(task["id"], resolved_label["id"])
+
+        logger.info(f"Updated {bug_id} with retry result (success={retry_success})")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error updating bug {bug_id}: {e}")
+        return False
 
 
 def retry_with_feedback(

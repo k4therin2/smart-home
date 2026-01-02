@@ -1068,39 +1068,50 @@ footer {
     margin-top: 8px;
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
 }
 
-.feedback-btn {
+.feedback-btn-up,
+.feedback-btn-down {
     background: none;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 6px 10px;
+    padding: 8px 12px;
     cursor: pointer;
     color: var(--text-secondary);
     transition: all 0.2s;
     min-height: var(--touch-target-min);
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
 }
 
-.feedback-btn:hover {
+.feedback-btn-up:hover {
+    color: var(--success);
+    border-color: var(--success);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.feedback-btn-down:hover {
     color: var(--error);
     border-color: var(--error);
+    background: rgba(244, 67, 54, 0.1);
 }
 
-.feedback-btn svg {
-    width: 16px;
-    height: 16px;
-    transform: scaleY(-1); /* Flip to thumbs down */
+.feedback-btn-up svg,
+.feedback-btn-down svg {
+    width: 20px;
+    height: 20px;
 }
 
-.feedback-btn-text {
-    font-size: 0.8rem;
-}
-
-.feedback-btn.hidden {
+.feedback-btn-up.hidden,
+.feedback-btn-down.hidden {
     display: none;
+}
+
+.feedback-success {
+    color: var(--success);
+    font-size: 0.9rem;
 }
 
 .feedback-status {

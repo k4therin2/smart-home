@@ -43,6 +43,7 @@ from src.feedback_handler import (
     file_bug_in_vikunja,
     alert_developers_via_nats,
     retry_with_feedback,
+    update_bug_with_retry_result,
 )
 
 
@@ -441,6 +442,16 @@ def submit_feedback():
                 validated.original_response,
                 validated.feedback_text
             )
+
+            # Update the bug in Vikunja with retry results
+            if bug_id:
+                update_bug_with_retry_result(
+                    bug_id=bug_id,
+                    feedback_text=validated.feedback_text,
+                    retry_response=result.get("response", ""),
+                    retry_success=result.get("success", False)
+                )
+
             record_feedback(
                 original_command=validated.original_command,
                 original_response=validated.original_response,

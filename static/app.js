@@ -133,15 +133,21 @@ function displayResponse(command, response) {
             <div class="response-command">${escapedCommand}</div>
             <div class="response-text">${escapedResponse}</div>
             <div class="response-feedback">
-                <button class="feedback-btn" data-response-id="${responseId}"
+                <button class="feedback-btn-up" data-response-id="${responseId}"
+                        data-command="${escapedCommand}"
+                        data-response="${escapedResponse}"
+                        title="This worked" aria-label="Mark as successful">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                    </svg>
+                </button>
+                <button class="feedback-btn-down" data-response-id="${responseId}"
                         data-command="${escapedCommand}"
                         data-response="${escapedResponse}"
                         title="This didn't work" aria-label="Report unsuccessful response">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M17 2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H9v4a3 3 0 0 0 3 3l4-9V2z"/>
-                        <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17V2z"/>
+                        <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
                     </svg>
-                    <span class="feedback-btn-text">Didn't work</span>
                 </button>
             </div>
             <div class="feedback-status hidden" id="status-${responseId}"></div>
@@ -170,10 +176,24 @@ function displayResponse(command, response) {
 }
 
 /**
+ * Handle thumbs-up click - mark as successful
+ */
+async function handleThumbsUp(event) {
+    const btn = event.target.closest('.feedback-btn-up');
+    if (!btn) return;
+
+    const responseId = btn.dataset.responseId;
+    const feedbackArea = btn.closest('.response-feedback');
+
+    // Hide both buttons and show confirmation
+    feedbackArea.innerHTML = '<span class="feedback-success">Thanks for the feedback!</span>';
+}
+
+/**
  * Handle thumbs-down click - file bug immediately
  */
 async function handleFeedbackClick(event) {
-    const btn = event.target.closest('.feedback-btn');
+    const btn = event.target.closest('.feedback-btn-down');
     if (!btn) return;
 
     const responseId = btn.dataset.responseId;
@@ -185,7 +205,7 @@ async function handleFeedbackClick(event) {
     // Hide the button and show loading
     btn.classList.add('hidden');
     statusEl.classList.remove('hidden');
-    statusEl.innerHTML = '<span class="spinner"></span> Filing bug...';
+    statusEl.innerHTML = '<span class="spinner"></span> Creating bug...';
 
     try {
         const result = await fetch('/api/feedback', {
@@ -300,7 +320,9 @@ function handleFeedbackCancel(event) {
 
 // Event delegation for feedback interactions
 document.addEventListener('click', function(event) {
-    if (event.target.closest('.feedback-btn')) {
+    if (event.target.closest('.feedback-btn-up')) {
+        handleThumbsUp(event);
+    } else if (event.target.closest('.feedback-btn-down')) {
         handleFeedbackClick(event);
     } else if (event.target.closest('.feedback-more-btn')) {
         handleMoreClick(event);
