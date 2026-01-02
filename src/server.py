@@ -38,6 +38,12 @@ from src.utils import get_daily_usage, log_command, setup_logging
 from src.voice_handler import VoiceHandler
 from src.voice_response import ResponseFormatter
 from src.metrics import init_metrics
+from src.database import record_feedback
+from src.feedback_handler import (
+    file_bug_in_vikunja,
+    alert_developers_via_nats,
+    retry_with_feedback,
+)
 
 
 # Initialize logging
@@ -60,6 +66,20 @@ class VoiceCommandRequest(BaseModel):
     language: str = Field(default="en", description="Language code")
     conversation_id: str = Field(default=None, description="HA conversation ID")
     device_id: str = Field(default=None, description="Source voice device ID")
+
+
+class FeedbackRequest(BaseModel):
+    """Validation schema for feedback API requests."""
+
+    original_command: str = Field(
+        min_length=1, max_length=1000, description="The command that was executed"
+    )
+    original_response: str = Field(
+        min_length=1, max_length=5000, description="The response that was given"
+    )
+    feedback_text: str = Field(
+        default=None, max_length=1000, description="Optional user feedback for retry"
+    )
 
 
 # Initialize Flask app
@@ -329,6 +349,128 @@ def handle_command():
     except Exception as error:
         logger.error(f"Error processing command: {error}")
         # In production, don't leak error details to client
+        error_detail = str(error) if app.debug else "Internal server error"
+        return jsonify({"success": False, "error": error_detail}), 500
+
+
+@app.route("/api/feedback", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+@csrf.exempt
+def submit_feedback():
+    """
+    Submit feedback on an assistant response
+    ---
+    tags:
+      - Feedback
+    security:
+      - SessionAuth: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - original_command
+            - original_response
+          properties:
+            original_command:
+              type: string
+              description: The command that was executed
+            original_response:
+              type: string
+              description: The response that was given
+            feedback_text:
+              type: string
+              description: Optional context for retry
+    responses:
+      200:
+        description: Feedback processed
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            action:
+              type: string
+              enum: [bug_filed, retry]
+            response:
+              type: string
+              description: New response if retried
+            bug_id:
+              type: string
+              description: Bug ID if filed
+      400:
+        description: Bad request
+      429:
+        description: Rate limit exceeded
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"success": False, "error": "Request body must be JSON"}), 400
+
+        # Validate with Pydantic
+        try:
+            validated = FeedbackRequest(**data)
+        except ValidationError as validation_error:
+            errors = validation_error.errors()
+            error_msg = errors[0].get("msg", "Invalid input") if errors else "Invalid input"
+            return jsonify({"success": False, "error": error_msg}), 400
+
+        # Always file a bug first
+        bug_id = file_bug_in_vikunja(
+            validated.original_command,
+            validated.original_response
+        )
+
+        if bug_id:
+            # Alert developers
+            alert_developers_via_nats(
+                bug_id,
+                validated.original_command,
+                validated.original_response
+            )
+
+        # If feedback text provided, also retry
+        if validated.feedback_text:
+            result = retry_with_feedback(
+                validated.original_command,
+                validated.original_response,
+                validated.feedback_text
+            )
+            record_feedback(
+                original_command=validated.original_command,
+                original_response=validated.original_response,
+                action_taken="retry",
+                feedback_text=validated.feedback_text,
+                retry_response=result.get("response"),
+                bug_id=bug_id,
+            )
+            return jsonify({
+                "success": True,
+                "action": "retry",
+                "response": result.get("response"),
+                "bug_id": bug_id
+            })
+        else:
+            # Just bug filed
+            record_feedback(
+                original_command=validated.original_command,
+                original_response=validated.original_response,
+                action_taken="bug_filed",
+                bug_id=bug_id,
+            )
+            return jsonify({
+                "success": True,
+                "action": "bug_filed",
+                "bug_id": bug_id
+            })
+
+    except Exception as error:
+        logger.error(f"Feedback error: {error}")
         error_detail = str(error) if app.debug else "Internal server error"
         return jsonify({"success": False, "error": error_detail}), 500
 

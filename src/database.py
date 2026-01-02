@@ -344,6 +344,20 @@ def initialize_database():
             ON device_state_history(entity_id, recorded_at)
         """)
 
+        # Response Feedback (for thumbs-down feature)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS response_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                original_command TEXT NOT NULL,
+                original_response TEXT NOT NULL,
+                feedback_text TEXT,
+                action_taken TEXT NOT NULL,
+                retry_response TEXT,
+                bug_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # WP-10.24: Additional indexes for common query patterns
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_devices_room
@@ -364,6 +378,10 @@ def initialize_database():
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_device_state_entity_only
             ON device_state_history(entity_id)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_response_feedback_created
+            ON response_feedback(created_at)
         """)
 
     # Apply SQLite optimizations after table creation
@@ -1031,6 +1049,95 @@ def get_index_stats() -> list[dict]:
             }
             for row in cursor.fetchall()
         ]
+
+
+# =============================================================================
+# Response Feedback Functions
+# =============================================================================
+
+
+def record_feedback(
+    original_command: str,
+    original_response: str,
+    action_taken: str,
+    feedback_text: str | None = None,
+    retry_response: str | None = None,
+    bug_id: str | None = None,
+) -> int:
+    """
+    Record user feedback on a response.
+
+    Args:
+        original_command: The command that was executed
+        original_response: The response that was given
+        action_taken: What action was taken ('bug_filed' or 'retry')
+        feedback_text: Optional user-provided context
+        retry_response: Response from retry attempt if applicable
+        bug_id: Bug ID if a bug was filed
+
+    Returns:
+        ID of the recorded feedback
+    """
+    with get_cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO response_feedback (
+                original_command, original_response, feedback_text,
+                action_taken, retry_response, bug_id
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (
+                original_command,
+                original_response,
+                feedback_text,
+                action_taken,
+                retry_response,
+                bug_id,
+            ),
+        )
+        return cursor.lastrowid
+
+
+def get_feedback_history(limit: int = 100, offset: int = 0) -> list[dict]:
+    """
+    Get recent feedback history.
+
+    Args:
+        limit: Maximum number of records
+        offset: Number of records to skip
+
+    Returns:
+        List of feedback dicts
+    """
+    with get_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT * FROM response_feedback
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        """,
+            (limit, offset),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_feedback_by_bug_id(bug_id: str) -> dict | None:
+    """
+    Get feedback record by bug ID.
+
+    Args:
+        bug_id: The bug ID to look up
+
+    Returns:
+        Feedback dict or None if not found
+    """
+    with get_cursor() as cursor:
+        cursor.execute(
+            "SELECT * FROM response_feedback WHERE bug_id = ?",
+            (bug_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
 
 
 # Initialize database on module import

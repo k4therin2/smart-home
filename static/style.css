@@ -1059,3 +1059,171 @@ footer {
         margin-top: 4px;
     }
 }
+
+/* =============================================================================
+   Response Feedback Styles
+   ============================================================================= */
+
+.response-feedback {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.feedback-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.feedback-btn:hover {
+    color: var(--error);
+    border-color: var(--error);
+}
+
+.feedback-btn svg {
+    width: 16px;
+    height: 16px;
+    transform: scaleY(-1); /* Flip to thumbs down */
+}
+
+.feedback-btn-text {
+    font-size: 0.8rem;
+}
+
+.feedback-btn.hidden {
+    display: none;
+}
+
+.feedback-status {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.feedback-status.hidden {
+    display: none;
+}
+
+.feedback-bug-filed {
+    color: var(--warning);
+}
+
+.feedback-error {
+    color: var(--error);
+}
+
+.feedback-retry-result {
+    color: var(--success);
+}
+
+.feedback-more-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    font-weight: bold;
+    transition: all 0.2s;
+    min-height: 32px;
+}
+
+.feedback-more-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.feedback-more-btn.hidden {
+    display: none;
+}
+
+.feedback-form {
+    margin-top: 8px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.feedback-form.hidden {
+    display: none;
+}
+
+.feedback-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.feedback-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.feedback-submit,
+.feedback-cancel {
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    min-height: var(--touch-target-min);
+    transition: all 0.2s;
+}
+
+.feedback-submit {
+    background: var(--accent);
+    color: white;
+}
+
+.feedback-submit:hover {
+    background: var(--accent-hover);
+}
+
+.feedback-cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.feedback-cancel:hover {
+    background: var(--border);
+}
+
+/* Spinner for loading states */
+.feedback-status .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

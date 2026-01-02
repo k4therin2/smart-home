@@ -120,11 +120,38 @@ async function sendCommand(command) {
 /**
  * Display command response in UI
  */
+// Counter for unique response IDs
+let responseIdCounter = 0;
+
 function displayResponse(command, response) {
+    const responseId = `resp-${Date.now()}-${responseIdCounter++}`;
+    const escapedCommand = escapeHtml(command);
+    const escapedResponse = escapeHtml(response.response);
+
     const responseHtml = `
-        <div class="response-message">
-            <div class="response-command">${escapeHtml(command)}</div>
-            <div class="response-text">${escapeHtml(response.response)}</div>
+        <div class="response-message" id="${responseId}">
+            <div class="response-command">${escapedCommand}</div>
+            <div class="response-text">${escapedResponse}</div>
+            <div class="response-feedback">
+                <button class="feedback-btn" data-response-id="${responseId}"
+                        data-command="${escapedCommand}"
+                        data-response="${escapedResponse}"
+                        title="This didn't work" aria-label="Report unsuccessful response">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M17 2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H9v4a3 3 0 0 0 3 3l4-9V2z"/>
+                        <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17V2z"/>
+                    </svg>
+                    <span class="feedback-btn-text">Didn't work</span>
+                </button>
+            </div>
+            <div class="feedback-status hidden" id="status-${responseId}"></div>
+            <div class="feedback-form hidden" id="form-${responseId}">
+                <input type="text" class="feedback-input"
+                       placeholder="What went wrong? (optional)"
+                       aria-label="Describe what went wrong">
+                <button class="feedback-submit">Retry</button>
+                <button class="feedback-cancel">Cancel</button>
+            </div>
         </div>
     `;
 
@@ -141,6 +168,148 @@ function displayResponse(command, response) {
         messages[messages.length - 1].remove();
     }
 }
+
+/**
+ * Handle thumbs-down click - file bug immediately
+ */
+async function handleFeedbackClick(event) {
+    const btn = event.target.closest('.feedback-btn');
+    if (!btn) return;
+
+    const responseId = btn.dataset.responseId;
+    const command = btn.dataset.command;
+    const response = btn.dataset.response;
+    const statusEl = document.getElementById(`status-${responseId}`);
+    const formEl = document.getElementById(`form-${responseId}`);
+
+    // Hide the button and show loading
+    btn.classList.add('hidden');
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = '<span class="spinner"></span> Filing bug...';
+
+    try {
+        const result = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                original_command: command,
+                original_response: response
+            })
+        });
+
+        const data = await result.json();
+
+        if (data.success && data.bug_id) {
+            statusEl.innerHTML = `
+                <span class="feedback-bug-filed">Bug ${escapeHtml(data.bug_id)} filed</span>
+                <button class="feedback-more-btn" data-response-id="${responseId}"
+                        data-command="${command}" data-response="${response}"
+                        title="Add more context">...</button>
+            `;
+        } else {
+            statusEl.innerHTML = `<span class="feedback-error">Failed to file bug</span>`;
+        }
+    } catch (error) {
+        statusEl.innerHTML = `<span class="feedback-error">Error: ${escapeHtml(error.message)}</span>`;
+    }
+}
+
+/**
+ * Handle "..." button click - show form for additional context
+ */
+function handleMoreClick(event) {
+    const btn = event.target.closest('.feedback-more-btn');
+    if (!btn) return;
+
+    const responseId = btn.dataset.responseId;
+    const formEl = document.getElementById(`form-${responseId}`);
+
+    btn.classList.add('hidden');
+    formEl.classList.remove('hidden');
+    formEl.querySelector('.feedback-input').focus();
+}
+
+/**
+ * Handle retry submission with feedback context
+ */
+async function handleFeedbackSubmit(event) {
+    const btn = event.target.closest('.feedback-submit');
+    if (!btn) return;
+
+    const formEl = btn.closest('.feedback-form');
+    const responseEl = formEl.closest('.response-message');
+    const statusEl = responseEl.querySelector('.feedback-status');
+    const input = formEl.querySelector('.feedback-input');
+    const feedbackText = input.value.trim();
+
+    if (!feedbackText) {
+        formEl.classList.add('hidden');
+        return;
+    }
+
+    // Get original command/response from the more button or status area
+    const moreBtn = statusEl.querySelector('.feedback-more-btn');
+    const command = moreBtn ? moreBtn.dataset.command : '';
+    const response = moreBtn ? moreBtn.dataset.response : '';
+
+    formEl.classList.add('hidden');
+    statusEl.innerHTML = '<span class="spinner"></span> Retrying...';
+
+    try {
+        const result = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                original_command: command,
+                original_response: response,
+                feedback_text: feedbackText
+            })
+        });
+
+        const data = await result.json();
+
+        if (data.success && data.action === 'retry') {
+            statusEl.innerHTML = `
+                <div class="feedback-retry-result">
+                    <strong>Retried:</strong> ${escapeHtml(data.response)}
+                </div>
+            `;
+        } else {
+            statusEl.innerHTML = `<span class="feedback-error">Retry failed</span>`;
+        }
+    } catch (error) {
+        statusEl.innerHTML = `<span class="feedback-error">Error: ${escapeHtml(error.message)}</span>`;
+    }
+}
+
+/**
+ * Handle cancel button
+ */
+function handleFeedbackCancel(event) {
+    const btn = event.target.closest('.feedback-cancel');
+    if (!btn) return;
+
+    const formEl = btn.closest('.feedback-form');
+    const responseEl = formEl.closest('.response-message');
+    const statusEl = responseEl.querySelector('.feedback-status');
+    const moreBtn = statusEl.querySelector('.feedback-more-btn');
+
+    formEl.classList.add('hidden');
+    if (moreBtn) moreBtn.classList.remove('hidden');
+}
+
+// Event delegation for feedback interactions
+document.addEventListener('click', function(event) {
+    if (event.target.closest('.feedback-btn')) {
+        handleFeedbackClick(event);
+    } else if (event.target.closest('.feedback-more-btn')) {
+        handleMoreClick(event);
+    } else if (event.target.closest('.feedback-submit')) {
+        handleFeedbackSubmit(event);
+    } else if (event.target.closest('.feedback-cancel')) {
+        handleFeedbackCancel(event);
+    }
+});
 
 /**
  * Display error message

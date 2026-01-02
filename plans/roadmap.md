@@ -896,6 +896,343 @@ All work packages must include appropriate Slack alerts for operational visibili
 
 ---
 
+## Phase 11: Camera House Mapping & Vision Intelligence
+
+**Status:** Planned
+**Dependencies:** home-llm project (Batch 1 must be complete first)
+**Goal:** Use Ring camera snapshots + LLM vision models to map house layout, track activities, and enable voice queries
+
+**Context:**
+This feature processes Ring camera snapshots to understand the home environment and answer questions like "what has the cat been up to today?" It depends on the home-llm project providing a shared LLM server with vision models (LLaVA 16-bit).
+
+**Key Design Decisions:**
+- **Hourly baseline snapshots** + motion-triggered processing (optimization)
+- **14-day image retention**, descriptions stored forever in SQLite
+- **16-bit models for quality** (via home-llm, not local Ollama in smarthome)
+- **Hard resource caps** (max 10-15% of server capacity)
+- **MCP-style API** for cross-system queries
+- **NO audio capture** (privacy constraint)
+
+### Parallel Group 1: Core Infrastructure
+
+#### WP-11.1: YOLO Object Detection Integration
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (foundation for vision pipeline)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** home-llm WP-1.2 (Docker Ollama must be running)
+- **Description:**
+  Integrate YOLO for fast local object detection to identify motion events worth processing with LLM vision.
+
+  **Why YOLO (not just LLM):**
+  - YOLO runs locally for fast detection (< 100ms)
+  - LLM vision is slow and resource-intensive (use only for interesting events)
+  - YOLO filters out empty frames, saving LLM calls
+
+  **Tasks:**
+  - [ ] Install YOLOv8 or similar lightweight model
+  - [ ] Create object detection service
+  - [ ] Define "interesting" events (person, pet, package, vehicle)
+  - [ ] Add confidence threshold tuning
+  - [ ] Write tests for object detection
+  - [ ] Benchmark performance (latency, resource usage)
+  - [ ] Create devlog entry
+
+  **Acceptance Criteria:**
+  - [ ] YOLO detects objects in camera frames
+  - [ ] Detection runs in < 200ms per frame
+  - [ ] Confidence thresholds are configurable
+  - [ ] Resource usage < 5% CPU when idle
+  - [ ] 20+ unit tests
+
+**Estimated Effort:** 3-4 hours
+
+---
+
+#### WP-11.2: Storage System (SQLite + Image Retention)
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (data persistence)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** None (can start immediately)
+- **Description:**
+  Design database schema and storage system for camera descriptions and images.
+
+  **Requirements:**
+  - SQLite database for descriptions (timestamp, camera, objects, description, confidence)
+  - Image storage with 14-day auto-cleanup
+  - Efficient queries for voice commands ("what did cat do today")
+  - Disk space monitoring and alerts
+
+  **Tasks:**
+  - [ ] Design SQLite schema for camera_events table
+  - [ ] Implement image storage with timestamp-based cleanup
+  - [ ] Add cron job for 14-day image deletion
+  - [ ] Create query API for voice commands
+  - [ ] Add disk space monitoring (alert if > 80% full)
+  - [ ] Write tests for storage and cleanup
+  - [ ] Create devlog entry
+
+  **Schema Design:**
+  ```sql
+  CREATE TABLE camera_events (
+      id INTEGER PRIMARY KEY,
+      timestamp DATETIME,
+      camera_id TEXT,
+      image_path TEXT,
+      objects_detected TEXT,  -- JSON list
+      llm_description TEXT,
+      confidence REAL,
+      motion_triggered BOOLEAN
+  );
+  ```
+
+  **Acceptance Criteria:**
+  - [ ] Database stores camera event metadata
+  - [ ] Images stored with organized directory structure
+  - [ ] Auto-cleanup removes images older than 14 days
+  - [ ] Query API supports time-based filtering
+  - [ ] Disk space alerts to #smarthome-health
+  - [ ] 30+ unit tests
+
+**Estimated Effort:** 4-5 hours
+
+---
+
+#### WP-11.3: Snapshot Scheduler with Motion-Trigger Optimization
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (core data collection)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** WP-11.2 (storage system)
+- **Description:**
+  Implement snapshot scheduler that captures hourly baseline images and processes motion-triggered events.
+
+  **Strategy:**
+  - **Hourly baseline:** Capture snapshot every hour for baseline mapping
+  - **Motion-triggered:** Use Ring motion alerts to trigger immediate processing
+  - **Rate limiting:** Max 10 LLM calls per hour (prevent overload)
+
+  **Tasks:**
+  - [ ] Integrate with Ring API for motion alerts
+  - [ ] Implement hourly snapshot cron job
+  - [ ] Add motion-triggered snapshot capture
+  - [ ] Implement rate limiting (max 10 LLM calls/hour)
+  - [ ] Add backoff when rate limit hit
+  - [ ] Write tests for scheduler logic
+  - [ ] Create devlog entry
+
+  **Acceptance Criteria:**
+  - [ ] Hourly snapshots captured automatically
+  - [ ] Ring motion alerts trigger snapshots
+  - [ ] Rate limiting prevents overload
+  - [ ] Scheduler runs as systemd service
+  - [ ] Alerts to #smarthome-health on errors
+  - [ ] 25+ unit tests
+
+**Estimated Effort:** 4-5 hours
+
+---
+
+### Parallel Group 2: LLM Integration
+
+#### WP-11.4: LLaVA Integration via home-llm API
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (core vision intelligence)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** home-llm WP-1.6 (consumer documentation complete)
+- **Description:**
+  Integrate with home-llm API to get LLaVA vision model descriptions of camera snapshots.
+
+  **Key Points:**
+  - Call home-llm API (NOT local Ollama bundled with smarthome)
+  - Use OpenAI-compatible endpoint
+  - Handle timeouts and retries
+  - Resource monitoring (ensure home-llm stays under 15% cap)
+
+  **Tasks:**
+  - [ ] Create LLM client for home-llm API
+  - [ ] Implement image description endpoint call
+  - [ ] Add retry logic for failed API calls
+  - [ ] Add timeout handling (30s max per call)
+  - [ ] Monitor home-llm resource usage
+  - [ ] Write tests with mock API responses
+  - [ ] Create devlog entry
+
+  **Example Call:**
+  ```python
+  import openai
+
+  openai.api_base = "http://100.75.232.36:11434/v1"  # Tailscale to colby
+  openai.api_key = "dummy"
+
+  response = openai.ChatCompletion.create(
+      model="llava:16b",
+      messages=[{
+          "role": "user",
+          "content": [
+              {"type": "text", "text": "Describe this camera snapshot. What objects and activities do you see?"},
+              {"type": "image_url", "image_url": image_url}
+          ]
+      }]
+  )
+  description = response.choices[0].message.content
+  ```
+
+  **Acceptance Criteria:**
+  - [ ] Successful API calls to home-llm
+  - [ ] Descriptions stored in database
+  - [ ] Error handling for API failures
+  - [ ] Timeout prevents hanging
+  - [ ] 20+ unit tests with mocked API
+
+**Estimated Effort:** 3-4 hours
+
+---
+
+### Parallel Group 3: User Interface
+
+#### WP-11.5: Voice Query Support ("what did cat do today")
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (MVP user interface)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** WP-11.2 (storage system), WP-11.4 (LLM integration)
+- **Description:**
+  Enable voice queries to ask about camera events and activities.
+
+  **Example Queries:**
+  - "what has the cat been up to today"
+  - "did I get any packages delivered"
+  - "who was at the front door this morning"
+  - "when did Sophie go outside"
+
+  **Tasks:**
+  - [ ] Add voice command handler for camera queries
+  - [ ] Implement natural language parsing for time ranges
+  - [ ] Query database for matching events
+  - [ ] Generate summary from LLM descriptions
+  - [ ] Add voice response formatting
+  - [ ] Write tests for query parsing and responses
+  - [ ] Create devlog entry
+
+  **Query Flow:**
+  1. User asks: "what did cat do today"
+  2. Parse time range: "today" = midnight to now
+  3. Query database: WHERE objects_detected LIKE '%cat%' AND timestamp > today
+  4. Summarize results: "The cat was seen 3 times: 8am in kitchen, 2pm on couch, 6pm by food bowl"
+  5. Return voice response
+
+  **Acceptance Criteria:**
+  - [ ] Voice queries work through existing agent
+  - [ ] Time range parsing (today, yesterday, this morning, etc.)
+  - [ ] Object filtering (cat, dog, person, package, etc.)
+  - [ ] Summary generation from multiple events
+  - [ ] Voice responses are natural and concise
+  - [ ] 30+ unit tests
+
+**Estimated Effort:** 4-5 hours
+
+---
+
+#### WP-11.6: MCP Query API for Cross-System Access
+- **Status:** ⚪ Not Started
+- **Priority:** P2 (extensibility)
+- **Complexity:** S
+- **Assignee:** Developer
+- **Blocked by:** WP-11.5 (voice queries working)
+- **Description:**
+  Create MCP-style API for other systems to query camera data.
+
+  **Use Cases:**
+  - Trading bot checks if user is home before sending alerts
+  - Personal automation queries package deliveries
+  - Agent-automation queries user location for context
+
+  **Tasks:**
+  - [ ] Design REST API endpoints
+    - GET /api/camera/events?time_range=today&object=cat
+    - GET /api/camera/summary?time_range=today
+  - [ ] Add authentication (API key or Tailscale-based)
+  - [ ] Document API for consumers
+  - [ ] Write integration tests
+  - [ ] Create devlog entry
+
+  **Acceptance Criteria:**
+  - [ ] REST API endpoints functional
+  - [ ] Authentication required
+  - [ ] API documented in docs/camera-api.md
+  - [ ] Example client code provided
+  - [ ] 15+ integration tests
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+### Parallel Group 4: Operations
+
+#### WP-11.7: Resource Caps & Monitoring
+- **Status:** ⚪ Not Started
+- **Priority:** P1 (prevent server overload)
+- **Complexity:** M
+- **Assignee:** Developer
+- **Blocked by:** WP-11.3 (scheduler), WP-11.4 (LLM integration)
+- **Description:**
+  Implement hard resource caps and monitoring to ensure camera processing doesn't exceed 10-15% of server capacity.
+
+  **Requirements:**
+  - Monitor CPU, RAM, GPU usage
+  - Alert if usage > 15% for 5+ minutes
+  - Throttle snapshot processing if limits approached
+  - Dashboard in Grafana
+
+  **Tasks:**
+  - [ ] Add resource usage monitoring
+  - [ ] Implement throttling when limits approached
+  - [ ] Create Grafana dashboard for camera processing
+  - [ ] Configure alerts to #smarthome-health
+  - [ ] Add circuit breaker for overload protection
+  - [ ] Write tests for throttling logic
+  - [ ] Create devlog entry
+
+  **Grafana Metrics:**
+  - Snapshot processing rate (per hour)
+  - LLM API call count (per hour)
+  - CPU/RAM/GPU usage
+  - Storage disk usage
+  - Processing latency
+
+  **Acceptance Criteria:**
+  - [ ] Resource monitoring active
+  - [ ] Alerts fire when > 15% usage
+  - [ ] Throttling prevents overload
+  - [ ] Grafana dashboard deployed
+  - [ ] Circuit breaker tested
+  - [ ] 20+ unit tests
+
+**Estimated Effort:** 3-4 hours
+
+---
+
+## Phase 12: Camera Intelligence - Phase 2 (Future)
+
+**Status:** Backlog (defer until Phase 11 MVP complete)
+
+### WP-12.1: Automation Validation ("did lights actually change")
+- **Status:** ⚪ Not Started (backlog)
+- **Priority:** P2 (nice-to-have enhancement)
+- **Complexity:** M
+- **Description:** Use camera snapshots to validate that automations executed correctly (e.g., "did the lights turn on when I arrived home")
+
+### WP-12.2: Activity Summarization Improvements
+- **Status:** ⚪ Not Started (backlog)
+- **Priority:** P3 (enhancement)
+- **Complexity:** M
+- **Description:** Improve LLM summarization to detect patterns and provide proactive insights (e.g., "cat has been more active than usual today")
+
+---
+
 ## DEFERRED INDEFINITELY (High Risk / Low ROI)
 
 These items are explicitly deferred and will not be added to active roadmap unless strong community demand emerges:
