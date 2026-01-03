@@ -1,13 +1,13 @@
 version: '1.0'
-updated: '2026-01-02T03:35:00+00:00'
-updated_by: Agent-Henry
+updated: '2026-01-03T00:15:00+00:00'
+updated_by: Agent-Dorian
 summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 38
-  completed_wps: 25
+  completed_wps: 26
   in_progress_wps: 1
-  blocked_wps: 8
+  blocked_wps: 7
   available_wps: 4
 phases:
 - id: 2
@@ -52,8 +52,9 @@ phases:
   progress: 0/2
 - id: 11
   name: Camera House Mapping & Vision Intelligence
-  status: planned
-  progress: 0/7
+  status: active
+  progress: 1/7
+  notes: WP-11.2 complete, unblocks WP-11.3
 - id: 12
   name: Camera Intelligence - Phase 2
   status: planned
@@ -67,6 +68,13 @@ current_work:
   status: in_progress
   notes: Physical hardware validation - lights installed, need room mappings
 available_work:
+- wp: WP-11.3
+  title: Snapshot Scheduler with Motion-Trigger Optimization
+  phase: 11
+  priority: P1
+  complexity: M
+  assigned: Developer
+  notes: Unblocked by WP-11.2 completion
 - wp: WP-7.2
   title: Smart Thermostat Control
   phase: 7
@@ -83,6 +91,11 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-11.2
+  title: Storage System (SQLite + Image Retention)
+  agent: Agent-Dorian
+  date: '2026-01-03'
+  notes: CameraObservationStore class, 58 tests, cleanup script
 - wp: WP-10.33
   title: Home Assistant Add-on
   agent: Agent-Nadia
@@ -124,6 +137,6 @@ recent_completions:
   date: '2025-12-18'
   devlog: devlog/continuous-improvement/2025-12-18-implementation.md
 metrics:
-  test_count: 1376
-  last_test_run: '2025-12-27'
+  test_count: 1434
+  last_test_run: '2026-01-03'
   test_status: passing
