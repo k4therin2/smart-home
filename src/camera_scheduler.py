@@ -23,10 +23,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Generator
 
+from src.camera_resource_monitor import can_process_camera, get_resource_monitor
 from src.camera_store import CameraObservationStore, get_camera_store
 from src.config import DATA_DIR
 from src.ha_client import get_ha_client
 from src.utils import setup_logging
+from src.vision_llm_client import (
+    VisionLLMClient,
+    VisionLLMClientError,
+    get_vision_llm_client,
+)
 from tools.camera import get_camera_snapshot, list_cameras
 
 
@@ -267,6 +273,9 @@ class SchedulerConfig:
     hourly_baseline_enabled: bool = True
     motion_trigger_enabled: bool = True
 
+    # LLM processing
+    llm_enabled: bool = True  # Enable LLM image descriptions via home-llm
+
     # Rate limiting
     max_llm_calls_per_hour: int = DEFAULT_MAX_LLM_CALLS_PER_HOUR
 
@@ -290,6 +299,7 @@ class CameraScheduler:
         self,
         config: SchedulerConfig | None = None,
         store: CameraObservationStore | None = None,
+        vision_client: VisionLLMClient | None = None,
     ):
         """
         Initialize the scheduler.
@@ -297,9 +307,11 @@ class CameraScheduler:
         Args:
             config: Scheduler configuration
             store: Camera observation store (defaults to global)
+            vision_client: Vision LLM client for image descriptions
         """
         self.config = config or SchedulerConfig()
         self.store = store or get_camera_store()
+        self.vision_client = vision_client or get_vision_llm_client()
         self.rate_limiter = RateLimiter(
             max_calls=self.config.max_llm_calls_per_hour
         )
@@ -436,6 +448,20 @@ class CameraScheduler:
             Result dict with capture status
         """
         logger.info(f"Motion detected on {camera_id}")
+
+        # Check resource availability first (WP-11.7)
+        if not can_process_camera():
+            resource_status = get_resource_monitor().get_status()
+            logger.warning(
+                f"Resources critical, skipping motion capture. "
+                f"CPU: {resource_status['cpu_percent']:.1f}%, "
+                f"RAM: {resource_status['ram_percent']:.1f}%"
+            )
+            return {
+                "success": False,
+                "error": "Resources critical - throttled",
+                "resource_status": resource_status,
+            }
 
         # Check rate limit
         if not self.rate_limiter.can_call():
@@ -644,6 +670,7 @@ class CameraScheduler:
 
     def get_status(self) -> dict[str, Any]:
         """Get overall scheduler status."""
+        resource_status = get_resource_monitor().get_status()
         return {
             "running": self._running,
             "hourly_baseline_enabled": self.config.hourly_baseline_enabled,
@@ -656,6 +683,13 @@ class CameraScheduler:
             "should_run_baseline": self.should_run_hourly_baseline(),
             "rate_limiter": self.rate_limiter.get_status(),
             "stats_24h": self.get_capture_stats(hours=24),
+            "resource_monitor": {
+                "status": resource_status["status"],
+                "can_process": resource_status["can_process"],
+                "cpu_percent": resource_status["cpu_percent"],
+                "ram_percent": resource_status["ram_percent"],
+                "circuit_state": resource_status["circuit_state"],
+            },
         }
 
 

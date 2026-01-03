@@ -3036,6 +3036,61 @@ def camera_summary():
         }), 500
 
 
+# =============================================================================
+# Prometheus Metrics Endpoint (WP-11.7)
+# =============================================================================
+
+
+@app.route("/metrics", methods=["GET"])
+@csrf.exempt
+def prometheus_metrics():
+    """
+    Prometheus metrics endpoint for camera processing monitoring.
+    ---
+    tags:
+      - Metrics
+    responses:
+      200:
+        description: Prometheus metrics in text format
+        content:
+          text/plain:
+            schema:
+              type: string
+    """
+    try:
+        from src.camera_resource_monitor import get_resource_monitor
+        from src.camera_scheduler import get_scheduler_status
+
+        # Get resource monitor metrics
+        monitor = get_resource_monitor()
+        metrics = monitor.get_prometheus_metrics()
+
+        # Add scheduler metrics
+        try:
+            scheduler_status = get_scheduler_status()
+            rate_limiter = scheduler_status.get("rate_limiter", {})
+
+            lines = [
+                "",
+                "# HELP camera_scheduler_rate_limit_remaining Remaining LLM calls allowed",
+                "# TYPE camera_scheduler_rate_limit_remaining gauge",
+                f"camera_scheduler_rate_limit_remaining {rate_limiter.get('remaining_calls', 0)}",
+                "",
+                "# HELP camera_scheduler_in_backoff Whether rate limiter is in backoff (1=yes, 0=no)",
+                "# TYPE camera_scheduler_in_backoff gauge",
+                f"camera_scheduler_in_backoff {1 if rate_limiter.get('in_backoff', False) else 0}",
+            ]
+            metrics += "\n".join(lines)
+        except Exception:
+            pass  # Scheduler might not be initialized
+
+        return metrics, 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+    except Exception as error:
+        logger.error(f"Error generating metrics: {error}")
+        return f"# Error generating metrics: {error}", 500
+
+
 def create_redirect_app(https_port: int = 5050):
     """
     Create a simple Flask app that redirects HTTP to HTTPS.

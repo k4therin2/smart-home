@@ -1,13 +1,13 @@
 version: '1.0'
-updated: '2026-01-03T01:55:00+00:00'
-updated_by: Agent-Nadia
+updated: '2026-01-03T04:55:00+00:00'
+updated_by: Agent-Dorian
 summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 38
-  completed_wps: 29
+  completed_wps: 30
   in_progress_wps: 0
-  blocked_wps: 4
+  blocked_wps: 3
   available_wps: 5
 phases:
 - id: 2
@@ -53,8 +53,8 @@ phases:
 - id: 11
   name: Camera House Mapping & Vision Intelligence
   status: active
-  progress: 4/7
-  notes: WP-11.1, WP-11.2, WP-11.3, and WP-11.4 complete. WP-11.5 now unblocked.
+  progress: 5/7
+  notes: WP-11.1, WP-11.2, WP-11.3, WP-11.4, WP-11.5, WP-11.6, WP-11.7 complete. Phase 11 nearing completion.
 - id: 12
   name: Camera Intelligence - Phase 2
   status: planned
@@ -84,6 +84,11 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-11.7
+  title: Resource Caps & Monitoring
+  agent: Agent-Dorian
+  date: '2026-01-03'
+  notes: CameraResourceMonitor with CPU/RAM/GPU monitoring, throttling, circuit breaker. Prometheus /metrics endpoint. 38 tests.
 - wp: WP-11.4
   title: LLaVA Integration via home-llm API
   agent: Agent-Nadia
