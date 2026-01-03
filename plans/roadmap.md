@@ -922,11 +922,12 @@ This feature processes Ring camera snapshots to understand the home environment 
 ### Parallel Group 1: Core Infrastructure
 
 #### WP-11.1: YOLO Object Detection Integration
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete
+- **Completed By:** Agent-Dorian (verification/documentation)
+- **Completed:** 2026-01-03
 - **Priority:** P1 (foundation for vision pipeline)
 - **Complexity:** M
 - **Assignee:** Developer
-- **Blocked by:** home-llm WP-1.2 (Docker Ollama must be running)
 - **Description:**
   Integrate YOLO for fast local object detection to identify motion events worth processing with LLM vision.
 
@@ -935,23 +936,29 @@ This feature processes Ring camera snapshots to understand the home environment 
   - LLM vision is slow and resource-intensive (use only for interesting events)
   - YOLO filters out empty frames, saving LLM calls
 
+  **Implementation Notes:**
+  - Created `src/object_detection.py` with ObjectDetector class
+  - YOLOv8 nano model (yolov8n.pt) for fastest inference
+  - Configurable confidence threshold and interesting classes
+  - Lazy model loading with unload capability
+  - 32 comprehensive tests in `tests/test_object_detection.py`
+  - Devlog: `devlog/2026-01-03-wp-11.1-yolo-object-detection.md`
+
   **Tasks:**
-  - [ ] Install YOLOv8 or similar lightweight model
-  - [ ] Create object detection service
-  - [ ] Define "interesting" events (person, pet, package, vehicle)
-  - [ ] Add confidence threshold tuning
-  - [ ] Write tests for object detection
-  - [ ] Benchmark performance (latency, resource usage)
-  - [ ] Create devlog entry
+  - [x] Install YOLOv8 or similar lightweight model
+  - [x] Create object detection service
+  - [x] Define "interesting" events (person, pet, package, vehicle)
+  - [x] Add confidence threshold tuning
+  - [x] Write tests for object detection
+  - [x] Benchmark performance (latency, resource usage)
+  - [x] Create devlog entry
 
   **Acceptance Criteria:**
-  - [ ] YOLO detects objects in camera frames
-  - [ ] Detection runs in < 200ms per frame
-  - [ ] Confidence thresholds are configurable
-  - [ ] Resource usage < 5% CPU when idle
-  - [ ] 20+ unit tests
-
-**Estimated Effort:** 3-4 hours
+  - [x] YOLO detects objects in camera frames
+  - [x] Detection runs in < 200ms per frame
+  - [x] Confidence thresholds are configurable
+  - [x] Resource usage < 5% CPU when idle
+  - [x] 20+ unit tests (32 tests)
 
 ---
 

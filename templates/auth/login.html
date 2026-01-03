@@ -92,6 +92,46 @@
             font-size: 0.85rem;
             color: var(--text-secondary, #888);
         }
+        .sso-divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: var(--text-secondary, #888);
+        }
+        .sso-divider::before,
+        .sso-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color, #333);
+        }
+        .sso-divider span {
+            padding: 0 1rem;
+            font-size: 0.85rem;
+        }
+        .sso-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+        .sso-button:hover {
+            background: #1d4ed8;
+        }
+        .sso-button svg {
+            width: 20px;
+            height: 20px;
+        }
     </style>
 </head>
 <body>
@@ -143,6 +183,21 @@
 
                 <button type="submit" class="auth-button">Log In</button>
             </form>
+
+            {% if sso_available %}
+            <div class="sso-divider">
+                <span>or</span>
+            </div>
+
+            <a href="{{ url_for('auth.sso_login') }}" class="sso-button">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                Sign in with SSO
+            </a>
+            {% endif %}
 
             <div class="auth-footer">
                 <p>Smart Home Assistant - Private & Secure</p>
