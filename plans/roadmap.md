@@ -1071,11 +1071,12 @@ This feature processes Ring camera snapshots to understand the home environment 
 ### Parallel Group 3: User Interface
 
 #### WP-11.5: Voice Query Support ("what did cat do today")
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2026-01-03)
+- **Completed By:** Agent-Anette
 - **Priority:** P1 (MVP user interface)
 - **Complexity:** M
 - **Assignee:** Developer
-- **Blocked by:** WP-11.2 (storage system), WP-11.4 (LLM integration)
+- **Blocked by:** WP-11.2 (storage system), WP-11.4 (LLM integration) - now complete
 - **Description:**
   Enable voice queries to ask about camera events and activities.
 
@@ -1086,13 +1087,13 @@ This feature processes Ring camera snapshots to understand the home environment 
   - "when did Sophie go outside"
 
   **Tasks:**
-  - [ ] Add voice command handler for camera queries
-  - [ ] Implement natural language parsing for time ranges
-  - [ ] Query database for matching events
-  - [ ] Generate summary from LLM descriptions
-  - [ ] Add voice response formatting
-  - [ ] Write tests for query parsing and responses
-  - [ ] Create devlog entry
+  - [x] Add voice command handler for camera queries
+  - [x] Implement natural language parsing for time ranges
+  - [x] Query database for matching events
+  - [x] Generate summary from LLM descriptions
+  - [x] Add voice response formatting
+  - [x] Write tests for query parsing and responses (51 tests)
+  - [x] Create devlog entry
 
   **Query Flow:**
   1. User asks: "what did cat do today"
@@ -1102,14 +1103,23 @@ This feature processes Ring camera snapshots to understand the home environment 
   5. Return voice response
 
   **Acceptance Criteria:**
-  - [ ] Voice queries work through existing agent
-  - [ ] Time range parsing (today, yesterday, this morning, etc.)
-  - [ ] Object filtering (cat, dog, person, package, etc.)
-  - [ ] Summary generation from multiple events
-  - [ ] Voice responses are natural and concise
-  - [ ] 30+ unit tests
+  - [x] Voice queries work through existing agent
+  - [x] Time range parsing (today, yesterday, this morning, etc.)
+  - [x] Object filtering (cat, dog, person, package, etc.)
+  - [x] Summary generation from multiple events
+  - [x] Voice responses are natural and concise
+  - [x] 30+ unit tests (51 tests implemented)
 
-**Estimated Effort:** 4-5 hours
+**Implementation Notes:**
+- Added `tools/camera_query.py` with:
+  - `parse_time_range()`: Handles today, yesterday, this morning, last N hours, etc.
+  - `normalize_object_type()`: Maps synonyms (kitty→cat, Sophie→dog, delivery→package)
+  - `parse_camera_query()`: Extracts object, time, and camera location from queries
+  - `execute_camera_query()`: Queries camera observation store
+  - `generate_activity_summary()`: Creates voice-friendly summaries
+  - `handle_voice_query()`: Main entry point for voice queries
+- Integrated into agent.py with `query_camera_activity` tool
+- 51 unit tests covering all query types and edge cases
 
 ---
 
@@ -1118,7 +1128,7 @@ This feature processes Ring camera snapshots to understand the home environment 
 - **Priority:** P2 (extensibility)
 - **Complexity:** S
 - **Assignee:** Developer
-- **Blocked by:** WP-11.5 (voice queries working)
+- **Blocked by:** WP-11.5 (voice queries working) - ✅ Now unblocked
 - **Description:**
   Create MCP-style API for other systems to query camera data.
 
