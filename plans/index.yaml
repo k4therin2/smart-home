@@ -86,10 +86,10 @@ blocked_work:
 recent_completions:
 - wp: WP-10.8
   title: Local LLM Migration (SmartHome Only)
-  agent: Agent-Dorian
+  agent: Agent-Dorian, Agent-Nadia
   date: '2026-01-03'
   devlog: devlog/local-llm-migration/2026-01-03-wp-10-8-local-llm-migration.md
-  notes: home-llm as default provider with OpenAI fallback. 95% cost reduction ($730/yr → $36/yr). 12 new tests.
+  notes: home-llm as default with automatic OpenAI fallback. 95% cost reduction ($730/yr → $36/yr). 44 tests (Nadia added 7 fallback tests).
 - wp: WP-11.7
   title: Resource Caps & Monitoring
   agent: Agent-Dorian

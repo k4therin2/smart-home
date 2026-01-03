@@ -954,3 +954,253 @@ class TestCostOptimization:
                         # OpenAI should track costs
                         assert result.input_tokens == 100
                         assert result.output_tokens == 50
+
+
+# =============================================================================
+# Automatic Fallback Mechanism Tests (WP-10.8)
+# =============================================================================
+
+
+class TestAutomaticFallback:
+    """Tests for the automatic fallback mechanism when home-llm fails."""
+
+    def test_complete_with_fallback_success_no_fallback(self):
+        """Test that when home-llm succeeds, no fallback is triggered."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = "Home-LLM response"
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 5
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    with patch.object(client, '_get_client') as mock_get_client:
+                        mock_home_client = Mock()
+                        mock_home_client.chat.completions.create.return_value = mock_response
+                        mock_get_client.return_value = mock_home_client
+
+                        result = client.complete("Hello")
+
+                        # Should succeed without fallback
+                        assert result.content == "Home-LLM response"
+                        assert client.fallback_count == 0
+
+    def test_complete_with_fallback_triggered_on_error(self):
+        """Test that fallback is triggered when home-llm fails."""
+        mock_home_error = Exception("Connection refused")
+
+        mock_fallback_response = Mock()
+        mock_fallback_response.choices = [Mock()]
+        mock_fallback_response.choices[0].message.content = "OpenAI fallback response"
+        mock_fallback_response.usage = Mock()
+        mock_fallback_response.usage.prompt_tokens = 10
+        mock_fallback_response.usage.completion_tokens = 5
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    # Mock failing home-llm client
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = mock_home_error
+
+                    # Mock successful fallback client
+                    mock_fallback_client = Mock()
+                    mock_fallback_client.chat.completions.create.return_value = mock_fallback_response
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=mock_fallback_client):
+                            result = client.complete("Hello")
+
+                            # Should succeed with fallback
+                            assert result.content == "OpenAI fallback response"
+                            assert client.fallback_count == 1
+
+    def test_complete_raises_when_no_fallback_available(self):
+        """Test that error is raised when home-llm fails and no fallback available."""
+        mock_home_error = Exception("Connection refused")
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', None):  # No fallback key
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = mock_home_error
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=None):
+                            with pytest.raises(Exception, match="Connection refused"):
+                                client.complete("Hello")
+
+    def test_fallback_count_increments_on_each_failure(self):
+        """Test that fallback count increments with each failure."""
+        mock_fallback_response = Mock()
+        mock_fallback_response.choices = [Mock()]
+        mock_fallback_response.choices[0].message.content = "Fallback response"
+        mock_fallback_response.usage = Mock()
+        mock_fallback_response.usage.prompt_tokens = 10
+        mock_fallback_response.usage.completion_tokens = 5
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = Exception("Error")
+
+                    mock_fallback_client = Mock()
+                    mock_fallback_client.chat.completions.create.return_value = mock_fallback_response
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=mock_fallback_client):
+                            # Make 3 calls
+                            client.complete("Hello 1")
+                            client.complete("Hello 2")
+                            client.complete("Hello 3")
+
+                            assert client.fallback_count == 3
+
+    def test_complete_with_tools_fallback(self):
+        """Test that complete_with_tools also has fallback support."""
+        mock_fallback_response = Mock()
+        mock_fallback_response.choices = [Mock()]
+        mock_fallback_response.choices[0].message.content = "Fallback tool response"
+        mock_fallback_response.choices[0].message.tool_calls = None
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = Exception("Error")
+
+                    mock_fallback_client = Mock()
+                    mock_fallback_client.chat.completions.create.return_value = mock_fallback_response
+
+                    tools = [{"name": "test_tool", "description": "Test", "input_schema": {}}]
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=mock_fallback_client):
+                            text, tool_calls = client.complete_with_tools("Hello", tools)
+
+                            assert text == "Fallback tool response"
+                            assert tool_calls == []
+                            assert client.fallback_count == 1
+
+    def test_fallback_uses_openai_model(self):
+        """Test that fallback uses OpenAI model, not home-llm model."""
+        mock_fallback_response = Mock()
+        mock_fallback_response.choices = [Mock()]
+        mock_fallback_response.choices[0].message.content = "Response"
+        mock_fallback_response.usage = Mock()
+        mock_fallback_response.usage.prompt_tokens = 10
+        mock_fallback_response.usage.completion_tokens = 5
+
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = Exception("Error")
+
+                    mock_fallback_client = Mock()
+                    mock_fallback_client.chat.completions.create.return_value = mock_fallback_response
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=mock_fallback_client):
+                            client.complete("Hello")
+
+                            # Verify fallback used gpt-4o-mini model
+                            call_args = mock_fallback_client.chat.completions.create.call_args
+                            assert call_args.kwargs['model'] == 'gpt-4o-mini'
+
+                            # Verify original model is restored
+                            assert client.model == 'llama3'
+
+    def test_fallback_restores_model_on_error(self):
+        """Test that original model is restored even if fallback fails."""
+        with patch('src.llm_client.os.getenv') as mock_getenv:
+            mock_getenv.side_effect = lambda key, default=None: {
+                'LLM_PROVIDER': 'home_llm',
+                'LLM_MODEL': 'llama3',
+                'LLM_API_KEY': None,
+                'LLM_BASE_URL': 'http://100.75.232.36:11434/v1',
+                'HOME_LLM_URL': 'http://100.75.232.36:11434',
+            }.get(key, default)
+
+            with patch('src.config.OPENAI_API_KEY', 'fallback-key'):
+                with patch('src.config.OPENAI_MODEL', 'gpt-4o-mini'):
+                    client = LLMClient()
+
+                    mock_home_client = Mock()
+                    mock_home_client.chat.completions.create.side_effect = Exception("Home error")
+
+                    mock_fallback_client = Mock()
+                    mock_fallback_client.chat.completions.create.side_effect = Exception("Fallback error")
+
+                    with patch.object(client, '_get_client', return_value=mock_home_client):
+                        with patch.object(client, '_get_fallback_client', return_value=mock_fallback_client):
+                            try:
+                                client.complete("Hello")
+                            except Exception:
+                                pass
+
+                            # Model should still be restored to llama3
+                            assert client.model == 'llama3'

@@ -104,6 +104,29 @@ python -c "from src.llm_client import get_llm_config; print(get_llm_config())"
 curl http://100.75.232.36:11434/v1/models
 ```
 
+## Update: 2026-01-03 (Agent-Nadia)
+
+### Automatic Fallback Mechanism Completed
+
+Agent-Nadia completed the automatic fallback implementation that was partially done:
+
+**Changes Made:**
+- Added `_complete_with_fallback()` method that actually triggers OpenAI fallback on home-llm errors
+- Added `_complete_with_tools_fallback()` method for tool-calling API fallback
+- Updated `complete()` and `complete_with_tools()` to use fallback methods for home_llm provider
+- Model is correctly switched to OpenAI model during fallback and restored afterward
+
+**Tests Added (7 new, 44 total for llm_client):**
+
+**TestAutomaticFallback:**
+- `test_complete_with_fallback_success_no_fallback` - Verify no fallback when home-llm works
+- `test_complete_with_fallback_triggered_on_error` - Verify fallback triggers on error
+- `test_complete_raises_when_no_fallback_available` - Verify error raised if no API key
+- `test_fallback_count_increments_on_each_failure` - Verify metric tracking
+- `test_complete_with_tools_fallback` - Verify fallback works for tool-calling
+- `test_fallback_uses_openai_model` - Verify correct model used during fallback
+- `test_fallback_restores_model_on_error` - Verify cleanup on fallback failure
+
 ## Future Enhancements
 
 - [ ] Add Prometheus metrics for fallback rate

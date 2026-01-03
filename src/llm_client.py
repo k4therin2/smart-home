@@ -301,7 +301,9 @@ class LLMClient:
         max_tokens: int = 1024,
     ) -> tuple[str | None, list[dict]]:
         """
-        Generate a completion with tool calling.
+        Generate a completion with tool calling and automatic fallback.
+
+        For home_llm provider: tries home-llm first, falls back to OpenAI if unavailable.
 
         Args:
             prompt: User message
@@ -319,10 +321,49 @@ class LLMClient:
             return self._complete_with_tools_anthropic(
                 client, prompt, tools, system_prompt, max_tokens
             )
+        elif self.provider == "home_llm":
+            # Try home-llm first, fallback to OpenAI if it fails
+            return self._complete_with_tools_fallback(
+                client, prompt, tools, system_prompt, max_tokens
+            )
         else:
             return self._complete_with_tools_openai(
                 client, prompt, tools, system_prompt, max_tokens
             )
+
+    def _complete_with_tools_fallback(
+        self,
+        client,
+        prompt: str,
+        tools: list[dict],
+        system_prompt: str,
+        max_tokens: int,
+    ) -> tuple[str | None, list[dict]]:
+        """
+        Complete with tools using home-llm with automatic OpenAI fallback.
+
+        WP-10.8: Enables 95% cost reduction while maintaining reliability.
+        """
+        try:
+            return self._complete_with_tools_openai(client, prompt, tools, system_prompt, max_tokens)
+        except Exception as exception:
+            logger.warning(f"Home-LLM tools request failed: {exception}. Attempting OpenAI fallback.")
+
+            fallback_client = self._get_fallback_client()
+            if fallback_client is None:
+                logger.error("No OpenAI API key configured for fallback. Raising original error.")
+                raise
+
+            self.fallback_count += 1
+            logger.info(f"Using OpenAI fallback for tools (count: {self.fallback_count})")
+
+            from src.config import OPENAI_MODEL
+            original_model = self.model
+            try:
+                self.model = OPENAI_MODEL
+                return self._complete_with_tools_openai(fallback_client, prompt, tools, system_prompt, max_tokens)
+            finally:
+                self.model = original_model
 
     def _complete_with_tools_openai(
         self,
