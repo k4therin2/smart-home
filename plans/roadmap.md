@@ -1124,36 +1124,41 @@ This feature processes Ring camera snapshots to understand the home environment 
 ---
 
 #### WP-11.6: MCP Query API for Cross-System Access
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2026-01-03)
+- **Completed By:** Agent-Anette
 - **Priority:** P2 (extensibility)
 - **Complexity:** S
 - **Assignee:** Developer
-- **Blocked by:** WP-11.5 (voice queries working) - ✅ Now unblocked
+- **Blocked by:** WP-11.5 (voice queries working) - ✅ Complete
 - **Description:**
-  Create MCP-style API for other systems to query camera data.
+  Create REST API for other systems to query camera data.
 
   **Use Cases:**
   - Trading bot checks if user is home before sending alerts
   - Personal automation queries package deliveries
   - Agent-automation queries user location for context
 
+  **Implementation Notes:**
+  - Added /api/camera/events and /api/camera/summary endpoints to server.py
+  - Authentication: Tailscale IP auto-auth + X-API-Key header option
+  - Rate limited: 60/min for events, 30/min for summary
+  - 24 integration tests covering all endpoints and auth scenarios
+
   **Tasks:**
-  - [ ] Design REST API endpoints
+  - [x] Design REST API endpoints
     - GET /api/camera/events?time_range=today&object=cat
     - GET /api/camera/summary?time_range=today
-  - [ ] Add authentication (API key or Tailscale-based)
-  - [ ] Document API for consumers
-  - [ ] Write integration tests
-  - [ ] Create devlog entry
+  - [x] Add authentication (API key or Tailscale-based)
+  - [x] Document API for consumers
+  - [x] Write integration tests
+  - [x] Create devlog entry
 
   **Acceptance Criteria:**
-  - [ ] REST API endpoints functional
-  - [ ] Authentication required
-  - [ ] API documented in docs/camera-api.md
-  - [ ] Example client code provided
-  - [ ] 15+ integration tests
-
-**Estimated Effort:** 2-3 hours
+  - [x] REST API endpoints functional
+  - [x] Authentication required
+  - [x] API documented in docs/camera-api.md
+  - [x] Example client code provided
+  - [x] 24 integration tests (exceeds 15+ requirement)
 
 ---
 

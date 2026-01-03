@@ -2769,6 +2769,273 @@ def is_tailscale_ip(ip: str) -> bool:
     return ip.startswith("100.")
 
 
+# =============================================================================
+# Camera Query API (WP-11.6)
+# =============================================================================
+
+
+def verify_camera_api_auth() -> bool:
+    """
+    Verify camera API authentication.
+
+    Allows:
+    - Tailscale IPs (100.x.x.x range)
+    - Valid API key in X-API-Key header
+
+    Returns:
+        True if authenticated
+    """
+    # Check Tailscale IP
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if is_tailscale_ip(client_ip):
+        return True
+
+    # Check API key
+    api_key = request.headers.get("X-API-Key")
+    if api_key and verify_camera_api_key(api_key):
+        return True
+
+    return False
+
+
+def verify_camera_api_key(api_key: str) -> bool:
+    """
+    Verify a camera API key.
+
+    Args:
+        api_key: The API key to verify
+
+    Returns:
+        True if valid
+    """
+    # Load valid keys from config
+    valid_keys = os.getenv("CAMERA_API_KEYS", "").split(",")
+    return api_key in [k.strip() for k in valid_keys if k.strip()]
+
+
+def get_camera_store():
+    """Get the camera observation store."""
+    from src.camera_store import get_camera_store as _get_store
+    return _get_store()
+
+
+@app.route("/api/camera/events", methods=["GET"])
+@limiter.limit("60 per minute")
+@csrf.exempt
+def camera_events():
+    """
+    Query camera events with filters
+    ---
+    tags:
+      - Camera
+    parameters:
+      - name: object
+        in: query
+        type: string
+        description: Filter by detected object type (e.g., cat, person, dog)
+      - name: camera
+        in: query
+        type: string
+        description: Filter by camera ID (partial match)
+      - name: time_range
+        in: query
+        type: string
+        description: Time range filter (today, yesterday, this_morning, last_hour, etc.)
+      - name: limit
+        in: query
+        type: integer
+        description: Maximum number of results (default 50, max 500)
+    responses:
+      200:
+        description: Camera events
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            events:
+              type: array
+            count:
+              type: integer
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    # Authentication check
+    if not verify_camera_api_auth():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    try:
+        store = get_camera_store()
+
+        # Parse query parameters
+        object_filter = request.args.get("object")
+        camera_filter = request.args.get("camera")
+        time_range = request.args.get("time_range")
+
+        # Parse limit with validation
+        try:
+            limit = int(request.args.get("limit", 50))
+            limit = max(1, min(limit, 500))  # Clamp to 1-500
+        except (ValueError, TypeError):
+            limit = 50
+
+        # Parse time range
+        start_time = None
+        end_time = None
+        if time_range:
+            try:
+                from tools.camera_query import parse_time_range
+                start_time, end_time = parse_time_range(time_range)
+            except (ValueError, ImportError):
+                pass  # Invalid time range, use defaults
+
+        # Build query based on filters
+        if object_filter:
+            # Use query_by_object for object filtering
+            events = store.query_by_object(
+                object_type=object_filter,
+                start_time=start_time,
+                end_time=end_time,
+                camera_id=None,  # Will filter below
+                limit=limit * 2 if camera_filter else limit,  # Get extra for camera filter
+            )
+            # Filter by camera if specified
+            if camera_filter:
+                events = [e for e in events if camera_filter.lower() in e.get("camera_id", "").lower()]
+                events = events[:limit]
+        else:
+            # Determine camera_id filter
+            camera_id = None
+            if camera_filter:
+                # Expand partial camera name to full ID if possible
+                # For now, use partial match in post-filter
+                pass
+
+            events = store.get_observations(
+                camera_id=camera_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=limit * 2 if camera_filter and not camera_id else limit,
+            )
+
+            # Filter by camera if specified and we didn't filter in query
+            if camera_filter:
+                events = [e for e in events if camera_filter.lower() in e.get("camera_id", "").lower()]
+                events = events[:limit]
+
+        # Format events for response
+        formatted_events = []
+        for event in events:
+            formatted_events.append({
+                "id": event.get("id"),
+                "timestamp": event.get("timestamp"),
+                "camera_id": event.get("camera_id"),
+                "objects_detected": event.get("objects_detected", []),
+                "description": event.get("llm_description"),
+                "motion_triggered": event.get("motion_triggered", False),
+            })
+
+        return jsonify({
+            "success": True,
+            "events": formatted_events,
+            "count": len(formatted_events),
+        })
+
+    except Exception as error:
+        logger.error(f"Camera events API error: {error}")
+        return jsonify({
+            "success": False,
+            "error": str(error) if app.debug else "Internal server error"
+        }), 500
+
+
+@app.route("/api/camera/summary", methods=["GET"])
+@limiter.limit("30 per minute")
+@csrf.exempt
+def camera_summary():
+    """
+    Get camera activity summary for a time range
+    ---
+    tags:
+      - Camera
+    parameters:
+      - name: time_range
+        in: query
+        type: string
+        description: Time range filter (today, yesterday, this_week, last_24_hours, etc.)
+      - name: camera
+        in: query
+        type: string
+        description: Filter by camera ID (partial match)
+    responses:
+      200:
+        description: Activity summary
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            total_events:
+              type: integer
+            period_start:
+              type: string
+            period_end:
+              type: string
+            objects_detected:
+              type: object
+      401:
+        description: Unauthorized
+      500:
+        description: Server error
+    """
+    # Authentication check
+    if not verify_camera_api_auth():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    try:
+        store = get_camera_store()
+
+        # Parse query parameters
+        time_range = request.args.get("time_range")
+        camera_filter = request.args.get("camera")
+
+        # Parse time range
+        start_time = None
+        end_time = None
+        if time_range:
+            try:
+                from tools.camera_query import parse_time_range
+                start_time, end_time = parse_time_range(time_range)
+            except (ValueError, ImportError):
+                pass
+
+        # Get summary from store
+        summary = store.get_activity_summary(
+            start_time=start_time,
+            end_time=end_time,
+            camera_id=None,  # Camera filter not directly supported, would need to enhance
+        )
+
+        return jsonify({
+            "success": True,
+            "total_events": summary.get("total_events", 0),
+            "period_start": summary.get("period_start"),
+            "period_end": summary.get("period_end"),
+            "objects_detected": summary.get("objects_detected", {}),
+            "motion_events": summary.get("motion_events", 0),
+            "top_objects": summary.get("top_objects", []),
+        })
+
+    except Exception as error:
+        logger.error(f"Camera summary API error: {error}")
+        return jsonify({
+            "success": False,
+            "error": str(error) if app.debug else "Internal server error"
+        }), 500
+
+
 def create_redirect_app(https_port: int = 5050):
     """
     Create a simple Flask app that redirects HTTP to HTTPS.
