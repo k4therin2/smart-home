@@ -47,6 +47,7 @@ from tools.location import LOCATION_TOOLS, execute_location_tool
 from tools.improvements import IMPROVEMENT_TOOLS, handle_improvement_tool
 from tools.presence import PRESENCE_TOOLS, execute_presence_tool
 from tools.ember_mug import EMBER_MUG_TOOLS, execute_ember_mug_tool
+from tools.camera_query import CAMERA_QUERY_TOOLS, execute_camera_query_tool
 from tools.system import get_current_time, get_current_date, get_datetime_info
 
 logger = setup_logging("agent")
@@ -98,7 +99,7 @@ SYSTEM_TOOLS = [
 ]
 
 # Combine all tools - device tools come from tools/*.py modules
-TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS + BLINDS_TOOLS + PLUGS_TOOLS + SPOTIFY_TOOLS + PRODUCTIVITY_TOOLS + AUTOMATION_TOOLS + TIMER_TOOLS + LOCATION_TOOLS + IMPROVEMENT_TOOLS + PRESENCE_TOOLS + EMBER_MUG_TOOLS
+TOOLS = SYSTEM_TOOLS + LIGHT_TOOLS + VACUUM_TOOLS + BLINDS_TOOLS + PLUGS_TOOLS + SPOTIFY_TOOLS + PRODUCTIVITY_TOOLS + AUTOMATION_TOOLS + TIMER_TOOLS + LOCATION_TOOLS + IMPROVEMENT_TOOLS + PRESENCE_TOOLS + EMBER_MUG_TOOLS + CAMERA_QUERY_TOOLS
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> str:
@@ -224,6 +225,13 @@ def execute_tool(tool_name: str, tool_input: dict) -> str:
     ember_mug_tool_names = [tool["name"] for tool in EMBER_MUG_TOOLS]
     if tool_name in ember_mug_tool_names:
         result = execute_ember_mug_tool(tool_name, tool_input)
+        log_tool_call(tool_name, tool_input, result)
+        return json.dumps(result) if isinstance(result, dict) else str(result)
+
+    # Camera Query tools - delegate to tools/camera_query.py (WP-11.5)
+    camera_query_tool_names = [tool["name"] for tool in CAMERA_QUERY_TOOLS]
+    if tool_name in camera_query_tool_names:
+        result = execute_camera_query_tool(tool_name, tool_input)
         log_tool_call(tool_name, tool_input, result)
         return json.dumps(result) if isinstance(result, dict) else str(result)
 
