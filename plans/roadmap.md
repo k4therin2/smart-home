@@ -366,29 +366,34 @@ All work packages must include appropriate Slack alerts for operational visibili
   - [x] Security audit completed and documented - WP-10.22 devlog
 
 #### WP-10.11: Multi-User Support
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2026-01-03)
+- **Completed By:** Agent-Nadia
 - **Priority:** P3 (nice-to-have)
 - **Effort:** L
-- **Owner:** Unassigned
 - **Requirement:** REQ-008
 - **Phase:** 7 (post-launch)
-- **Blocked by:** WP-10.10 (Secure Remote Access)
+- **Blocked by:** WP-10.10 (Secure Remote Access) - Complete
 - **Tasks:**
-  - [ ] Design user profile system
-  - [ ] Implement guest mode with basic controls
-  - [ ] User permission levels (owner, resident, guest)
-  - [ ] Per-user preferences and history
-  - [ ] Simple guest access via password-protected URL
-  - [ ] Guest session expiration
-  - [ ] Write tests for multi-user scenarios
-  - [ ] Document user management
-  - [ ] Create devlog entry
+  - [x] Design user profile system
+  - [x] Implement guest mode with basic controls
+  - [x] User permission levels (owner, resident, guest)
+  - [x] Per-user preferences and history
+  - [x] Simple guest access via password-protected URL
+  - [x] Guest session expiration
+  - [x] Write tests for multi-user scenarios (36 tests)
+  - [x] Document user management (docs/user-management.md)
+  - [x] Create devlog entry
 - **Acceptance Criteria (from REQ-008):**
-  - [ ] Guest mode with basic controls (lights, temperature)
-  - [ ] User profiles (owner, resident, guest)
-  - [ ] Per-user preferences and history
-  - [ ] Simple guest access via password-protected URL
-  - [ ] Guest sessions expire after configurable time
+  - [x] Guest mode with basic controls (lights, temperature)
+  - [x] User profiles (owner, resident, guest)
+  - [x] Per-user preferences and history
+  - [x] Simple guest access via password-protected URL
+  - [x] Guest sessions expire after configurable time
+- **Files:**
+  - New: `src/security/user_manager.py`
+  - New: `tests/unit/test_multi_user.py`
+  - New: `docs/user-management.md`
+  - New: `devlog/2026-01-03-wp-10.11-multi-user-support.md`
 
 #### WP-10.12: Pattern Learning & Routine Discovery
 - **Status:** ⚪ Not Started

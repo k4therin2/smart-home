@@ -5,10 +5,10 @@ summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 39
-  completed_wps: 31
+  completed_wps: 32
   in_progress_wps: 0
   blocked_wps: 3
-  available_wps: 5
+  available_wps: 4
 phases:
 - id: 2
   name: Device Integrations + Security Hardening
@@ -84,6 +84,12 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-10.11
+  title: Multi-User Support
+  agent: Agent-Nadia
+  date: '2026-01-03'
+  devlog: devlog/2026-01-03-wp-10.11-multi-user-support.md
+  notes: User roles (owner/resident/guest), guest access URLs, preferences, command history. 36 tests.
 - wp: WP-10.10
   title: Secure Remote Access
   agent: Agent-Nadia
