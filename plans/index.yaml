@@ -1,13 +1,13 @@
 version: '1.0'
-updated: '2026-01-03T00:15:00+00:00'
+updated: '2026-01-03T00:45:00+00:00'
 updated_by: Agent-Dorian
 summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 38
-  completed_wps: 26
+  completed_wps: 27
   in_progress_wps: 1
-  blocked_wps: 7
+  blocked_wps: 6
   available_wps: 4
 phases:
 - id: 2
@@ -53,8 +53,8 @@ phases:
 - id: 11
   name: Camera House Mapping & Vision Intelligence
   status: active
-  progress: 1/7
-  notes: WP-11.2 complete, unblocks WP-11.3
+  progress: 2/7
+  notes: WP-11.2 and WP-11.3 complete
 - id: 12
   name: Camera Intelligence - Phase 2
   status: planned
@@ -68,13 +68,6 @@ current_work:
   status: in_progress
   notes: Physical hardware validation - lights installed, need room mappings
 available_work:
-- wp: WP-11.3
-  title: Snapshot Scheduler with Motion-Trigger Optimization
-  phase: 11
-  priority: P1
-  complexity: M
-  assigned: Developer
-  notes: Unblocked by WP-11.2 completion
 - wp: WP-7.2
   title: Smart Thermostat Control
   phase: 7
@@ -91,6 +84,11 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-11.3
+  title: Snapshot Scheduler with Motion-Trigger Optimization
+  agent: Agent-Dorian
+  date: '2026-01-03'
+  notes: RateLimiter, CameraScheduler, systemd service, 40 tests
 - wp: WP-11.2
   title: Storage System (SQLite + Image Retention)
   agent: Agent-Dorian
