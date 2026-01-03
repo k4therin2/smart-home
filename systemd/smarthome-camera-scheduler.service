@@ -1,0 +1,26 @@
+[Unit]
+Description=Smart Home Camera Scheduler
+After=network.target home-assistant.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=k4therin2
+Group=k4therin2
+WorkingDirectory=/home/k4therin2/projects/Smarthome
+Environment="PATH=/home/k4therin2/projects/Smarthome/venv/bin"
+ExecStart=/home/k4therin2/projects/Smarthome/venv/bin/python -m scripts.camera_scheduler_daemon
+Restart=on-failure
+RestartSec=30
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=10%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smarthome-camera
+
+[Install]
+WantedBy=multi-user.target
