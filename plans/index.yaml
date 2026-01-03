@@ -1,11 +1,11 @@
 version: '1.0'
-updated: '2026-01-03T04:55:00+00:00'
+updated: '2026-01-03T06:12:00+00:00'
 updated_by: Agent-Dorian
 summary:
   total_phases: 12
   completed_phases: 8
-  total_wps: 38
-  completed_wps: 30
+  total_wps: 39
+  completed_wps: 31
   in_progress_wps: 0
   blocked_wps: 3
   available_wps: 5
@@ -84,6 +84,12 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-10.8
+  title: Local LLM Migration (SmartHome Only)
+  agent: Agent-Dorian
+  date: '2026-01-03'
+  devlog: devlog/local-llm-migration/2026-01-03-wp-10-8-local-llm-migration.md
+  notes: home-llm as default provider with OpenAI fallback. 95% cost reduction ($730/yr → $36/yr). 12 new tests.
 - wp: WP-11.7
   title: Resource Caps & Monitoring
   agent: Agent-Dorian

@@ -313,8 +313,17 @@ def validate_config() -> list[str]:
     """
     errors = []
 
-    if not OPENAI_API_KEY:
-        errors.append("OPENAI_API_KEY is not set")
+    # WP-10.8: OpenAI key is now optional (home-llm is default)
+    # Only warn if using OpenAI provider without key
+    llm_provider = os.getenv("LLM_PROVIDER", "home_llm").lower()
+    if llm_provider == "openai" and not OPENAI_API_KEY:
+        errors.append("OPENAI_API_KEY is not set (required for OpenAI provider)")
+    elif llm_provider == "home_llm" and not OPENAI_API_KEY:
+        # Just a warning, not an error - fallback won't work but primary will
+        import logging
+        logging.getLogger(__name__).warning(
+            "OPENAI_API_KEY not set - OpenAI fallback unavailable"
+        )
 
     if not HA_TOKEN:
         errors.append("HA_TOKEN is not set")
