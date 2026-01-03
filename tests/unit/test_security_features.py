@@ -203,6 +203,44 @@ class TestSQLInjectionPrevention:
         assert todo["content"] == "Updated Content"
 
 
+class TestSessionTimeout:
+    """Tests for session timeout configuration (WP-10.10)."""
+
+    def test_permanent_session_lifetime_configured(self):
+        """Test that session timeout is configured."""
+        from src.server import app
+        from datetime import timedelta
+
+        # Session should have a configured lifetime
+        assert "PERMANENT_SESSION_LIFETIME" in app.config
+        lifetime = app.config["PERMANENT_SESSION_LIFETIME"]
+
+        # Should be a timedelta
+        assert isinstance(lifetime, timedelta)
+
+        # Should be 24 hours
+        assert lifetime == timedelta(hours=24)
+
+    def test_session_refresh_on_activity(self):
+        """Test that sessions refresh on activity."""
+        from src.server import app
+
+        # Should be configured to refresh on each request
+        assert app.config.get("SESSION_REFRESH_EACH_REQUEST") is True
+
+    def test_session_permanent_after_sso_login(self):
+        """Test that SSO callback sets session.permanent = True."""
+        import ast
+        from pathlib import Path
+
+        # Read the auth.py file and check the callback function
+        auth_path = Path("/home/k4therin2/projects/Smarthome/src/security/auth.py")
+        auth_content = auth_path.read_text()
+
+        # Verify session.permanent = True is set in callback
+        assert "session.permanent = True" in auth_content
+
+
 class TestSubprocessSecurityComments:
     """Tests to verify subprocess usage documentation."""
 

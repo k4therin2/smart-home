@@ -84,6 +84,11 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-10.10
+  title: Secure Remote Access
+  agent: Agent-Nadia
+  date: '2026-01-03'
+  notes: Session timeout (24hr) added. Tailscale, SSO, failed login alerts, security audit all complete. 3 new tests.
 - wp: WP-10.8
   title: Local LLM Migration (SmartHome Only)
   agent: Agent-Dorian, Agent-Nadia

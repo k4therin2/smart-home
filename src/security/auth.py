@@ -3,15 +3,20 @@ Smart Home Assistant - Authentication Module
 
 Session-based authentication for the web UI.
 Phase 2.1: Application Security Baseline
+WP-90.5: SSO Integration with Authentik
 """
 
+import json
+import os
 import secrets
 import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from flask import Blueprint, Flask, redirect, render_template, request, url_for
+from flask import Blueprint, Flask, redirect, render_template, request, session, url_for
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -23,6 +28,14 @@ from flask_login import (
 
 from src.config import DATA_DIR
 from src.utils import send_health_alert
+
+# SSO Configuration
+DEFAULT_AUTHENTIK_BASE_URL = "http://colby:9000"
+DEFAULT_CLIENT_ID = "smarthome-client"
+SSO_CREDENTIALS_FILE = Path("/opt/authentik/oauth_credentials.json")
+
+# OAuth client - initialized by init_sso()
+oauth = None
 
 
 # Auth database path
@@ -47,9 +60,131 @@ SESSION_DURATION_HOURS = 24
 class User(UserMixin):
     """Simple user class for Flask-Login."""
 
-    def __init__(self, user_id: int, username: str):
+    def __init__(self, user_id: int | str, username: str):
         self.id = user_id
         self.username = username
+
+
+class SSOUser(UserMixin):
+    """User class for SSO-authenticated users."""
+
+    def __init__(self, sub: str, username: str, email: str = None, name: str = None):
+        self.id = f"sso:{sub}"  # Prefix with 'sso:' to distinguish from local users
+        self.sub = sub
+        self.username = username
+        self.email = email
+        self.name = name or username
+
+    def get_id(self) -> str:
+        return self.id
+
+
+# =============================================================================
+# SSO Configuration Functions
+# =============================================================================
+
+
+def load_oauth_credentials() -> dict:
+    """Load OAuth credentials from file or environment."""
+    credentials = {
+        'client_id': os.environ.get('AUTHENTIK_CLIENT_ID'),
+        'client_secret': os.environ.get('AUTHENTIK_CLIENT_SECRET'),
+        'redirect_uri': os.environ.get('AUTHENTIK_REDIRECT_URI'),
+    }
+
+    # Try to load from file if env vars not set
+    if not credentials['client_id'] and SSO_CREDENTIALS_FILE.exists():
+        try:
+            with open(SSO_CREDENTIALS_FILE) as f:
+                all_creds = json.load(f)
+                if 'smarthome' in all_creds:
+                    creds = all_creds['smarthome']
+                    credentials['client_id'] = creds.get('client_id')
+                    credentials['client_secret'] = creds.get('client_secret')
+                    credentials['redirect_uri'] = creds.get('redirect_uri')
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    # Set defaults for missing values
+    if not credentials['client_id']:
+        credentials['client_id'] = DEFAULT_CLIENT_ID
+    if not credentials['redirect_uri']:
+        credentials['redirect_uri'] = 'http://colby:5050/auth/callback'
+
+    return credentials
+
+
+def is_sso_available() -> bool:
+    """Check if SSO is properly configured and available."""
+    # Check environment variable first
+    if os.environ.get('SSO_ENABLED', '').lower() == 'false':
+        return False
+
+    credentials = load_oauth_credentials()
+
+    # SSO is available if we have client_id and client_secret
+    if credentials.get('client_secret'):
+        return True
+
+    # Also check if credentials file exists with valid data
+    if SSO_CREDENTIALS_FILE.exists():
+        try:
+            with open(SSO_CREDENTIALS_FILE) as f:
+                all_creds = json.load(f)
+                if 'smarthome' in all_creds and all_creds['smarthome'].get('client_secret'):
+                    return True
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    return False
+
+
+def get_current_sso_user() -> Optional[dict]:
+    """Get the current SSO user from session."""
+    return session.get('sso_user')
+
+
+def init_sso(app: Flask) -> None:
+    """Initialize SSO authentication for the Flask app."""
+    global oauth
+
+    # Only initialize if SSO is available
+    if not is_sso_available():
+        app.config['SSO_ENABLED'] = False
+        return
+
+    from authlib.integrations.flask_client import OAuth
+
+    # Load credentials
+    credentials = load_oauth_credentials()
+
+    # Store in app config
+    app.config['SSO_ENABLED'] = True
+    app.config['AUTHENTIK_CLIENT_ID'] = credentials['client_id']
+    app.config['AUTHENTIK_CLIENT_SECRET'] = credentials['client_secret']
+    app.config['AUTHENTIK_REDIRECT_URI'] = credentials['redirect_uri']
+    app.config['AUTHENTIK_BASE_URL'] = os.environ.get(
+        'AUTHENTIK_BASE_URL', DEFAULT_AUTHENTIK_BASE_URL
+    )
+
+    # Initialize OAuth
+    oauth = OAuth(app)
+
+    # Register Authentik as OAuth provider
+    base_url = app.config['AUTHENTIK_BASE_URL']
+    oauth.register(
+        name='authentik',
+        client_id=credentials['client_id'],
+        client_secret=credentials['client_secret'],
+        access_token_url=f'{base_url}/application/o/token/',
+        authorize_url=f'{base_url}/application/o/authorize/',
+        api_base_url=f'{base_url}/application/o/',
+        userinfo_endpoint=f'{base_url}/application/o/userinfo/',
+        client_kwargs={
+            'scope': 'openid email profile',
+        },
+        jwks_uri=f'{base_url}/application/o/smarthome-client/jwks/',
+    )
 
 
 def init_auth_db() -> None:
@@ -250,8 +385,31 @@ def user_exists() -> bool:
         return cursor.fetchone()[0] > 0
 
 
-def get_user_by_id(user_id: int) -> User | None:
-    """Load user by ID for Flask-Login."""
+def get_user_by_id(user_id: int | str) -> User | SSOUser | None:
+    """Load user by ID for Flask-Login.
+
+    Handles both local users (integer IDs) and SSO users (string IDs starting with 'sso:').
+    """
+    # Handle SSO users
+    if isinstance(user_id, str):
+        if user_id.startswith('sso:'):
+            # Load SSO user from session
+            sso_user = session.get('sso_user')
+            if sso_user and sso_user.get('sub') == user_id[4:]:  # Strip 'sso:' prefix
+                return SSOUser(
+                    sub=sso_user['sub'],
+                    username=sso_user.get('preferred_username', sso_user.get('name', 'SSO User')),
+                    email=sso_user.get('email'),
+                    name=sso_user.get('name')
+                )
+            return None
+        # Try to parse as integer for local users
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return None
+
+    # Load local user from database
     if not AUTH_DB_PATH.exists():
         return None
 
@@ -284,7 +442,7 @@ def setup_login_manager(app: Flask) -> LoginManager:
 
     @login_manager.user_loader
     def load_user(user_id):
-        return get_user_by_id(int(user_id))
+        return get_user_by_id(user_id)
 
     return login_manager
 
@@ -309,6 +467,7 @@ def login():
         return redirect(url_for("auth.setup"))
 
     error = None
+    sso_available = is_sso_available()
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -335,13 +494,16 @@ def login():
                 error = "Invalid username or password."
                 log_login_attempt(username, ip_address, False)
 
-    return render_template("auth/login.html", error=error)
+    return render_template("auth/login.html", error=error, sso_available=sso_available)
 
 
 @auth_bp.route("/logout")
 @login_required
 def logout():
     """Handle user logout."""
+    # Clear SSO session data
+    session.pop('sso_user', None)
+    session.pop('oauth_state', None)
     logout_user()
     return redirect(url_for("auth.login"))
 
@@ -383,3 +545,96 @@ def setup():
         generated_password = generate_initial_password()
 
     return render_template("auth/setup.html", error=error, generated_password=generated_password)
+
+
+# =============================================================================
+# SSO Routes
+# =============================================================================
+
+
+@auth_bp.route("/sso/login")
+def sso_login():
+    """Initiate SSO login flow with Authentik."""
+    global oauth
+
+    if not is_sso_available() or oauth is None:
+        return redirect(url_for("auth.login"))
+
+    # Generate and store state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    session['oauth_state'] = state
+
+    # Store original URL for redirect after login
+    next_url = request.args.get('next')
+    if next_url:
+        session['next'] = next_url
+
+    # Get redirect URI from config
+    from flask import current_app
+    redirect_uri = current_app.config.get('AUTHENTIK_REDIRECT_URI', 'http://colby:5050/auth/callback')
+
+    # Redirect to Authentik
+    return oauth.authentik.authorize_redirect(redirect_uri, state=state)
+
+
+@auth_bp.route("/callback")
+def sso_callback():
+    """Handle OAuth callback from Authentik."""
+    global oauth
+
+    # Check for errors from Authentik
+    error = request.args.get('error')
+    if error:
+        error_desc = request.args.get('error_description', 'Unknown error')
+        return redirect(url_for('auth.login', error=error_desc))
+
+    # Verify state for CSRF protection
+    state = request.args.get('state')
+    expected_state = session.get('oauth_state')
+    if not state or state != expected_state:
+        return redirect(url_for('auth.login', error='State validation failed'))
+
+    # Exchange code for token
+    if oauth is None:
+        return redirect(url_for('auth.login', error='SSO not configured'))
+
+    try:
+        token = oauth.authentik.authorize_access_token()
+    except Exception as e:
+        return redirect(url_for('auth.login', error='Token exchange failed'))
+
+    # Get user info
+    try:
+        userinfo = token.get('userinfo')
+        if not userinfo:
+            userinfo = oauth.authentik.userinfo()
+    except Exception as e:
+        return redirect(url_for('auth.login', error='Failed to get user info'))
+
+    # Store SSO user in session
+    session['sso_user'] = {
+        'sub': userinfo.get('sub'),
+        'name': userinfo.get('name') or userinfo.get('preferred_username'),
+        'email': userinfo.get('email'),
+        'preferred_username': userinfo.get('preferred_username'),
+    }
+
+    # Create SSOUser and log in with Flask-Login
+    sso_user = SSOUser(
+        sub=userinfo.get('sub'),
+        username=userinfo.get('preferred_username') or userinfo.get('name'),
+        email=userinfo.get('email'),
+        name=userinfo.get('name')
+    )
+    login_user(sso_user, remember=False)
+
+    # Enable session timeout (WP-10.10: Secure Remote Access)
+    # Sessions expire after PERMANENT_SESSION_LIFETIME of inactivity
+    session.permanent = True
+
+    # Clear OAuth state
+    session.pop('oauth_state', None)
+
+    # Redirect to original URL or home
+    next_url = session.pop('next', None) or url_for('index')
+    return redirect(next_url)

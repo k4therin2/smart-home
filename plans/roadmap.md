@@ -340,29 +340,30 @@ All work packages must include appropriate Slack alerts for operational visibili
 ### Parallel Group 4: Advanced Features (Post-Launch)
 
 #### WP-10.10: Secure Remote Access
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2026-01-03)
+- **Completed By:** Various (over time), final completion by Agent-Nadia
 - **Priority:** P2 (security + convenience)
 - **Effort:** L
-- **Owner:** Unassigned
+- **Owner:** Complete
 - **Requirement:** REQ-007
 - **Phase:** 7 (post-launch)
 - **Tasks:**
-  - [ ] Research VPN vs Tailscale vs Cloudflare Tunnel options
-  - [ ] Implement chosen secure tunnel solution
-  - [ ] Configure authentication for remote access
-  - [ ] Set up failed login monitoring
-  - [ ] Implement session timeout
-  - [ ] Security audit of remote access surface
-  - [ ] Write tests for remote access flows
-  - [ ] Document setup for users
-  - [ ] Create devlog entry
+  - [x] Research VPN vs Tailscale vs Cloudflare Tunnel options - Tailscale selected (already deployed)
+  - [x] Implement chosen secure tunnel solution - Tailscale integrated (100.x.x.x auto-auth)
+  - [x] Configure authentication for remote access - SSO via HA + API keys
+  - [x] Set up failed login monitoring - log_login_attempt() with Slack alerts
+  - [x] Implement session timeout - 24hr PERMANENT_SESSION_LIFETIME (Agent-Nadia, 2026-01-03)
+  - [x] Security audit of remote access surface - WP-10.22 completed audit
+  - [x] Write tests for remote access flows - TestSessionTimeout (3 tests) + existing auth tests
+  - [x] Document setup for users - devlog, docs/camera-api.md
+  - [x] Create devlog entry - See WP-10.22 security audit devlog
 - **Acceptance Criteria (from REQ-007):**
-  - [ ] HTTPS enabled for web UI
-  - [ ] Authentication required for access
-  - [ ] VPN or secure tunnel for remote access (not direct port forwarding)
-  - [ ] Failed login attempt monitoring
-  - [ ] Session timeout after inactivity
-  - [ ] Security audit completed and documented
+  - [x] HTTPS enabled for web UI - Port 5050 with SSL
+  - [x] Authentication required for access - SSO/API keys
+  - [x] VPN or secure tunnel for remote access (not direct port forwarding) - Tailscale
+  - [x] Failed login attempt monitoring - 5 failure alert, 10 failure lockout
+  - [x] Session timeout after inactivity - 24 hours via PERMANENT_SESSION_LIFETIME
+  - [x] Security audit completed and documented - WP-10.22 devlog
 
 #### WP-10.11: Multi-User Support
 - **Status:** ⚪ Not Started

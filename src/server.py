@@ -93,6 +93,12 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # 1 hour CSRF token expiry
 
+# Session timeout configuration (WP-10.10: Secure Remote Access)
+# Sessions expire after 24 hours of inactivity for security
+from datetime import timedelta
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True  # Reset timeout on activity
+
 # Performance optimization: use minified assets in production
 # Set USE_MINIFIED_ASSETS=true or FLASK_ENV=production to enable
 app.config["USE_MINIFIED_ASSETS"] = os.getenv("USE_MINIFIED_ASSETS", "false").lower() == "true"
