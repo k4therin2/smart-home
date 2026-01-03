@@ -1,12 +1,12 @@
 version: '1.0'
-updated: '2026-01-03T00:45:00+00:00'
-updated_by: Agent-Dorian
+updated: '2026-01-03T01:40:00+00:00'
+updated_by: Agent-Nadia
 summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 38
-  completed_wps: 27
-  in_progress_wps: 1
+  completed_wps: 28
+  in_progress_wps: 0
   blocked_wps: 6
   available_wps: 4
 phases:
@@ -53,8 +53,8 @@ phases:
 - id: 11
   name: Camera House Mapping & Vision Intelligence
   status: active
-  progress: 2/7
-  notes: WP-11.2 and WP-11.3 complete
+  progress: 3/7
+  notes: WP-11.1, WP-11.2, and WP-11.3 complete
 - id: 12
   name: Camera Intelligence - Phase 2
   status: planned
@@ -84,6 +84,12 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-11.1
+  title: YOLO Object Detection Integration
+  agent: Agent-Nadia
+  date: '2026-01-03'
+  commit: b6410ff
+  notes: ObjectDetector class using YOLOv8 for identifying interesting objects (person, pet, vehicle, package). 32 tests.
 - wp: WP-11.3
   title: Snapshot Scheduler with Motion-Trigger Optimization
   agent: Agent-Dorian
