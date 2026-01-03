@@ -1,14 +1,14 @@
 version: '1.0'
-updated: '2026-01-03T01:40:00+00:00'
+updated: '2026-01-03T01:55:00+00:00'
 updated_by: Agent-Nadia
 summary:
   total_phases: 12
   completed_phases: 8
   total_wps: 38
-  completed_wps: 28
+  completed_wps: 29
   in_progress_wps: 0
-  blocked_wps: 6
-  available_wps: 4
+  blocked_wps: 4
+  available_wps: 5
 phases:
 - id: 2
   name: Device Integrations + Security Hardening
@@ -53,8 +53,8 @@ phases:
 - id: 11
   name: Camera House Mapping & Vision Intelligence
   status: active
-  progress: 3/7
-  notes: WP-11.1, WP-11.2, and WP-11.3 complete
+  progress: 4/7
+  notes: WP-11.1, WP-11.2, WP-11.3, and WP-11.4 complete. WP-11.5 now unblocked.
 - id: 12
   name: Camera Intelligence - Phase 2
   status: planned
@@ -84,6 +84,12 @@ blocked_work:
   blocker: WP-2.5 (Hue Hardware Validation)
   notes: Needs Hue hardware validation before scene generation can be tested
 recent_completions:
+- wp: WP-11.4
+  title: LLaVA Integration via home-llm API
+  agent: Agent-Nadia
+  date: '2026-01-03'
+  commit: a2e3c32
+  notes: VisionLLMClient for image descriptions using LLaVA. Retry logic, timeouts, 21 tests. Unblocks WP-11.5.
 - wp: WP-11.1
   title: YOLO Object Detection Integration
   agent: Agent-Nadia
