@@ -40,6 +40,13 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback")
 
+# MQTT Configuration (WP-10.28)
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "smarthome")
+
 # Cost Tracking
 DAILY_COST_TARGET = float(os.getenv("DAILY_COST_TARGET", "2.00"))
 DAILY_COST_ALERT = float(os.getenv("DAILY_COST_ALERT", "5.00"))

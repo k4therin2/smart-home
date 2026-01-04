@@ -49,3 +49,6 @@ authlib>=1.3.0
 # Object Detection (WP-11.1)
 ultralytics>=8.0.0
 Pillow>=10.0.0
+
+# MQTT Integration (WP-10.28)
+paho-mqtt>=2.0.0

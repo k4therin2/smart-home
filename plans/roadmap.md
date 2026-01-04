@@ -743,25 +743,27 @@ All work packages must include appropriate Slack alerts for operational visibili
 ### Parallel Group 9: Integration & Deployment
 
 #### WP-10.28: MQTT Support
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete
+- **Completed:** 2026-01-04
+- **Completed By:** Agent-Nadia
 - **Priority:** P3 (flexibility)
 - **Effort:** M
-- **Owner:** Unassigned
 - **Source:** No MQTT integration currently
 - **Description:** Add MQTT broker integration for custom devices
 - **Tasks:**
-  - [ ] Add MQTT client library
-  - [ ] Design MQTT topic structure
-  - [ ] Implement device discovery via MQTT
-  - [ ] Add MQTT publish/subscribe for device control
-  - [ ] Write tests for MQTT integration
-  - [ ] Document MQTT setup
-  - [ ] Create devlog entry
+  - [x] Add MQTT client library
+  - [x] Design MQTT topic structure
+  - [x] Implement device discovery via MQTT
+  - [x] Add MQTT publish/subscribe for device control
+  - [x] Write tests for MQTT integration (34 tests)
+  - [x] Document MQTT setup
+  - [x] Create devlog entry
 - **Acceptance Criteria:**
-  - [ ] MQTT broker connection working
-  - [ ] Device discovery via MQTT
-  - [ ] Device control via MQTT topics
-  - [ ] Documentation complete
+  - [x] MQTT broker connection working
+  - [x] Device discovery via MQTT
+  - [x] Device control via MQTT topics
+  - [x] Documentation complete
+- **Devlog:** See `devlog/2026-01-04-wp-10.28-mqtt-support.md`
 
 #### WP-10.33: Home Assistant Add-on
 - **Status:** 🟢 Complete
