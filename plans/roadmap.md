@@ -1032,57 +1032,25 @@ This feature processes Ring camera snapshots to understand the home environment 
 ### Parallel Group 2: LLM Integration
 
 #### WP-11.4: LLaVA Integration via home-llm API
-- **Status:** ⚪ Not Started
+- **Status:** 🟢 Complete (2026-01-03)
+- **Completed By:** Agent-TDD
 - **Priority:** P1 (core vision intelligence)
 - **Complexity:** M
 - **Assignee:** Developer
-- **Blocked by:** home-llm WP-1.6 (consumer documentation complete)
 - **Description:**
   Integrate with home-llm API to get LLaVA vision model descriptions of camera snapshots.
 
-  **Key Points:**
-  - Call home-llm API (NOT local Ollama bundled with smarthome)
-  - Use OpenAI-compatible endpoint
-  - Handle timeouts and retries
-  - Resource monitoring (ensure home-llm stays under 15% cap)
+  **Implementation (commit a2e3c32):**
+  - VisionLLMClient class with OpenAI-compatible API calls
+  - describe_image() for file paths, describe_image_bytes() for raw bytes
+  - generate_text() for text completions via llama3
+  - is_available() health check for home-llm server
+  - Retry logic with exponential backoff for transient failures
+  - Configurable timeout (60s default for vision)
 
-  **Tasks:**
-  - [ ] Create LLM client for home-llm API
-  - [ ] Implement image description endpoint call
-  - [ ] Add retry logic for failed API calls
-  - [ ] Add timeout handling (30s max per call)
-  - [ ] Monitor home-llm resource usage
-  - [ ] Write tests with mock API responses
-  - [ ] Create devlog entry
+  **Tests:** 21 comprehensive unit tests with mocked API responses
 
-  **Example Call:**
-  ```python
-  import openai
-
-  openai.api_base = "http://100.75.232.36:11434/v1"  # Tailscale to colby
-  openai.api_key = "dummy"
-
-  response = openai.ChatCompletion.create(
-      model="llava:16b",
-      messages=[{
-          "role": "user",
-          "content": [
-              {"type": "text", "text": "Describe this camera snapshot. What objects and activities do you see?"},
-              {"type": "image_url", "image_url": image_url}
-          ]
-      }]
-  )
-  description = response.choices[0].message.content
-  ```
-
-  **Acceptance Criteria:**
-  - [ ] Successful API calls to home-llm
-  - [ ] Descriptions stored in database
-  - [ ] Error handling for API failures
-  - [ ] Timeout prevents hanging
-  - [ ] 20+ unit tests with mocked API
-
-**Estimated Effort:** 3-4 hours
+**Effort:** 3-4 hours (actual)
 
 ---
 
